@@ -1,6 +1,6 @@
 import { getLocalById, getTardeosPublicadosDeLocal } from "@/lib/tardeos";
 import TardeoCard from "@/components/TardeoCard";
-import ResenasLocal from "@/components/ResenasLocal";
+import Resenas from "@/components/Resenas";
 import CompartirBtn from "@/components/CompartirBtn";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -107,7 +107,7 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
         </section>
 
         {/* Reseñas */}
-        <ResenasLocal localId={local.id} nombre={local.nombre} />
+        <Resenas tipo="local" objetivoId={local.id} nombre={local.nombre} />
       </div>
     </main>
   );

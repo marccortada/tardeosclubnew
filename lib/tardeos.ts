@@ -131,6 +131,25 @@ export async function getMiDj(profileId: string): Promise<any | null> {
   return data ?? null;
 }
 
+/** Un DJ por id (para su página pública). */
+export async function getDjById(id: string): Promise<any | null> {
+  const { data } = await supabase.from("djs").select("*").eq("id", id).maybeSingle();
+  return data ?? null;
+}
+
+/** Tardeos publicados y no expirados en los que pincha un DJ. */
+export async function getTardeosPublicadosDeDj(djId: string): Promise<Tardeo[]> {
+  const hoy = hoyISO();
+  const { data } = await supabase
+    .from("tardeo_djs")
+    .select(`tardeos(${SELECT})`)
+    .eq("dj_id", djId);
+  return (data ?? [])
+    .map((r: any) => r.tardeos)
+    .filter((t: any) => t && t.estado === "publicado" && t.fecha >= hoy)
+    .map(mapRow);
+}
+
 /** Actualiza el perfil de un DJ (bio, estilos, avatar…). */
 export async function updateMiDj(id: string, fields: Record<string, unknown>) {
   return supabase.from("djs").update(fields).eq("id", id);

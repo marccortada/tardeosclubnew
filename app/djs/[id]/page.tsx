@@ -1,0 +1,107 @@
+import { getDjById, getTardeosPublicadosDeDj } from "@/lib/tardeos";
+import TardeoCard from "@/components/TardeoCard";
+import Resenas from "@/components/Resenas";
+import CompartirBtn from "@/components/CompartirBtn";
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import type { Metadata } from "next";
+import { ArrowLeft, BadgeCheck, Star, Music, Disc3, CalendarDays } from "lucide-react";
+
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const dj = await getDjById(id);
+  if (!dj) return { title: "DJ no encontrado · TardeosClub" };
+  const estilos: string[] = Array.isArray(dj.estilos) ? dj.estilos : [];
+  const desc = `${dj.nombre_artistico}${estilos.length ? ` · ${estilos.join(", ")}` : ""}. Descubre sus tardeos en TardeosClub.`;
+  return {
+    title: `${dj.nombre_artistico} · TardeosClub`,
+    description: desc,
+    openGraph: { title: dj.nombre_artistico, description: desc, images: dj.avatar_url ? [{ url: dj.avatar_url }] : undefined, type: "website" },
+  };
+}
+
+export default async function PaginaDj({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const dj = await getDjById(id);
+  if (!dj) notFound();
+
+  const tardeos = await getTardeosPublicadosDeDj(id);
+  const estilos: string[] = Array.isArray(dj.estilos) ? dj.estilos : [];
+  const inicial = String(dj.nombre_artistico || "DJ").replace("DJ ", "").charAt(0);
+
+  return (
+    <main className="mx-auto max-w-4xl pb-12">
+      {/* Cabecera oscura */}
+      <div className="relative overflow-hidden bg-tinta px-4 pb-8 pt-16 text-white md:px-8">
+        <span className="bokeh" style={{ width: 160, height: 160, top: -40, right: 20, background: "#E10A5A", opacity: 0.5 }} />
+        <Link href="/tardeos" aria-label="Volver" className="absolute left-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white transition hover:bg-white/25">
+          <ArrowLeft size={22} />
+        </Link>
+        <CompartirBtn
+          titulo={dj.nombre_artistico}
+          texto={`Mira los tardeos de ${dj.nombre_artistico} en TardeosClub`}
+          className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white transition hover:bg-white/25"
+        />
+        <div className="relative flex items-center gap-4">
+          {dj.avatar_url ? (
+            <img src={dj.avatar_url} alt="" className="h-20 w-20 rounded-3xl object-cover ring-2 ring-white/20" />
+          ) : (
+            <span className="grid h-20 w-20 place-items-center rounded-3xl bg-white/15 font-display text-3xl font-black text-oro">{inicial}</span>
+          )}
+          <div>
+            <h1 className="inline-flex items-center gap-2 font-display text-2xl font-black leading-tight md:text-3xl">
+              {dj.nombre_artistico}
+              {dj.verificado && <BadgeCheck size={22} className="text-oro-400" />}
+            </h1>
+            <p className="mt-1 inline-flex items-center gap-1 font-bold text-oro-400">
+              <Star size={16} fill="currentColor" /> {Number(dj.reputacion_score ?? 0).toFixed(1)} de reputación
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 md:px-8">
+        {/* Estilos */}
+        {estilos.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {estilos.map((e) => (
+              <span key={e} className="inline-flex items-center gap-1 rounded-full bg-magenta-50 px-4 py-2 text-sm font-extrabold text-magenta-700">
+                <Music size={14} /> {e}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Bio */}
+        {dj.bio && (
+          <section className="mt-4 rounded-2xl bg-white p-5 shadow-tarjeta ring-1 ring-black/5">
+            <p className="font-semibold text-tinta/80">{dj.bio}</p>
+          </section>
+        )}
+
+        {/* Tardeos del DJ */}
+        <section className="mt-7">
+          <h2 className="mb-3 flex items-center gap-2 font-display text-xl font-black md:text-2xl">
+            <CalendarDays size={22} className="text-magenta" /> Dónde pincha
+          </h2>
+          {tardeos.length === 0 ? (
+            <p className="flex items-center justify-center gap-2 rounded-2xl bg-white p-6 text-center font-bold text-tinta/50 ring-1 ring-black/5">
+              <Disc3 size={18} /> Sin tardeos próximos.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
+              {tardeos.map((t) => (
+                <TardeoCard key={t.id} tardeo={t} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Reseñas del DJ */}
+        <Resenas tipo="dj" objetivoId={dj.id} nombre={dj.nombre_artistico} />
+      </div>
+    </main>
+  );
+}

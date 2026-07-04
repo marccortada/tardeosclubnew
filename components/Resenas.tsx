@@ -6,26 +6,34 @@ import { useAuth } from "@/lib/useAuth";
 import { getResenasAprobadas, crearResena, yaReseno, Resena } from "@/lib/resenas";
 import { Star, Loader2, Check } from "lucide-react";
 
-export default function ResenasLocal({ localId, nombre }: { localId: string; nombre: string }) {
+export default function Resenas({
+  tipo,
+  objetivoId,
+  nombre,
+}: {
+  tipo: "local" | "dj";
+  objetivoId: string;
+  nombre: string;
+}) {
   const { user } = useAuth();
   const [resenas, setResenas] = useState<Resena[]>([]);
   const [cargando, setCargando] = useState(true);
-  const [reseño, setReseño] = useState(false); // ya reseñó
+  const [reseño, setReseño] = useState(false);
   const [puntos, setPuntos] = useState(0);
   const [comentario, setComentario] = useState("");
   const [estado, setEstado] = useState<"idle" | "enviando" | "enviado" | "error">("idle");
 
   useEffect(() => {
-    getResenasAprobadas("local", localId).then((r) => { setResenas(r); setCargando(false); });
-    if (user) yaReseno(user.id, "local", localId).then(setReseño);
-  }, [localId, user]);
+    getResenasAprobadas(tipo, objetivoId).then((r) => { setResenas(r); setCargando(false); });
+    if (user) yaReseno(user.id, tipo, objetivoId).then(setReseño);
+  }, [tipo, objetivoId, user]);
 
   const media = resenas.length ? resenas.reduce((a, r) => a + r.puntuacion, 0) / resenas.length : 0;
 
   const enviar = async () => {
     if (!user || puntos === 0) return;
     setEstado("enviando");
-    const { error } = await crearResena(user.id, "local", localId, puntos, comentario);
+    const { error } = await crearResena(user.id, tipo, objetivoId, puntos, comentario);
     if (error) setEstado("error");
     else { setEstado("enviado"); setReseño(true); }
   };

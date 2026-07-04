@@ -1,7 +1,7 @@
 import { formatFecha, flyerSrc } from "@/lib/mockData";
 import { getTardeoById } from "@/lib/tardeos";
 import AccionTardeo from "@/components/AccionTardeo";
-import ResenasLocal from "@/components/ResenasLocal";
+import Resenas from "@/components/Resenas";
 import CompartirBtn from "@/components/CompartirBtn";
 import RegistrarVisita from "@/components/RegistrarVisita";
 import MiniMapa from "@/components/MiniMapa";
@@ -101,7 +101,7 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
           <h2 className="mb-2 text-lg font-black">DJs</h2>
           <div className="flex flex-col gap-2">
             {tardeo.djs.map((dj) => (
-              <div key={dj.id} className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-tarjeta ring-1 ring-magenta-100">
+              <Link key={dj.id} href={`/djs/${dj.id}`} className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-tarjeta ring-1 ring-magenta-100 transition hover:-translate-y-0.5 hover:shadow-lg">
                 <div className="flex items-center gap-3">
                   {dj.avatar ? (
                     <img src={dj.avatar} alt="" className="h-11 w-11 rounded-full object-cover" />
@@ -121,7 +121,7 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
                 <span className="inline-flex items-center gap-1 rounded-full bg-oro/15 px-2.5 py-1 text-sm font-black text-oro-600">
                   <Star size={14} fill="currentColor" /> {dj.reputacion}
                 </span>
-              </div>
+              </Link>
             ))}
           </div>
         </section>
@@ -150,7 +150,7 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
           </div>
         </section>
 
-        <ResenasLocal localId={tardeo.local.id} nombre={tardeo.local.nombre} />
+        <Resenas tipo="local" objetivoId={tardeo.local.id} nombre={tardeo.local.nombre} />
       </div>
 
       <AccionTardeo tardeo={tardeo} />
