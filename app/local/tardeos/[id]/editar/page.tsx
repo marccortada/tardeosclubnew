@@ -56,7 +56,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
     if (tipo === "pago" && !(Number(precio) > 0)) { setError("Indica el precio."); return; }
 
     setGuardando(true); setError("");
-    const { error: e } = await updateTardeo(id, {
+    const { data, error: e } = await updateTardeo(id, {
       titulo: titulo.trim(),
       fecha,
       hora_inicio: horaInicio,
@@ -67,20 +67,28 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
       tiene_lista: tipo === "lista",
       precio: tipo === "pago" ? Number(precio) || null : null,
     });
+    if (e) { setGuardando(false); setError(e.message); return; }
+    if (!data || data.length === 0) { setGuardando(false); setError("No se guardó: este tardeo no es de tu local (permisos)."); return; }
     try { await setDjsDeTardeo(id, dj.split(/[,·&]|\sy\s/i)); } catch { /* no crítico */ }
     setGuardando(false);
-    if (e) setError(e.message);
-    else router.push("/local");
+    router.push("/local");
   };
 
   const cambiarEstado = async (nuevo: string) => {
-    await setEstadoTardeo(id, nuevo);
+    setError("");
+    const { data, error: e } = await setEstadoTardeo(id, nuevo);
+    if (e) { setError("No se pudo cambiar el estado: " + e.message); return; }
+    if (!data || data.length === 0) { setError("No se pudo: este tardeo no es de tu local (permisos)."); return; }
     router.push("/local");
   };
 
   const eliminar = async () => {
     if (!confirm("¿Seguro que quieres borrar este tardeo? No se puede deshacer.")) return;
-    await borrarTardeo(id);
+    setError("");
+    const { error: e, count } = await borrarTardeo(id);
+    if (e) { setError("No se pudo borrar: " + e.message); return; }
+    // Si RLS no deja borrar, no da error pero tampoco borra nada
+    if (count === 0) { setError("No se borró: parece que este tardeo no es de tu local (permisos)."); return; }
     router.push("/local");
   };
 

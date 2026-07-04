@@ -196,19 +196,19 @@ export async function getTardeoRow(id: string): Promise<any | null> {
   return data ?? null;
 }
 
-/** Actualiza un tardeo (solo el dueño o admin, por RLS). */
+/** Actualiza un tardeo (solo el dueño o admin, por RLS). Devuelve las filas afectadas en `data`. */
 export async function updateTardeo(id: string, fields: Record<string, unknown>) {
-  return supabase.from("tardeos").update({ ...fields, updated_at: new Date().toISOString() }).eq("id", id);
+  return supabase.from("tardeos").update(fields).eq("id", id).select("id");
 }
 
 /** Cambia el estado (publicado / borrador / finalizado / cancelado). */
 export async function setEstadoTardeo(id: string, estado: string) {
-  return supabase.from("tardeos").update({ estado }).eq("id", id);
+  return supabase.from("tardeos").update({ estado }).eq("id", id).select("id");
 }
 
-/** Borra un tardeo (solo el dueño o admin, por RLS). */
+/** Borra un tardeo (solo el dueño o admin, por RLS). `count` indica filas borradas. */
 export async function borrarTardeo(id: string) {
-  return supabase.from("tardeos").delete().eq("id", id);
+  return supabase.from("tardeos").delete({ count: "exact" }).eq("id", id);
 }
 
 /** Vincula DJs existentes a un tardeo, buscándolos por nombre artístico. */
