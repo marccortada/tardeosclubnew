@@ -1,0 +1,12 @@
+{
+  "name": "TardeosClub",
+  "short_name": "TardeosClub",
+  "description": "El buscador de tardeos que va contigo. Tu comunidad tardícola.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fff7fb",
+  "theme_color": "#E10A5A",
+  "icons": [
+    { "src": "/branding/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,96 @@
+import TopBar from "@/components/TopBar";
+import CarruselTardeos from "@/components/CarruselTardeos";
+import ZonasRapidas from "@/components/ZonasRapidas";
+import CtaLocalDj from "@/components/CtaLocalDj";
+import Footer from "@/components/Footer";
+import PopupCliente from "@/components/PopupCliente";
+import { getTardeosPublicados } from "@/lib/tardeos";
+import { CalendarDays, SlidersHorizontal, MapPin, ArrowRight, Sparkles, Sun } from "lucide-react";
+import Link from "next/link";
+import MapaClient from "@/components/MapaClient";
+
+export const dynamic = "force-dynamic";
+
+export default async function Inicio() {
+  const tardeos = await getTardeosPublicados();
+  const destacados = tardeos.filter((t) => t.destacado);
+  const esteFinde = tardeos.filter((t) => ["2026-07-11", "2026-07-12", "2026-07-13"].includes(t.fecha));
+
+  const conteo = new Map<string, number>();
+  tardeos.forEach((t) => conteo.set(t.zona, (conteo.get(t.zona) ?? 0) + 1));
+  const zonas = Array.from(conteo.entries())
+    .map(([zona, n]) => ({ zona, n }))
+    .sort((a, b) => a.zona.localeCompare(b.zona, "es"));
+
+  return (
+    <main>
+      <div className="md:hidden">
+        <TopBar />
+      </div>
+
+      {/* HERO inmersivo */}
+      <section className="hero-fiesta rounded-b-[2.5rem] px-6 pb-8 pt-10 text-white md:rounded-b-[3rem] md:px-10 md:pb-14 md:pt-16">
+        {/* Foto de ambiente de fondo */}
+        <img src="/img/hero.jpg" alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#2a0616]/90 via-[#58072f]/75 to-[#8a0d49]/60" />
+        <span className="bokeh" style={{ width: 90, height: 90, top: 20, left: 24, background: "#ff3c82" }} />
+        <span className="bokeh" style={{ width: 60, height: 60, top: 70, right: 40, background: "#f5b301" }} />
+        <span className="bokeh" style={{ width: 40, height: 40, top: 150, left: "40%", background: "#ffd36b" }} />
+        <span className="bokeh" style={{ width: 80, height: 80, bottom: 40, right: 20, background: "#ff3c82" }} />
+        <span className="bokeh hidden md:block" style={{ width: 120, height: 120, top: 40, right: "35%", background: "#f5b301" }} />
+
+        <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-8 md:grid-cols-2">
+          <div>
+            <p className="font-script text-2xl text-oro-400 md:text-3xl">Tu comunidad tardícola</p>
+            <h1 className="mt-1 font-display text-[2.7rem] font-black leading-[1.05] md:text-6xl lg:text-7xl">
+              El buscador de <span className="text-marca italic">tardeos</span> que va contigo
+            </h1>
+            <p className="mt-3 font-script text-2xl text-white/90 md:text-3xl">Sal, conecta y vive el tardeo ✨</p>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/tardeos"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-oro px-6 py-4 text-lg font-extrabold text-tinta shadow-lg transition hover:brightness-105 active:scale-[0.98]"
+              >
+                <CalendarDays size={22} /> Ver tardeos
+              </Link>
+              <Link
+                href="/tardeos"
+                className="glass flex items-center justify-center gap-2 rounded-2xl px-6 py-4 text-lg font-extrabold text-white transition hover:bg-white/20 active:scale-[0.98]"
+              >
+                <SlidersHorizontal size={22} /> Filtrar tardeos
+              </Link>
+            </div>
+          </div>
+
+          <Link href="/mapa" className="block">
+            <div className="glass overflow-hidden rounded-3xl p-2">
+              <div className="relative h-44 overflow-hidden rounded-2xl md:h-80">
+                <div className="pointer-events-none absolute inset-0">
+                  <MapaClient />
+                </div>
+                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/70 to-transparent px-4 py-3">
+                  <span className="inline-flex items-center gap-1.5 font-extrabold text-white">
+                    <MapPin size={18} className="text-oro-400" /> Tardeos cerca de ti
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-sm font-bold text-white/90">
+                    Ver mapa <ArrowRight size={16} />
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Link>
+        </div>
+      </section>
+
+      {/* Carruseles y secciones */}
+      <CarruselTardeos titulo={<>Destacados <Sparkles size={22} className="text-oro" /></>} tardeos={destacados} />
+      <CarruselTardeos titulo={<>Este finde <Sun size={22} className="text-oro" /></>} tardeos={esteFinde} />
+
+      <ZonasRapidas zonas={zonas} />
+      <CtaLocalDj />
+      <Footer />
+      <PopupCliente />
+    </main>
+  );
+}

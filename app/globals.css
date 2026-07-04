@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background: #f5f3f4;
+  color: #2a1721;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+/* ---------- Calidad UX (guías ui-ux-pro-max) ---------- */
+/* Cursor y toque en elementos interactivos */
+button,
+a,
+[role="button"],
+label {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+/* Foco visible para navegación con teclado (accesibilidad) */
+:focus-visible {
+  outline: 3px solid #e10a5a;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+/* Respetar "reducir movimiento" del sistema */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Marca ---------- */
+.bg-marca {
+  background-image: linear-gradient(135deg, #e10a5a 0%, #f5b301 100%);
+}
+.text-marca {
+  background-image: linear-gradient(120deg, #ff2d78 0%, #f5b301 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- Hero con ambiente de fiesta ---------- */
+.hero-fiesta {
+  position: relative;
+  background:
+    radial-gradient(120% 90% at 15% 10%, rgba(255, 60, 130, 0.55), transparent 55%),
+    radial-gradient(110% 80% at 90% 20%, rgba(245, 179, 1, 0.45), transparent 50%),
+    radial-gradient(130% 120% at 60% 110%, rgba(120, 0, 60, 0.9), transparent 60%),
+    linear-gradient(160deg, #2a0616 0%, #58072f 45%, #8a0d49 100%);
+  overflow: hidden;
+}
+/* Puntos de luz (bokeh) */
+.bokeh {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(14px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+/* Grano sutil */
+.hero-fiesta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+  background-size: 22px 22px;
+  opacity: 0.5;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+/* ---------- Cristal ---------- */
+.glass {
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+.glass-dark {
+  background: rgba(30, 6, 20, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+/* ---------- Carrusel ---------- */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+/* Carrusel full-bleed: alinea la 1ª tarjeta con el contenido y se escapa al borde derecho */
+.carousel-bleed {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+@media (min-width: 768px) {
+  .carousel-bleed {
+    padding-left: max(2rem, calc((100vw - 72rem) / 2 + 2rem));
+    padding-right: 1.5rem;
+  }
+}
+
+/* ---------- Mapa ---------- */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  border-radius: 1.25rem;
+  font-family: inherit;
+}
