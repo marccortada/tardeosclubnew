@@ -5,6 +5,7 @@ import Resenas from "@/components/Resenas";
 import CompartirBtn from "@/components/CompartirBtn";
 import RegistrarVisita from "@/components/RegistrarVisita";
 import MiniMapa from "@/components/MiniMapa";
+import DestacarTardeo from "@/components/DestacarTardeo";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -172,6 +173,8 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
             </a>
           </div>
         </section>
+
+        <DestacarTardeo localId={tardeo.local.id} tardeoId={tardeo.id} titulo={tardeo.titulo} />
 
         <Resenas tipo="local" objetivoId={tardeo.local.id} nombre={tardeo.local.nombre} />
       </div>

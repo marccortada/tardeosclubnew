@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Megaphone, ChevronRight, X, Check, Sparkles } from "lucide-react";
+import { Megaphone, ChevronRight, X, Check, Sparkles, Star } from "lucide-react";
 
 const BENEFICIOS = [
   { emoji: "👀", titulo: "Comunidad de +50.000 visitas al mes", desc: "Tu tardeo lo ven miles de tardícolas activos." },
@@ -11,23 +11,39 @@ const BENEFICIOS = [
   { emoji: "🤖", titulo: "Flyer con IA incluido", desc: "Creamos o mejoramos tu flyer con la marca." },
 ];
 
-export default function PromocionModal() {
+export default function PromocionModal({
+  variante = "card",
+  titulo,
+}: {
+  variante?: "card" | "boton";
+  titulo?: string;
+}) {
   const [abierto, setAbierto] = useState(false);
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setAbierto(true)}
-        className="flex w-full items-center gap-4 rounded-2xl bg-white p-5 text-left shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.99]"
-      >
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta"><Megaphone size={24} /></span>
-        <div className="flex-1">
-          <p className="text-lg font-black leading-tight">Promociona tus tardeos</p>
-          <p className="text-sm font-semibold text-tinta/60">Llega a más gente · destacado + sello</p>
-        </div>
-        <ChevronRight size={20} className="text-tinta/30" />
-      </button>
+      {variante === "boton" ? (
+        <button
+          type="button"
+          onClick={() => setAbierto(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-oro py-3.5 text-base font-extrabold text-tinta shadow-tarjeta transition hover:brightness-105 active:scale-[0.98]"
+        >
+          <Star size={20} fill="currentColor" /> Destacar este tardeo
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAbierto(true)}
+          className="flex w-full items-center gap-4 rounded-2xl bg-white p-5 text-left shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.99]"
+        >
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta"><Megaphone size={24} /></span>
+          <div className="flex-1">
+            <p className="text-lg font-black leading-tight">Promociona tus tardeos</p>
+            <p className="text-sm font-semibold text-tinta/60">Llega a más gente · destacado + sello</p>
+          </div>
+          <ChevronRight size={20} className="text-tinta/30" />
+        </button>
+      )}
 
       {abierto && (
         <div
@@ -52,7 +68,9 @@ export default function PromocionModal() {
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-black">
                 <Sparkles size={14} className="text-oro-400" /> Promoción destacada
               </span>
-              <h3 className="mt-3 font-display text-2xl font-black leading-tight">Haz que tu tardeo llene</h3>
+              <h3 className="mt-3 font-display text-2xl font-black leading-tight">
+                {titulo ? `Destacar «${titulo}»` : "Haz que tu tardeo llene"}
+              </h3>
               <p className="mt-1 font-semibold text-white/90">Esto es lo que consigues al destacarlo:</p>
             </div>
 

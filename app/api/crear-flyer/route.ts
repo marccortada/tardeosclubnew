@@ -40,8 +40,24 @@ const promptSchema = {
     prompt: { type: "string", description: "Prompt de imagen en español, de marca y seguro" },
     bloqueado: { type: "boolean", description: "true si la petición es inapropiada y no se debe generar" },
     motivo: { type: "string", description: "Motivo si está bloqueado, vacío si no" },
+    datos: {
+      type: "object",
+      description: "Datos del evento extraídos de la descripción del local. Deja '' lo que no se indique.",
+      properties: {
+        titulo: { type: "string", description: "Título del tardeo si se puede inferir, si no ''" },
+        fecha: { type: "string", description: "Fecha en formato YYYY-MM-DD. Si no hay año, usa el próximo desde hoy. '' si no se indica." },
+        horaInicio: { type: "string", description: "Hora de inicio HH:MM (24h) o ''" },
+        horaFin: { type: "string", description: "Hora de fin HH:MM (24h) o ''" },
+        dj: { type: "string", description: "Nombre(s) de DJ o ''" },
+        estilo: { type: "string", description: "Estilo musical o ''" },
+        tipoEntrada: { type: "string", enum: ["gratis", "pago", "lista"], description: "gratis si no se indica" },
+        precio: { type: "string", description: "Precio en € solo si es de pago, si no ''" },
+      },
+      required: ["titulo", "fecha", "horaInicio", "horaFin", "dj", "estilo", "tipoEntrada", "precio"],
+      additionalProperties: false,
+    },
   },
-  required: ["prompt", "bloqueado", "motivo"],
+  required: ["prompt", "bloqueado", "motivo", "datos"],
   additionalProperties: false,
 };
 
@@ -85,24 +101,29 @@ export async function POST(req: Request) {
   }
   const { descripcion = "", titulo = "", fecha = "", dj = "", estilo = "", hora = "" } = body;
 
-  // 1) Claude crea un prompt de marca y seguro (y bloquea lo inapropiado)
+  const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+
+  // 1) Claude crea un prompt de marca y seguro (y bloquea lo inapropiado) + extrae los datos
   let prompt = promptBase(titulo, fecha, dj, estilo, descripcion, hora);
+  let datos: Record<string, string> | null = null;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   if (anthropicKey) {
     try {
       const claude = new Anthropic({ apiKey: anthropicKey });
       const msg = await claude.messages.create({
         model: "claude-haiku-4-5",
-        max_tokens: 700,
+        max_tokens: 900,
         system: SISTEMA_MARCA,
         output_config: { format: { type: "json_schema", schema: promptSchema } },
         messages: [
           {
             role: "user",
             content:
-              `Datos del tardeo — título: "${titulo}", estilo: "${estilo}", DJ: "${dj}", fecha: "${fecha}", hora de inicio: "${hora}". ` +
+              `Hoy es ${hoy}. Datos del tardeo — título: "${titulo}", estilo: "${estilo}", DJ: "${dj}", fecha: "${fecha}", hora de inicio: "${hora}". ` +
               `Adapta la luz y el ambiente a esa hora (no uses atardecer si no toca) y sé creativo para que el flyer sea único. ` +
-              `Petición del local: "${descripcion}". Genera el prompt de imagen de marca.`,
+              `Petición del local: "${descripcion}". ` +
+              `Genera el prompt de imagen de marca Y rellena "datos" extrayendo de la petición lo que puedas (fecha, horas, DJ, estilo, tipo de entrada, precio). ` +
+              `Para fechas sin año usa el próximo desde hoy (${hoy}). Deja "" lo que no se indique.`,
           },
         ],
       } as Anthropic.MessageCreateParamsNonStreaming);
@@ -115,6 +136,7 @@ export async function POST(req: Request) {
         );
       }
       if (parsed?.prompt) prompt = parsed.prompt;
+      if (parsed?.datos) datos = parsed.datos;
     } catch {
       // si Claude falla, seguimos con el prompt base (ya lleva marca + seguridad)
     }
@@ -148,7 +170,7 @@ export async function POST(req: Request) {
       .jpeg({ quality: 90 })
       .toBuffer();
 
-    return NextResponse.json({ image: final.toString("base64") });
+    return NextResponse.json({ image: final.toString("base64"), datos });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Error al generar el flyer.";
     return NextResponse.json({ error: message }, { status: 500 });

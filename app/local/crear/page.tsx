@@ -92,7 +92,20 @@ export default function CrearTardeo() {
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || "No se pudo generar el flyer.");
       setFlyerGen(j.image); // base64 jpg con sello
-      setForm((f) => ({ ...f, ubicacion: miLocal?.direccion ?? f.ubicacion, zona: miLocal?.zona ?? f.zona }));
+      const d = j.datos || {};
+      setForm((f) => ({
+        ...f,
+        titulo: d.titulo || f.titulo,
+        fecha: d.fecha || f.fecha,
+        horaInicio: d.horaInicio || f.horaInicio,
+        horaFin: d.horaFin || f.horaFin,
+        dj: d.dj || f.dj,
+        estilo: d.estilo || f.estilo,
+        tipo: d.tipoEntrada || f.tipo,
+        precio: d.precio || f.precio,
+        ubicacion: miLocal?.direccion ?? f.ubicacion,
+        zona: miLocal?.zona ?? f.zona,
+      }));
       setEstado("revisar");
     } catch (e: any) {
       setError(e?.message || "Error al generar el flyer.");
