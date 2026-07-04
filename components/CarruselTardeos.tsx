@@ -12,6 +12,7 @@ export default function CarruselTardeos({
   tardeos: Tardeo[];
   href?: string;
 }) {
+  if (!tardeos || tardeos.length === 0) return null;
   return (
     <section className="pt-7 md:pt-12">
       <div className="mx-auto mb-4 flex max-w-6xl items-end justify-between px-4 md:px-8">

@@ -207,7 +207,7 @@ function TardeosContent() {
           </div>
           {lista.length === 0 && (
             <p className="rounded-2xl bg-white p-6 text-center font-bold text-tinta/60 ring-1 ring-magenta-100">
-              No hay tardeos con esos filtros 😅
+              {todos.length === 0 ? "Aún no hay tardeos publicados. ¡Vuelve pronto! 🎉" : "No hay tardeos con esos filtros 😅"}
             </p>
           )}
         </>

@@ -16,7 +16,16 @@ export const dynamic = "force-dynamic";
 export default async function Inicio() {
   const [tardeos, djs] = await Promise.all([getTardeosPublicados(), getDjsPublicos()]);
   const destacados = tardeos.filter((t) => t.destacado);
-  const esteFinde = tardeos.filter((t) => ["2026-07-11", "2026-07-12", "2026-07-13"].includes(t.fecha));
+
+  // "Este finde": viernes, sábado y domingo de la semana en curso (dinámico)
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const finde = new Set<string>();
+  for (let i = 0; i <= 7; i++) {
+    const d = new Date(hoy); d.setDate(hoy.getDate() + i);
+    const dow = d.getDay(); // 5 vie, 6 sáb, 0 dom
+    if (dow === 5 || dow === 6 || dow === 0) finde.add(d.toISOString().slice(0, 10));
+  }
+  const esteFinde = tardeos.filter((t) => finde.has(t.fecha));
 
   const conteo = new Map<string, number>();
   tardeos.forEach((t) => conteo.set(t.zona, (conteo.get(t.zona) ?? 0) + 1));

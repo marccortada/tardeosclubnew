@@ -1,6 +1,5 @@
 import { supabase } from "./supabase";
 import { Tardeo } from "./types";
-import { TARDEOS, getTardeo } from "./mockData";
 
 const SELECT = "*, locales(*), tardeo_djs(djs(*))";
 
@@ -61,11 +60,11 @@ export async function getTardeosPublicados(): Promise<Tardeo[]> {
       .gte("fecha", hoy)
       .order("fecha", { ascending: true });
     if (error) throw error;
-    if (data && data.length > 0) return data.map(mapRow);
+    return (data ?? []).map(mapRow);
   } catch (e) {
-    console.error("[tardeos] Supabase no disponible, uso mock:", e);
+    console.error("[tardeos] Error cargando tardeos:", e);
+    return [];
   }
-  return TARDEOS.filter((t) => t.fecha >= hoy);
 }
 
 /** Un local por id (para su página pública). */
@@ -243,11 +242,11 @@ export async function getTardeoById(id: string): Promise<Tardeo | null> {
   try {
     const { data, error } = await supabase.from("tardeos").select(SELECT).eq("id", id).maybeSingle();
     if (error) throw error;
-    if (data) return mapRow(data);
+    return data ? mapRow(data) : null;
   } catch (e) {
-    console.error("[tardeos] getTardeoById fallback mock:", e);
+    console.error("[tardeos] getTardeoById error:", e);
+    return null;
   }
-  return getTardeo(id) ?? null;
 }
 
 // ---------- Favoritos ----------
