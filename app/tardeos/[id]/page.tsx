@@ -2,11 +2,39 @@ import { formatFecha, flyerSrc } from "@/lib/mockData";
 import { getTardeoById } from "@/lib/tardeos";
 import AccionTardeo from "@/components/AccionTardeo";
 import ResenasLocal from "@/components/ResenasLocal";
+import CompartirBtn from "@/components/CompartirBtn";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { ArrowLeft, MapPin, Clock, Music, BadgeCheck, Star } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const tardeo = await getTardeoById(id);
+  if (!tardeo) return { title: "Tardeo no encontrado · TardeosClub" };
+
+  const desc = `${formatFecha(tardeo.fecha)} · ${tardeo.local.nombre} (${tardeo.zona})${tardeo.estilo ? ` · ${tardeo.estilo}` : ""}. Descúbrelo en TardeosClub.`;
+  const img = flyerSrc(tardeo);
+
+  return {
+    title: `${tardeo.titulo} · TardeosClub`,
+    description: desc,
+    openGraph: {
+      title: tardeo.titulo,
+      description: desc,
+      images: [{ url: img }],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: tardeo.titulo,
+      description: desc,
+      images: [img],
+    },
+  };
+}
 
 export default async function FichaTardeo({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,6 +51,11 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
         >
           <ArrowLeft size={22} />
         </Link>
+        <CompartirBtn
+          titulo={tardeo.titulo}
+          texto={`¡Mira este tardeo! ${tardeo.titulo} — ${formatFecha(tardeo.fecha)} en ${tardeo.local.nombre}`}
+          className="absolute right-6 top-6 z-20 grid h-11 w-11 place-items-center rounded-full bg-white/90 text-tinta shadow transition hover:bg-white active:scale-95"
+        />
         {/* scrim para legibilidad del botón volver */}
         <div className="pointer-events-none absolute left-4 right-4 top-4 z-10 h-20 rounded-t-3xl bg-gradient-to-b from-black/35 to-transparent md:left-1/2 md:w-full md:max-w-sm md:-translate-x-1/2" />
         {/* Flyer vertical completo */}
@@ -50,10 +83,10 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
           <span className="inline-flex items-center gap-2 capitalize">
             <Clock size={20} className="text-magenta" /> {formatFecha(tardeo.fecha)} · {tardeo.horaInicio}–{tardeo.horaFin}
           </span>
-          <span className="inline-flex items-center gap-2">
+          <Link href={`/locales/${tardeo.local.id}`} className="inline-flex items-center gap-2 transition hover:text-magenta">
             <MapPin size={20} className="text-magenta" /> {tardeo.local.nombre}
             {tardeo.local.verificado && <BadgeCheck size={18} className="text-oro-600" />}
-          </span>
+          </Link>
           <span className="pl-7 text-sm text-tinta/60">{tardeo.local.direccion}</span>
           <span className="inline-flex items-center gap-2">
             <Music size={20} className="text-magenta" /> {tardeo.estilo}

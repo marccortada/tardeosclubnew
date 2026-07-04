@@ -24,11 +24,25 @@ const caveat = Caveat({
   weight: ["500", "600", "700"],
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://app.tardeosclub.com";
+
 export const metadata: Metadata = {
-  title: "TardeosClub — Tu comunidad tardícola",
-  description: "El buscador de tardeos que va contigo. Rápido, con flow y hecho para ti.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "TardeosClub — Tu comunidad tardícola",
+    template: "%s",
+  },
+  description: "El buscador de tardeos que va contigo. Sal, conecta y vive el tardeo.",
   manifest: "/manifest.json",
   icons: { icon: "/branding/icon.png", apple: "/branding/icon.png" },
+  openGraph: {
+    type: "website",
+    siteName: "TardeosClub",
+    title: "TardeosClub — Tu comunidad tardícola",
+    description: "El buscador de tardeos que va contigo. Sal, conecta y vive el tardeo.",
+    images: [{ url: "/branding/logo.png" }],
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {

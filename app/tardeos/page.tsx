@@ -6,7 +6,13 @@ import TardeoCard from "@/components/TardeoCard";
 import { ESTILOS } from "@/lib/mockData";
 import { getTardeosPublicados } from "@/lib/tardeos";
 import { Tardeo } from "@/lib/types";
-import { SlidersHorizontal, X, Loader2 } from "lucide-react";
+import { SlidersHorizontal, X, Loader2, Search } from "lucide-react";
+
+const CUANDOS = [
+  { k: "hoy", label: "Hoy" },
+  { k: "finde", label: "Este finde" },
+  { k: "semana", label: "Esta semana" },
+];
 
 type Filtro = { zona: string | null; estilo: string | null; tipo: string | null };
 
@@ -37,6 +43,8 @@ function TardeosContent() {
 
   const [f, setF] = useState<Filtro>({ zona: zonaParam, estilo: null, tipo: null });
   const [abierto, setAbierto] = useState(false);
+  const [q, setQ] = useState("");
+  const [cuando, setCuando] = useState<string | null>(null);
   const [todos, setTodos] = useState<Tardeo[]>([]);
   const [cargando, setCargando] = useState(true);
 
@@ -54,11 +62,41 @@ function TardeosContent() {
 
   const zonasDisponibles = Array.from(new Set(todos.map((t) => t.zona))).sort((a, b) => a.localeCompare(b, "es"));
 
+  // --- Búsqueda por texto (título, local, zona, estilo, DJ) ---
+  const coincideTexto = (t: Tardeo) => {
+    const s = q.trim().toLowerCase();
+    if (!s) return true;
+    return (
+      t.titulo.toLowerCase().includes(s) ||
+      t.local.nombre.toLowerCase().includes(s) ||
+      t.zona.toLowerCase().includes(s) ||
+      (t.estilo || "").toLowerCase().includes(s) ||
+      t.djs.some((d) => (d.nombre || "").toLowerCase().includes(s))
+    );
+  };
+
+  // --- Filtro rápido de fecha (Hoy / Este finde / Esta semana) ---
+  const enRango = (t: Tardeo) => {
+    if (!cuando) return true;
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const d = new Date(t.fecha + "T00:00:00");
+    const dias = Math.round((d.getTime() - hoy.getTime()) / 86400000);
+    if (cuando === "hoy") return dias === 0;
+    if (cuando === "semana") return dias >= 0 && dias <= 7;
+    if (cuando === "finde") {
+      const dow = d.getDay(); // 0 dom, 5 vie, 6 sab
+      return dias >= 0 && dias <= 7 && (dow === 5 || dow === 6 || dow === 0);
+    }
+    return true;
+  };
+
   const lista = todos.filter(
     (t) =>
       (!f.zona || t.zona === f.zona) &&
       (!f.estilo || t.estilo === f.estilo) &&
-      (!f.tipo || t.tipoEntrada === f.tipo)
+      (!f.tipo || t.tipoEntrada === f.tipo) &&
+      coincideTexto(t) &&
+      enRango(t)
   );
 
   const nFiltros = [f.zona, f.estilo, f.tipo].filter(Boolean).length;
@@ -78,6 +116,38 @@ function TardeosContent() {
             <SlidersHorizontal size={18} /> Filtrar {nFiltros > 0 && `(${nFiltros})`}
           </button>
         </div>
+      </div>
+
+      {/* Buscador */}
+      <div className="relative mb-3">
+        <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-tinta/40" />
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Busca por nombre, DJ, local o zona…"
+          className="w-full rounded-2xl border-2 border-magenta-100 bg-white py-3.5 pl-12 pr-4 text-base font-semibold outline-none transition focus:border-magenta"
+        />
+        {q && (
+          <button onClick={() => setQ("")} aria-label="Borrar" className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-tinta/40 hover:bg-black/5">
+            <X size={18} />
+          </button>
+        )}
+      </div>
+
+      {/* Chips rápidos de fecha */}
+      <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+        {CUANDOS.map((c) => (
+          <button
+            key={c.k}
+            onClick={() => setCuando((p) => (p === c.k ? null : c.k))}
+            className={`min-h-[44px] whitespace-nowrap rounded-full px-4 py-2 text-sm font-extrabold transition ${
+              cuando === c.k ? "bg-magenta text-white" : "bg-white text-tinta/80 ring-1 ring-magenta-100 hover:ring-magenta"
+            }`}
+          >
+            {c.label}
+          </button>
+        ))}
       </div>
 
       {/* Filtros activos visibles */}

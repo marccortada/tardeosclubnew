@@ -66,6 +66,25 @@ export async function getTardeosPublicados(): Promise<Tardeo[]> {
   return TARDEOS.filter((t) => t.fecha >= hoy);
 }
 
+/** Un local por id (para su página pública). */
+export async function getLocalById(id: string): Promise<any | null> {
+  const { data } = await supabase.from("locales").select("*").eq("id", id).maybeSingle();
+  return data ?? null;
+}
+
+/** Tardeos publicados y no expirados de un local (para su página pública). */
+export async function getTardeosPublicadosDeLocal(localId: string): Promise<Tardeo[]> {
+  const hoy = hoyISO();
+  const { data } = await supabase
+    .from("tardeos")
+    .select(SELECT)
+    .eq("local_id", localId)
+    .eq("estado", "publicado")
+    .gte("fecha", hoy)
+    .order("fecha", { ascending: true });
+  return (data ?? []).map(mapRow);
+}
+
 /** El primer local del usuario (owner). Devuelve la fila cruda o null. */
 export async function getMiLocal(ownerId: string): Promise<any | null> {
   const { data } = await supabase
