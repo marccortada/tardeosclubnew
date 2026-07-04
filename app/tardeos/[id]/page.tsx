@@ -102,9 +102,13 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
             {tardeo.djs.map((dj) => (
               <div key={dj.id} className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-tarjeta ring-1 ring-magenta-100">
                 <div className="flex items-center gap-3">
-                  <div className="grid h-11 w-11 place-items-center rounded-full bg-marca font-black text-white">
-                    {dj.nombre.replace("DJ ", "").charAt(0)}
-                  </div>
+                  {dj.avatar ? (
+                    <img src={dj.avatar} alt="" className="h-11 w-11 rounded-full object-cover" />
+                  ) : (
+                    <div className="grid h-11 w-11 place-items-center rounded-full bg-marca font-black text-white">
+                      {dj.nombre.replace("DJ ", "").charAt(0)}
+                    </div>
+                  )}
                   <div>
                     <p className="inline-flex items-center gap-1 font-black">
                       {dj.nombre}

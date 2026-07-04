@@ -6,6 +6,7 @@ export interface Dj {
   estilos: string[];
   verificado: boolean;
   reputacion: number; // 0-5
+  avatar?: string;
 }
 
 export interface Local {

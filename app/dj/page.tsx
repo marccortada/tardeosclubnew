@@ -1,22 +1,71 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import PanelHeader from "@/components/PanelHeader";
 import ServiciosExternos from "@/components/ServiciosExternos";
 import { useAuth } from "@/lib/useAuth";
-import { getMiDj } from "@/lib/tardeos";
-import { Disc3, BadgeCheck, Star, Music, Loader2 } from "lucide-react";
+import { getMiDj, updateMiDj, subirAvatarDj } from "@/lib/tardeos";
+import { ESTILOS } from "@/lib/mockData";
+import { Disc3, BadgeCheck, Star, Music, Loader2, Pencil, Camera, Check, X } from "lucide-react";
 
 export default function PanelDj() {
   const { user, loading } = useAuth();
   const [dj, setDj] = useState<any | null>(null);
   const [cargando, setCargando] = useState(true);
 
+  // edición
+  const [editando, setEditando] = useState(false);
+  const [nombre, setNombre] = useState("");
+  const [bio, setBio] = useState("");
+  const [estilos, setEstilos] = useState<string[]>([]);
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (!user) { setCargando(false); return; }
     getMiDj(user.id).then((d) => { setDj(d); setCargando(false); });
   }, [user]);
+
+  const abrirEdicion = () => {
+    setNombre(dj.nombre_artistico || "");
+    setBio(dj.bio || "");
+    setEstilos(Array.isArray(dj.estilos) ? dj.estilos : []);
+    setAvatar(dj.avatar_url || null);
+    setEditando(true);
+  };
+
+  const toggleEstilo = (e: string) =>
+    setEstilos((p) => (p.includes(e) ? p.filter((x) => x !== e) : [...p, e]));
+
+  const onFoto = async (file: File) => {
+    if (!dj) return;
+    setSubiendo(true);
+    const url = await subirAvatarDj(dj.id, file);
+    if (url) setAvatar(url);
+    setSubiendo(false);
+  };
+
+  const guardar = async () => {
+    if (!dj) return;
+    setGuardando(true);
+    const fields: Record<string, unknown> = {
+      nombre_artistico: nombre.trim() || dj.nombre_artistico,
+      bio: bio.trim() || null,
+      estilos,
+      avatar_url: avatar,
+    };
+    const { error } = await updateMiDj(dj.id, fields);
+    setGuardando(false);
+    if (!error) {
+      setDj({ ...dj, ...fields });
+      setEditando(false);
+    } else {
+      alert("No se pudo guardar. ¿Has aplicado el SQL del avatar? " + error.message);
+    }
+  };
 
   if (loading || cargando) {
     return (
@@ -49,7 +98,9 @@ export default function PanelDj() {
     );
   }
 
-  const estilos: string[] = Array.isArray(dj.estilos) ? dj.estilos : [];
+  const inicial = String(dj.nombre_artistico || "DJ").replace("DJ ", "").charAt(0);
+  const avatarActual = editando ? avatar : dj.avatar_url;
+  const estilosActuales: string[] = Array.isArray(dj.estilos) ? dj.estilos : [];
 
   return (
     <main className="pb-8">
@@ -62,42 +113,125 @@ export default function PanelDj() {
       </PanelHeader>
 
       <div className="mx-auto max-w-2xl px-4 pt-5 md:px-8">
+        {/* Tarjeta principal */}
         <section className="relative overflow-hidden rounded-3xl bg-tinta p-6 text-white shadow-tarjeta md:p-8">
           <span className="bokeh" style={{ width: 120, height: 120, top: -20, right: 30, background: "#E10A5A", opacity: 0.5 }} />
           <div className="relative flex items-center gap-4">
-            <span className="grid h-16 w-16 place-items-center rounded-2xl bg-white/15 font-display text-2xl font-black text-oro">
-              {String(dj.nombre_artistico || "DJ").replace("DJ ", "").charAt(0)}
-            </span>
-            <div>
-              <h2 className="font-display text-2xl font-black leading-tight md:text-3xl">{dj.nombre_artistico}</h2>
-              <p className="inline-flex items-center gap-1 font-bold text-oro">
+            <div className="relative">
+              {avatarActual ? (
+                <img src={avatarActual} alt="" className="h-16 w-16 rounded-2xl object-cover ring-2 ring-white/20" />
+              ) : (
+                <span className="grid h-16 w-16 place-items-center rounded-2xl bg-white/15 font-display text-2xl font-black text-oro">{inicial}</span>
+              )}
+              {editando && (
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full bg-magenta text-white ring-2 ring-tinta"
+                  aria-label="Cambiar foto"
+                >
+                  {subiendo ? <Loader2 size={15} className="animate-spin" /> : <Camera size={15} />}
+                </button>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && onFoto(e.target.files[0])}
+              />
+            </div>
+
+            <div className="flex-1">
+              {editando ? (
+                <input
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder="Nombre artístico"
+                  className="w-full rounded-xl bg-white/10 px-3 py-2 font-display text-xl font-black text-white outline-none ring-1 ring-white/20 placeholder:text-white/40"
+                />
+              ) : (
+                <h2 className="font-display text-2xl font-black leading-tight md:text-3xl">{dj.nombre_artistico}</h2>
+              )}
+              <p className="mt-1 inline-flex items-center gap-1 font-bold text-oro">
                 <Star size={16} fill="currentColor" /> {Number(dj.reputacion_score ?? 0).toFixed(1)} de reputación
               </p>
             </div>
+
+            {!editando && (
+              <button
+                onClick={abrirEdicion}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-white/15 px-3 py-2 text-sm font-extrabold text-white transition hover:bg-white/25"
+              >
+                <Pencil size={15} /> Editar
+              </button>
+            )}
           </div>
         </section>
 
-        {estilos.length > 0 && (
-          <section className="mt-5">
-            <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-tinta/60"><Music size={16} className="text-magenta" /> Estilos</h3>
+        {/* Estilos */}
+        <section className="mt-5">
+          <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-tinta/60"><Music size={16} className="text-magenta" /> Estilos</h3>
+          {editando ? (
             <div className="flex flex-wrap gap-2">
-              {estilos.map((e) => (
+              {ESTILOS.map((e) => (
+                <button
+                  key={e}
+                  onClick={() => toggleEstilo(e)}
+                  className={`min-h-[44px] rounded-full px-4 py-2 text-sm font-extrabold transition ${
+                    estilos.includes(e) ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100"
+                  }`}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          ) : estilosActuales.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {estilosActuales.map((e) => (
                 <span key={e} className="rounded-full bg-magenta-50 px-4 py-2 text-sm font-extrabold text-magenta-700">{e}</span>
               ))}
             </div>
-          </section>
-        )}
-
-        <section className="mt-5 rounded-2xl bg-white p-5 shadow-tarjeta ring-1 ring-black/5">
-          <h3 className="mb-2 text-sm font-black text-tinta/60">Biografía</h3>
-          <p className="font-semibold text-tinta/80">{dj.bio || "Aún no has escrito tu biografía."}</p>
+          ) : (
+            <p className="text-sm font-semibold text-tinta/50">Aún no has elegido estilos.</p>
+          )}
         </section>
 
-        <ServiciosExternos tipo="dj" />
+        {/* Biografía */}
+        <section className="mt-5 rounded-2xl bg-white p-5 shadow-tarjeta ring-1 ring-black/5">
+          <h3 className="mb-2 text-sm font-black text-tinta/60">Biografía</h3>
+          {editando ? (
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              rows={4}
+              placeholder="Cuéntale a la gente quién eres, dónde pinchas, tu rollo…"
+              className="w-full rounded-xl border-2 border-magenta-100 px-3 py-2 font-semibold outline-none transition focus:border-magenta"
+            />
+          ) : (
+            <p className="font-semibold text-tinta/80">{dj.bio || "Aún no has escrito tu biografía."}</p>
+          )}
+        </section>
 
-        <p className="mt-6 text-center text-xs font-semibold text-tinta/40">
-          Pronto podrás editar tu perfil, subir fotos y ver tu reputación por tardeo.
-        </p>
+        {/* Botones de edición */}
+        {editando && (
+          <div className="mt-5 flex gap-3">
+            <button
+              onClick={() => setEditando(false)}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3.5 font-extrabold text-tinta/70 ring-1 ring-black/10"
+            >
+              <X size={18} /> Cancelar
+            </button>
+            <button
+              onClick={guardar}
+              disabled={guardando || subiendo}
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-magenta px-5 py-3.5 font-extrabold text-white transition active:scale-[0.98] disabled:opacity-60"
+            >
+              {guardando ? <Loader2 size={20} className="animate-spin" /> : <><Check size={20} /> Guardar cambios</>}
+            </button>
+          </div>
+        )}
+
+        {!editando && <ServiciosExternos tipo="dj" />}
       </div>
     </main>
   );

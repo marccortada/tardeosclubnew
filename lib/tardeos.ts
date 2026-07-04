@@ -22,6 +22,7 @@ function mapRow(r: any): Tardeo {
       estilos: td.djs?.estilos ?? [],
       verificado: td.djs?.verificado ?? false,
       reputacion: Number(td.djs?.reputacion_score ?? 0),
+      avatar: td.djs?.avatar_url ?? undefined,
     })),
     fecha: r.fecha,
     horaInicio: (r.hora_inicio ?? "").slice(0, 5),
@@ -111,6 +112,23 @@ export async function getMiDj(profileId: string): Promise<any | null> {
     .from("djs").select("*").eq("profile_id", profileId)
     .order("created_at", { ascending: true }).limit(1).maybeSingle();
   return data ?? null;
+}
+
+/** Actualiza el perfil de un DJ (bio, estilos, avatar…). */
+export async function updateMiDj(id: string, fields: Record<string, unknown>) {
+  return supabase.from("djs").update(fields).eq("id", id);
+}
+
+/** Sube el avatar del DJ al Storage y devuelve la URL pública. */
+export async function subirAvatarDj(id: string, file: File): Promise<string | null> {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const ruta = `djs/${id}-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("flyers").upload(ruta, file, {
+    contentType: file.type || "image/jpeg",
+    upsert: true,
+  });
+  if (error) return null;
+  return supabase.storage.from("flyers").getPublicUrl(ruta).data.publicUrl;
 }
 
 /** Tardeos de un local (cualquier estado), para el panel del local. */
