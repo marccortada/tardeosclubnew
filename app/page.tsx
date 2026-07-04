@@ -1,10 +1,11 @@
 import TopBar from "@/components/TopBar";
 import CarruselTardeos from "@/components/CarruselTardeos";
 import ZonasRapidas from "@/components/ZonasRapidas";
+import DjsDestacados from "@/components/DjsDestacados";
 import CtaLocalDj from "@/components/CtaLocalDj";
 import Footer from "@/components/Footer";
 import PopupCliente from "@/components/PopupCliente";
-import { getTardeosPublicados } from "@/lib/tardeos";
+import { getTardeosPublicados, getDjsPublicos } from "@/lib/tardeos";
 import { CalendarDays, SlidersHorizontal, MapPin, ArrowRight, Sparkles, Sun } from "lucide-react";
 import Link from "next/link";
 import MapaClient from "@/components/MapaClient";
@@ -12,7 +13,7 @@ import MapaClient from "@/components/MapaClient";
 export const dynamic = "force-dynamic";
 
 export default async function Inicio() {
-  const tardeos = await getTardeosPublicados();
+  const [tardeos, djs] = await Promise.all([getTardeosPublicados(), getDjsPublicos()]);
   const destacados = tardeos.filter((t) => t.destacado);
   const esteFinde = tardeos.filter((t) => ["2026-07-11", "2026-07-12", "2026-07-13"].includes(t.fecha));
 
@@ -87,6 +88,7 @@ export default async function Inicio() {
       <CarruselTardeos titulo={<>Destacados <Sparkles size={22} className="text-oro" /></>} tardeos={destacados} />
       <CarruselTardeos titulo={<>Este finde <Sun size={22} className="text-oro" /></>} tardeos={esteFinde} />
 
+      <DjsDestacados djs={djs.slice(0, 10)} />
       <ZonasRapidas zonas={zonas} />
       <CtaLocalDj />
       <Footer />

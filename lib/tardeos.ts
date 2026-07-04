@@ -131,6 +131,17 @@ export async function getMiDj(profileId: string): Promise<any | null> {
   return data ?? null;
 }
 
+/** Lista pública de DJs (no ocultos), ordenados por reputación. */
+export async function getDjsPublicos(): Promise<any[]> {
+  const { data } = await supabase
+    .from("djs")
+    .select("id,nombre_artistico,estilos,avatar_url,verificado,reputacion_score")
+    .eq("oculto", false)
+    .order("verificado", { ascending: false })
+    .order("reputacion_score", { ascending: false });
+  return data ?? [];
+}
+
 /** Un DJ por id (para su página pública). */
 export async function getDjById(id: string): Promise<any | null> {
   const { data } = await supabase.from("djs").select("*").eq("id", id).maybeSingle();
