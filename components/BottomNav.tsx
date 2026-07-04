@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, CalendarDays, MapPin, Heart, User } from "lucide-react";
+import { Home, CalendarDays, Disc3, MapPin, Heart, User } from "lucide-react";
 
 const tabs = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/tardeos", label: "Tardeos", icon: CalendarDays },
+  { href: "/djs", label: "DJs", icon: Disc3 },
   { href: "/mapa", label: "Mapa", icon: MapPin },
   { href: "/favoritos", label: "Favoritos", icon: Heart },
   { href: "/perfil", label: "Perfil", icon: User },
@@ -27,12 +28,12 @@ export default function BottomNav() {
               className="flex flex-1 flex-col items-center gap-0.5 py-2.5"
             >
               <Icon
-                size={26}
+                size={24}
                 strokeWidth={active ? 2.6 : 2}
                 className={active ? "text-magenta" : "text-tinta/50"}
               />
               <span
-                className={`text-[12px] font-bold ${
+                className={`text-[11px] font-bold ${
                   active ? "text-magenta" : "text-tinta/50"
                 }`}
               >
