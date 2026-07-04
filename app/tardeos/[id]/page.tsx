@@ -8,9 +8,18 @@ import MiniMapa from "@/components/MiniMapa";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowLeft, MapPin, Clock, Music, BadgeCheck, Star } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Music, BadgeCheck, Star, CalendarPlus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+function fmtCal(fecha: string, hora: string) {
+  return fecha.replace(/-/g, "") + "T" + (hora || "00:00").replace(":", "") + "00";
+}
+function sumarDia(fechaISO: string) {
+  const d = new Date(fechaISO + "T00:00:00");
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -42,6 +51,11 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const tardeo = await getTardeoById(id);
   if (!tardeo) notFound();
+
+  const ini = fmtCal(tardeo.fecha, tardeo.horaInicio || "18:00");
+  const fechaFin = tardeo.horaFin && tardeo.horaFin < (tardeo.horaInicio || "18:00") ? sumarDia(tardeo.fecha) : tardeo.fecha;
+  const fin = fmtCal(fechaFin, tardeo.horaFin || tardeo.horaInicio || "20:00");
+  const calUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(tardeo.titulo)}&dates=${ini}/${fin}&location=${encodeURIComponent(tardeo.local.direccion || "")}&details=${encodeURIComponent(`Tardeo en ${tardeo.local.nombre} · TardeosClub`)}`;
 
   return (
     <main className="mx-auto max-w-3xl pb-28 md:pb-12">
@@ -95,6 +109,15 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
             <Music size={20} className="text-magenta" /> {tardeo.estilo}
           </span>
         </div>
+
+        <a
+          href={calUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-magenta-50 px-4 py-2.5 text-sm font-extrabold text-magenta transition hover:bg-magenta-100"
+        >
+          <CalendarPlus size={18} /> Añadir al calendario
+        </a>
 
         {/* DJs */}
         <section className="mt-6">

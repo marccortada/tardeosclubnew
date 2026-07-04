@@ -7,7 +7,7 @@ import ServiciosExternos from "@/components/ServiciosExternos";
 import PromocionModal from "@/components/PromocionModal";
 import GestionFotosLocal from "@/components/GestionFotosLocal";
 import { useAuth } from "@/lib/useAuth";
-import { getMiLocal, getTardeosDeLocal, getMetricasLocal } from "@/lib/tardeos";
+import { getMiLocal, getTardeosDeLocal, getMetricasLocal, getInscritosLocal } from "@/lib/tardeos";
 import { formatFecha, flyerSrc } from "@/lib/mockData";
 import { Tardeo } from "@/lib/types";
 import {
@@ -20,6 +20,7 @@ export default function PanelLocal() {
   const [local, setLocal] = useState<any | null>(null);
   const [misTardeos, setMisTardeos] = useState<Tardeo[]>([]);
   const [metricas, setMetricas] = useState<{ visitas: number; inscritos: number }>({ visitas: 0, inscritos: 0 });
+  const [inscritos, setInscritos] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -30,6 +31,7 @@ export default function PanelLocal() {
       if (l) {
         setMisTardeos(await getTardeosDeLocal(l.id));
         setMetricas(await getMetricasLocal(l.id));
+        setInscritos(await getInscritosLocal(l.id));
       }
       setCargando(false);
     })();
@@ -91,6 +93,9 @@ export default function PanelLocal() {
               <div>
                 <p className="font-script text-xl text-oro-400">¡Hola de nuevo!</p>
                 <h2 className="font-display text-2xl font-black leading-tight md:text-3xl">{local.nombre}</h2>
+                <Link href="/local/editar" className="mt-0.5 inline-flex items-center gap-1 text-sm font-bold text-white/80 underline underline-offset-2 hover:text-white">
+                  <Pencil size={13} /> Editar datos del local
+                </Link>
               </div>
             </div>
             <Link href="/local/crear" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-4 text-lg font-extrabold text-magenta shadow-lg transition hover:brightness-105 active:scale-[0.98]">
@@ -141,6 +146,33 @@ export default function PanelLocal() {
             </div>
           )}
         </section>
+
+        {inscritos.length > 0 && (
+          <section className="mt-7">
+            <h2 className="mb-3 flex items-center gap-2 font-display text-xl font-black md:text-2xl">
+              <Users size={22} className="text-magenta" /> Quién se ha apuntado
+            </h2>
+            <div className="flex flex-col gap-3">
+              {Object.entries(
+                inscritos.reduce((acc: Record<string, string[]>, r: any) => {
+                  (acc[r.tardeo_titulo] ??= []).push(r.nombre);
+                  return acc;
+                }, {})
+              ).map(([titulo, nombres]) => (
+                <div key={titulo} className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
+                  <p className="font-black leading-tight">
+                    {titulo} <span className="font-bold text-tinta/50">· {nombres.length} apuntad{nombres.length === 1 ? "o" : "os"}</span>
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {nombres.map((n, i) => (
+                      <span key={i} className="rounded-full bg-magenta-50 px-3 py-1 text-sm font-bold text-magenta-700">{n}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="mt-7 grid gap-3 md:grid-cols-2">
           <PromocionModal />

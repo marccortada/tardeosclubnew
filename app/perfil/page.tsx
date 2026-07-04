@@ -41,11 +41,21 @@ export default function Perfil() {
     });
   };
 
+  const recuperar = async () => {
+    if (!email.trim()) { setEstado("error"); setMsg("Escribe tu email arriba y le damos a recuperar."); return; }
+    setEstado("cargando");
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: window.location.origin + "/perfil",
+    });
+    if (error) { setEstado("error"); setMsg(error.message); }
+    else { setEstado("confirmar"); setMsg("Te hemos enviado un email para restablecer tu contraseña."); }
+  };
+
   const enviar = async () => {
     if (!email.trim() || pass.length < 6) { setEstado("error"); setMsg("Email y contraseña (mín. 6) obligatorios."); return; }
+    if (modo === "signup" && !mayor) { setEstado("error"); setMsg("Debes confirmar que eres mayor de 18."); return; }
     setEstado("cargando");
     if (modo === "signup") {
-      if (!mayor) { setEstado("error"); setMsg("Debes confirmar que eres mayor de 18."); return; }
       const { data, error } = await supabase.auth.signUp({ email: email.trim(), password: pass });
       if (error) { setEstado("error"); setMsg(error.message); }
       else if (!data.session) setEstado("confirmar"); // requiere confirmar email
@@ -116,8 +126,8 @@ export default function Perfil() {
       ) : estado === "confirmar" ? (
         <div className="mt-2 flex flex-col items-center gap-3 rounded-3xl bg-white p-8 text-center shadow-tarjeta ring-1 ring-black/5">
           <span className="grid h-16 w-16 place-items-center rounded-full bg-oro text-tinta"><Mail size={36} /></span>
-          <p className="text-xl font-black">Confirma tu email</p>
-          <p className="font-semibold text-tinta/70">Te enviamos un correo a <b>{email}</b> para activar tu cuenta.</p>
+          <p className="text-xl font-black">Revisa tu email</p>
+          <p className="font-semibold text-tinta/70">{msg || <>Te enviamos un correo a <b>{email}</b> para activar tu cuenta.</>}</p>
           <button onClick={() => { setEstado("idle"); setModo("login"); }} className="mt-1 text-sm font-bold text-magenta">Volver</button>
         </div>
       ) : (
@@ -187,6 +197,12 @@ export default function Perfil() {
             {estado === "cargando" ? <Loader2 size={20} className="animate-spin" /> : null}
             {modo === "login" ? "Entrar" : "Crear cuenta"}
           </button>
+
+          {modo === "login" && (
+            <button onClick={recuperar} className="mt-3 text-center text-sm font-bold text-magenta">
+              ¿Olvidaste tu contraseña?
+            </button>
+          )}
         </div>
       )}
 

@@ -5,9 +5,21 @@ import CompartirBtn from "@/components/CompartirBtn";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowLeft, BadgeCheck, Star, Music, Disc3, CalendarDays } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Star, Music, Disc3, CalendarDays, Instagram, Youtube, Music2, Phone } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+function normalizarRed(tipo: string, v: string): string {
+  const s = (v || "").trim();
+  if (!s) return "";
+  if (tipo === "whatsapp") {
+    const num = s.replace(/[^0-9]/g, "");
+    return num ? `https://wa.me/${num}` : "";
+  }
+  if (s.startsWith("http")) return s;
+  if (tipo === "instagram") return `https://instagram.com/${s.replace(/^@/, "")}`;
+  return `https://${s}`;
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -30,6 +42,13 @@ export default async function PaginaDj({ params }: { params: Promise<{ id: strin
   const tardeos = await getTardeosPublicadosDeDj(id);
   const estilos: string[] = Array.isArray(dj.estilos) ? dj.estilos : [];
   const inicial = String(dj.nombre_artistico || "DJ").replace("DJ ", "").charAt(0);
+  const redes = dj.redes && typeof dj.redes === "object" ? dj.redes : {};
+  const wa = normalizarRed("whatsapp", redes.whatsapp || "");
+  const socials = [
+    { k: "instagram", icon: Instagram, url: normalizarRed("instagram", redes.instagram || "") },
+    { k: "soundcloud", icon: Music2, url: normalizarRed("soundcloud", redes.soundcloud || "") },
+    { k: "youtube", icon: Youtube, url: normalizarRed("youtube", redes.youtube || "") },
+  ].filter((s) => s.url);
 
   return (
     <main className="mx-auto max-w-4xl pb-12">
@@ -58,6 +77,16 @@ export default async function PaginaDj({ params }: { params: Promise<{ id: strin
             <p className="mt-1 inline-flex items-center gap-1 font-bold text-oro-400">
               <Star size={16} fill="currentColor" /> {Number(dj.reputacion_score ?? 0).toFixed(1)} de reputación
             </p>
+            {socials.length > 0 && (
+              <div className="mt-2 flex gap-2">
+                {socials.map(({ k, icon: Ic, url }) => (
+                  <a key={k} href={url} target="_blank" rel="noopener noreferrer" aria-label={k}
+                    className="grid h-9 w-9 place-items-center rounded-full bg-white/15 text-white transition hover:bg-white/25">
+                    <Ic size={18} />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -79,6 +108,18 @@ export default async function PaginaDj({ params }: { params: Promise<{ id: strin
           <section className="mt-4 rounded-2xl bg-white p-5 shadow-tarjeta ring-1 ring-black/5">
             <p className="font-semibold text-tinta/80">{dj.bio}</p>
           </section>
+        )}
+
+        {/* Contratación */}
+        {wa && (
+          <a
+            href={`${wa}?text=${encodeURIComponent(`Hola ${dj.nombre_artistico}, te vi en TardeosClub y me gustaría contratarte para un tardeo.`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] py-4 text-lg font-extrabold text-white shadow-tarjeta transition hover:brightness-105"
+          >
+            <Phone size={20} /> Contratar por WhatsApp
+          </a>
         )}
 
         {/* Tardeos del DJ */}

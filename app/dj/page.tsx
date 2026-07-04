@@ -7,7 +7,9 @@ import ServiciosExternos from "@/components/ServiciosExternos";
 import { useAuth } from "@/lib/useAuth";
 import { getMiDj, updateMiDj, subirAvatarDj } from "@/lib/tardeos";
 import { ESTILOS } from "@/lib/mockData";
-import { Disc3, BadgeCheck, Star, Music, Loader2, Pencil, Camera, Check, X } from "lucide-react";
+import { Disc3, BadgeCheck, Star, Music, Loader2, Pencil, Camera, Check, X, Instagram, Youtube, Music2, Phone } from "lucide-react";
+
+type Redes = { instagram?: string; soundcloud?: string; youtube?: string; whatsapp?: string };
 
 export default function PanelDj() {
   const { user, loading } = useAuth();
@@ -19,6 +21,7 @@ export default function PanelDj() {
   const [nombre, setNombre] = useState("");
   const [bio, setBio] = useState("");
   const [estilos, setEstilos] = useState<string[]>([]);
+  const [redes, setRedes] = useState<Redes>({});
   const [avatar, setAvatar] = useState<string | null>(null);
   const [subiendo, setSubiendo] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -33,6 +36,7 @@ export default function PanelDj() {
     setNombre(dj.nombre_artistico || "");
     setBio(dj.bio || "");
     setEstilos(Array.isArray(dj.estilos) ? dj.estilos : []);
+    setRedes(dj.redes && typeof dj.redes === "object" ? dj.redes : {});
     setAvatar(dj.avatar_url || null);
     setEditando(true);
   };
@@ -51,10 +55,16 @@ export default function PanelDj() {
   const guardar = async () => {
     if (!dj) return;
     setGuardando(true);
+    const redesLimpias: Redes = {};
+    (Object.keys(redes) as (keyof Redes)[]).forEach((k) => {
+      const v = (redes[k] || "").trim();
+      if (v) redesLimpias[k] = v;
+    });
     const fields: Record<string, unknown> = {
       nombre_artistico: nombre.trim() || dj.nombre_artistico,
       bio: bio.trim() || null,
       estilos,
+      redes: redesLimpias,
       avatar_url: avatar,
     };
     const { error } = await updateMiDj(dj.id, fields);
@@ -211,6 +221,31 @@ export default function PanelDj() {
             <p className="font-semibold text-tinta/80">{dj.bio || "Aún no has escrito tu biografía."}</p>
           )}
         </section>
+
+        {/* Redes y contacto (solo en edición) */}
+        {editando && (
+          <section className="mt-5 rounded-2xl bg-white p-5 shadow-tarjeta ring-1 ring-black/5">
+            <h3 className="mb-3 text-sm font-black text-tinta/60">Redes y contacto</h3>
+            <div className="flex flex-col gap-3">
+              {([
+                { k: "instagram", label: "Instagram", icon: Instagram, ph: "usuario o enlace" },
+                { k: "soundcloud", label: "SoundCloud", icon: Music2, ph: "enlace a tu perfil" },
+                { k: "youtube", label: "YouTube", icon: Youtube, ph: "enlace a tu canal" },
+                { k: "whatsapp", label: "WhatsApp (contratación)", icon: Phone, ph: "34600000000" },
+              ] as const).map(({ k, label, icon: Ic, ph }) => (
+                <label key={k} className="flex items-center gap-2">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta"><Ic size={18} /></span>
+                  <input
+                    value={redes[k] || ""}
+                    onChange={(e) => setRedes((p) => ({ ...p, [k]: e.target.value }))}
+                    placeholder={`${label}: ${ph}`}
+                    className="w-full rounded-xl border-2 border-magenta-100 px-3 py-2.5 text-sm font-semibold outline-none focus:border-magenta"
+                  />
+                </label>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Botones de edición */}
         {editando && (

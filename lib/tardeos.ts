@@ -124,6 +124,17 @@ export async function getMetricasLocal(localId: string): Promise<{ visitas: numb
   }
 }
 
+/** Lista de apuntados a los tardeos de un local (con nombre). Requiere Lote 8. */
+export async function getInscritosLocal(localId: string): Promise<any[]> {
+  try {
+    const { data, error } = await supabase.rpc("inscritos_de_local", { p_local: localId });
+    if (error) throw error;
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+
 /** El perfil DJ del usuario (si lo tiene). */
 export async function getMiDj(profileId: string): Promise<any | null> {
   const { data } = await supabase
