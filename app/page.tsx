@@ -77,9 +77,16 @@ export default async function Inicio() {
               href="https://chat.whatsapp.com/KMAxRPoj36w6cOSGGwnZhi?mode=ems_wa_c"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-3 inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-6 py-4 text-lg font-extrabold text-white shadow-lg transition hover:brightness-105 active:scale-[0.98]"
+              className="group glass mt-4 flex items-center gap-3 rounded-2xl p-2.5 pr-4 transition hover:bg-white/20 active:scale-[0.98]"
             >
-              <MessageCircle size={22} fill="currentColor" /> Únete a la comunidad de WhatsApp
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#25D366] text-white shadow-lg">
+                <MessageCircle size={24} fill="currentColor" />
+              </span>
+              <span className="min-w-0 flex-1 text-left">
+                <span className="block font-extrabold leading-tight text-white">Comunidad de WhatsApp</span>
+                <span className="block text-sm font-semibold text-white/75">Entérate de los tardeos al momento</span>
+              </span>
+              <ArrowRight size={20} className="shrink-0 text-white/70 transition group-hover:translate-x-1" />
             </a>
           </div>
 
