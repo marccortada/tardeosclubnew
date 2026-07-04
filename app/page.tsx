@@ -2,6 +2,7 @@ import TopBar from "@/components/TopBar";
 import CarruselTardeos from "@/components/CarruselTardeos";
 import ZonasRapidas from "@/components/ZonasRapidas";
 import DjsDestacados from "@/components/DjsDestacados";
+import NexoRadio from "@/components/NexoRadio";
 import CtaLocalDj from "@/components/CtaLocalDj";
 import Footer from "@/components/Footer";
 import PopupCliente from "@/components/PopupCliente";
@@ -90,6 +91,7 @@ export default async function Inicio() {
 
       <DjsDestacados djs={djs.slice(0, 10)} />
       <ZonasRapidas zonas={zonas} />
+      <NexoRadio />
       <CtaLocalDj />
       <Footer />
       <PopupCliente />
