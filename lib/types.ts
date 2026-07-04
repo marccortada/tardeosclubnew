@@ -30,6 +30,7 @@ export interface Tardeo {
   tipoEntrada: TipoEntrada;
   precio?: number;
   destacado: boolean;
+  estado?: string; // publicado | borrador | finalizado | cancelado
   lat: number;
   lng: number;
   flyer?: string; // URL del flyer (de Supabase); si falta, se deriva del id (mock)

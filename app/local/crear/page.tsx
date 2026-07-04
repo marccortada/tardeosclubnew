@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import PanelHeader from "@/components/PanelHeader";
 import { useAuth } from "@/lib/useAuth";
-import { getMiLocal } from "@/lib/tardeos";
+import { getMiLocal, vincularDjsPorNombre } from "@/lib/tardeos";
 import { supabase } from "@/lib/supabase";
 import {
   Upload, Wand2, Sparkles, Loader2, Check, AlertTriangle,
@@ -153,6 +153,15 @@ export default function CrearTardeo() {
 
   const publicar = async () => {
     if (!user || !miLocal) { setError("Necesitas un local para publicar. Créalo primero."); return; }
+
+    // --- Validación antes de publicar ---
+    const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+    if (!form.titulo.trim()) { setError("Ponle un título al tardeo."); return; }
+    if (!form.fecha) { setError("Falta la fecha del tardeo."); return; }
+    if (form.fecha < hoy) { setError("La fecha ya ha pasado. Pon una fecha de hoy en adelante."); return; }
+    if (!form.horaInicio) { setError("Falta la hora de inicio."); return; }
+    if (form.tipo === "pago" && !(Number(form.precio) > 0)) { setError("Indica el precio de la entrada."); return; }
+
     setPublicando(true); setError("");
 
     // Guardar el flyer (generado o subido) en Supabase Storage
@@ -162,23 +171,25 @@ export default function CrearTardeo() {
         const blob = base64ToBlob(flyerGen, "image/jpeg");
         const p = `${user.id}/${Date.now()}.jpg`;
         const { error: up } = await supabase.storage.from("flyers").upload(p, blob, { contentType: "image/jpeg" });
-        if (!up) flyer_url = supabase.storage.from("flyers").getPublicUrl(p).data.publicUrl;
+        if (up) { setError("No se pudo subir el flyer. Inténtalo de nuevo."); setPublicando(false); return; }
+        flyer_url = supabase.storage.from("flyers").getPublicUrl(p).data.publicUrl;
       } else if (archivoSubido) {
         const ext = (archivoSubido.name.split(".").pop() || "jpg").toLowerCase();
         const p = `${user.id}/${Date.now()}.${ext}`;
         const { error: up } = await supabase.storage.from("flyers").upload(p, archivoSubido, { contentType: archivoSubido.type || "image/jpeg" });
-        if (!up) flyer_url = supabase.storage.from("flyers").getPublicUrl(p).data.publicUrl;
+        if (up) { setError("No se pudo subir el flyer. Inténtalo de nuevo."); setPublicando(false); return; }
+        flyer_url = supabase.storage.from("flyers").getPublicUrl(p).data.publicUrl;
       }
     } catch {
-      /* si falla la subida, se queda el flyer de reserva */
+      setError("No se pudo subir el flyer. Inténtalo de nuevo."); setPublicando(false); return;
     }
 
-    const { error } = await supabase.from("tardeos").insert({
+    const { data: nuevo, error } = await supabase.from("tardeos").insert({
       local_id: miLocal.id,
-      titulo: form.titulo,
+      titulo: form.titulo.trim(),
       fecha: form.fecha,
       hora_inicio: form.horaInicio,
-      hora_fin: form.horaFin,
+      hora_fin: form.horaFin || null,
       direccion: form.ubicacion || miLocal.direccion,
       lat: miLocal.lat,
       lng: miLocal.lng,
@@ -191,7 +202,14 @@ export default function CrearTardeo() {
       flyer_origen: flyerGen ? "ia" : modo === "subir" ? "subido" : "ia",
       estado: "publicado",
       created_by: user.id,
-    });
+    }).select("id").single();
+
+    // Vincular los DJs del flyer (por nombre) para que aparezca en su perfil
+    if (nuevo?.id && form.dj) {
+      const nombres = form.dj.split(/[,·&]|\sy\s/i);
+      try { await vincularDjsPorNombre(nuevo.id, nombres); } catch { /* no crítico */ }
+    }
+
     setPublicando(false);
     if (error) setError(error.message);
     else setEstado("publicado");

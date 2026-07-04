@@ -11,7 +11,7 @@ import { getMiLocal, getTardeosDeLocal, getMetricasLocal } from "@/lib/tardeos";
 import { formatFecha, flyerSrc } from "@/lib/mockData";
 import { Tardeo } from "@/lib/types";
 import {
-  Plus, Users, Eye, TrendingUp, CreditCard,
+  Plus, Users, Eye, TrendingUp, CreditCard, Pencil,
   BadgeCheck, ChevronRight, Sparkles, Store, Loader2,
 } from "lucide-react";
 
@@ -118,17 +118,26 @@ export default function PanelLocal() {
             <p className="rounded-2xl bg-white p-6 text-center font-bold text-tinta/50 ring-1 ring-black/5">Aún no has creado tardeos. ¡Crea el primero!</p>
           ) : (
             <div className="flex flex-col gap-3">
-              {misTardeos.map((t) => (
-                <Link key={t.id} href={`/tardeos/${t.id}`} className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg">
-                  <img src={flyerSrc(t)} alt="" loading="lazy" className="h-[70px] w-14 shrink-0 rounded-xl object-cover" />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-script text-base capitalize leading-none text-magenta-600">{formatFecha(t.fecha)}</p>
-                    <h3 className="truncate font-display text-lg font-black leading-tight">{t.titulo}</h3>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-oro/15 px-2 py-0.5 text-xs font-black text-oro-600">Publicado</span>
+              {misTardeos.map((t) => {
+                const pub = t.estado === "publicado";
+                return (
+                  <div key={t.id} className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-tarjeta ring-1 ring-black/5">
+                    <Link href={`/tardeos/${t.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                      <img src={flyerSrc(t)} alt="" loading="lazy" className="h-[70px] w-14 shrink-0 rounded-xl object-cover" />
+                      <div className="min-w-0">
+                        <p className="font-script text-base capitalize leading-none text-magenta-600">{formatFecha(t.fecha)}</p>
+                        <h3 className="truncate font-display text-lg font-black leading-tight">{t.titulo}</h3>
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-black ${pub ? "bg-oro/15 text-oro-600" : "bg-black/5 text-tinta/50"}`}>
+                          {pub ? "Publicado" : (t.estado === "borrador" ? "Oculto" : t.estado)}
+                        </span>
+                      </div>
+                    </Link>
+                    <Link href={`/local/tardeos/${t.id}/editar`} className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-magenta-50 px-3 py-2 text-sm font-extrabold text-magenta transition hover:bg-magenta-100">
+                      <Pencil size={15} /> Editar
+                    </Link>
                   </div>
-                  <ChevronRight size={20} className="shrink-0 text-tinta/30" />
-                </Link>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>

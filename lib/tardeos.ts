@@ -32,6 +32,7 @@ function mapRow(r: any): Tardeo {
     tipoEntrada: r.tiene_lista ? "lista" : r.es_de_pago ? "pago" : "gratis",
     precio: r.precio != null ? Number(r.precio) : undefined,
     destacado: r.destacado_hasta ? new Date(r.destacado_hasta) > new Date() : false,
+    estado: r.estado,
     lat: r.lat ?? 0,
     lng: r.lng ?? 0,
     flyer: r.flyer_url ?? undefined,
@@ -176,6 +177,48 @@ export async function subirAvatarDj(id: string, file: File): Promise<string | nu
   });
   if (error) return null;
   return supabase.storage.from("flyers").getPublicUrl(ruta).data.publicUrl;
+}
+
+/** Fila cruda de un tardeo (para editar). RLS deja leer al dueño aunque no esté publicado. */
+export async function getTardeoRow(id: string): Promise<any | null> {
+  const { data } = await supabase.from("tardeos").select("*").eq("id", id).maybeSingle();
+  return data ?? null;
+}
+
+/** Actualiza un tardeo (solo el dueño o admin, por RLS). */
+export async function updateTardeo(id: string, fields: Record<string, unknown>) {
+  return supabase.from("tardeos").update({ ...fields, updated_at: new Date().toISOString() }).eq("id", id);
+}
+
+/** Cambia el estado (publicado / borrador / finalizado / cancelado). */
+export async function setEstadoTardeo(id: string, estado: string) {
+  return supabase.from("tardeos").update({ estado }).eq("id", id);
+}
+
+/** Borra un tardeo (solo el dueño o admin, por RLS). */
+export async function borrarTardeo(id: string) {
+  return supabase.from("tardeos").delete().eq("id", id);
+}
+
+/** Vincula DJs existentes a un tardeo, buscándolos por nombre artístico. */
+export async function vincularDjsPorNombre(tardeoId: string, nombres: string[]): Promise<number> {
+  const limpios = nombres.map((n) => n.trim()).filter(Boolean);
+  if (limpios.length === 0) return 0;
+  // Buscar DJs existentes cuyo nombre coincida (insensible a mayúsculas)
+  const { data } = await supabase.from("djs").select("id,nombre_artistico");
+  const encontrados = (data ?? []).filter((d: any) =>
+    limpios.some((n) => (d.nombre_artistico || "").toLowerCase() === n.toLowerCase())
+  );
+  if (encontrados.length === 0) return 0;
+  const filas = encontrados.map((d: any) => ({ tardeo_id: tardeoId, dj_id: d.id }));
+  await supabase.from("tardeo_djs").upsert(filas, { onConflict: "tardeo_id,dj_id" });
+  return filas.length;
+}
+
+/** Reemplaza por completo los DJs de un tardeo (borra y revincula por nombre). */
+export async function setDjsDeTardeo(tardeoId: string, nombres: string[]) {
+  await supabase.from("tardeo_djs").delete().eq("tardeo_id", tardeoId);
+  return vincularDjsPorNombre(tardeoId, nombres);
 }
 
 /** Tardeos de un local (cualquier estado), para el panel del local. */
