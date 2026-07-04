@@ -7,7 +7,7 @@ import CtaLocalDj from "@/components/CtaLocalDj";
 import Footer from "@/components/Footer";
 import PopupCliente from "@/components/PopupCliente";
 import { getTardeosPublicados, getDjsPublicos } from "@/lib/tardeos";
-import { CalendarDays, SlidersHorizontal, MapPin, ArrowRight, Sparkles, Sun } from "lucide-react";
+import { CalendarDays, SlidersHorizontal, MapPin, ArrowRight, Sparkles, Sun, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import MapaClient from "@/components/MapaClient";
 
@@ -72,6 +72,15 @@ export default async function Inicio() {
                 <SlidersHorizontal size={22} /> Filtrar tardeos
               </Link>
             </div>
+
+            <a
+              href="https://chat.whatsapp.com/KMAxRPoj36w6cOSGGwnZhi?mode=ems_wa_c"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-6 py-4 text-lg font-extrabold text-white shadow-lg transition hover:brightness-105 active:scale-[0.98]"
+            >
+              <MessageCircle size={22} fill="currentColor" /> Únete a la comunidad de WhatsApp
+            </a>
           </div>
 
           <Link href="/mapa" className="block">
