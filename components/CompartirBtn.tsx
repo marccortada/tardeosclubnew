@@ -6,16 +6,26 @@ import { Share2, Check } from "lucide-react";
 export default function CompartirBtn({
   titulo,
   texto,
+  url: urlProp,
   className = "",
 }: {
   titulo: string;
   texto?: string;
+  /** Ruta ("/tardeos/123") o URL absoluta. Si no se pasa, usa la página actual. */
+  url?: string;
   className?: string;
 }) {
   const [copiado, setCopiado] = useState(false);
 
-  const compartir = async () => {
-    const url = typeof window !== "undefined" ? window.location.href : "";
+  const compartir = async (e?: React.MouseEvent) => {
+    // Si está dentro de un enlace (tarjeta), no navegamos
+    e?.preventDefault();
+    e?.stopPropagation();
+
+    const base = typeof window !== "undefined" ? window.location.origin : "";
+    const url = urlProp
+      ? urlProp.startsWith("http") ? urlProp : base + urlProp
+      : typeof window !== "undefined" ? window.location.href : "";
     const mensaje = texto || titulo;
 
     // 1) Menú nativo del móvil (WhatsApp, Instagram, Telegram…)
@@ -41,7 +51,7 @@ export default function CompartirBtn({
 
   return (
     <button
-      onClick={compartir}
+      onClick={(e) => compartir(e)}
       aria-label="Compartir"
       className={className || "grid h-11 w-11 place-items-center rounded-full bg-white/90 text-tinta shadow transition hover:bg-white active:scale-95"}
     >

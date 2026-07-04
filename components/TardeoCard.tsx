@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Tardeo, formatFecha, flyerSrc } from "@/lib/mockData";
 import { MapPin, Clock, Ticket, ListChecks, Gift, ChevronRight } from "lucide-react";
+import CompartirBtn from "@/components/CompartirBtn";
 
 const entrada = {
   gratis: { label: "Gratis", icon: Gift },
@@ -41,6 +42,13 @@ export default function TardeoCard({ tardeo }: { tardeo: Tardeo }) {
           <Icon size={15} className="text-magenta" /> {e.label}
           {tardeo.precio ? ` ${tardeo.precio}€` : ""}
         </span>
+        {/* Compartir */}
+        <CompartirBtn
+          titulo={tardeo.titulo}
+          texto={`¡Mira este tardeo! ${tardeo.titulo} — ${formatFecha(tardeo.fecha)} en ${tardeo.local.nombre}`}
+          url={`/tardeos/${tardeo.id}`}
+          className="absolute right-3 top-3 z-20 grid h-9 w-9 place-items-center rounded-full bg-white/95 text-tinta shadow-md backdrop-blur transition hover:bg-white active:scale-95"
+        />
       </div>
 
       {/* Info práctica debajo */}
