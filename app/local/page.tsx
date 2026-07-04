@@ -5,6 +5,7 @@ import Link from "next/link";
 import PanelHeader from "@/components/PanelHeader";
 import ServiciosExternos from "@/components/ServiciosExternos";
 import PromocionModal from "@/components/PromocionModal";
+import GestionFotosLocal from "@/components/GestionFotosLocal";
 import { useAuth } from "@/lib/useAuth";
 import { getMiLocal, getTardeosDeLocal, getMetricasLocal } from "@/lib/tardeos";
 import { formatFecha, flyerSrc } from "@/lib/mockData";
@@ -146,6 +147,8 @@ export default function PanelLocal() {
           <p className="text-sm font-semibold md:text-base"><span className="font-black">La IA trabaja por ti:</span> sube un flyer y creamos el tardeo solo.</p>
           <Link href="/local/crear" className="ml-auto shrink-0 rounded-xl bg-white px-4 py-2 text-sm font-extrabold text-tinta">Probar</Link>
         </section>
+
+        <GestionFotosLocal localId={local.id} iniciales={Array.isArray(local.fotos) ? local.fotos : []} />
 
         <ServiciosExternos tipo="local" />
       </div>

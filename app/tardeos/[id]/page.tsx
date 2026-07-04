@@ -4,6 +4,7 @@ import AccionTardeo from "@/components/AccionTardeo";
 import ResenasLocal from "@/components/ResenasLocal";
 import CompartirBtn from "@/components/CompartirBtn";
 import RegistrarVisita from "@/components/RegistrarVisita";
+import MiniMapa from "@/components/MiniMapa";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -125,21 +126,28 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
           </div>
         </section>
 
-        {/* Mini mapa (placeholder) */}
+        {/* Dónde es */}
         <section className="mt-6">
           <h2 className="mb-2 text-lg font-black">Dónde es</h2>
-          <Link href="/mapa" className="block overflow-hidden rounded-2xl ring-1 ring-magenta-100">
-            <div className="relative grid h-36 place-items-center bg-[#dce7dd]">
-              <div
-                className="absolute inset-0 opacity-40"
-                style={{ backgroundImage: "radial-gradient(circle at 50% 60%, #E10A5A22 0, transparent 60%)" }}
-              />
-              <div className="relative flex flex-col items-center text-magenta">
+          <div className="overflow-hidden rounded-2xl ring-1 ring-magenta-100">
+            {tardeo.lat && tardeo.lng ? (
+              <MiniMapa lat={tardeo.lat} lng={tardeo.lng} />
+            ) : (
+              <div className="grid h-40 place-items-center bg-[#dce7dd] text-magenta">
                 <MapPin size={38} fill="#E10A5A" className="text-white" />
-                <span className="mt-1 text-sm font-black">Ver cómo llegar</span>
               </div>
-            </div>
-          </Link>
+            )}
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                tardeo.local.direccion || `${tardeo.lat},${tardeo.lng}`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 bg-white py-3 text-sm font-extrabold text-magenta transition hover:bg-magenta-50"
+            >
+              <MapPin size={16} /> Cómo llegar
+            </a>
+          </div>
         </section>
 
         <ResenasLocal localId={tardeo.local.id} nombre={tardeo.local.nombre} />

@@ -86,6 +86,23 @@ export async function getTardeosPublicadosDeLocal(localId: string): Promise<Tard
   return (data ?? []).map(mapRow);
 }
 
+/** Actualiza campos del local (fotos, descripción, teléfono…). */
+export async function updateMiLocal(id: string, fields: Record<string, unknown>) {
+  return supabase.from("locales").update(fields).eq("id", id);
+}
+
+/** Sube una foto del local al Storage y devuelve la URL pública. */
+export async function subirFotoLocal(id: string, file: File): Promise<string | null> {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const ruta = `locales/${id}-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("flyers").upload(ruta, file, {
+    contentType: file.type || "image/jpeg",
+    upsert: true,
+  });
+  if (error) return null;
+  return supabase.storage.from("flyers").getPublicUrl(ruta).data.publicUrl;
+}
+
 /** El primer local del usuario (owner). Devuelve la fila cruda o null. */
 export async function getMiLocal(ownerId: string): Promise<any | null> {
   const { data } = await supabase
