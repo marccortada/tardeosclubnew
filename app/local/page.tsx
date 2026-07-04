@@ -6,7 +6,7 @@ import PanelHeader from "@/components/PanelHeader";
 import ServiciosExternos from "@/components/ServiciosExternos";
 import PromocionModal from "@/components/PromocionModal";
 import { useAuth } from "@/lib/useAuth";
-import { getMiLocal, getTardeosDeLocal } from "@/lib/tardeos";
+import { getMiLocal, getTardeosDeLocal, getMetricasLocal } from "@/lib/tardeos";
 import { formatFecha, flyerSrc } from "@/lib/mockData";
 import { Tardeo } from "@/lib/types";
 import {
@@ -18,6 +18,7 @@ export default function PanelLocal() {
   const { user, loading } = useAuth();
   const [local, setLocal] = useState<any | null>(null);
   const [misTardeos, setMisTardeos] = useState<Tardeo[]>([]);
+  const [metricas, setMetricas] = useState<{ visitas: number; inscritos: number }>({ visitas: 0, inscritos: 0 });
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -25,7 +26,10 @@ export default function PanelLocal() {
     (async () => {
       const l = await getMiLocal(user.id);
       setLocal(l);
-      if (l) setMisTardeos(await getTardeosDeLocal(l.id));
+      if (l) {
+        setMisTardeos(await getTardeosDeLocal(l.id));
+        setMetricas(await getMetricasLocal(l.id));
+      }
       setCargando(false);
     })();
   }, [user]);
@@ -62,8 +66,8 @@ export default function PanelLocal() {
   }
 
   const stats = [
-    { icon: Eye, label: "Visitas (mes)", valor: "—" },
-    { icon: Users, label: "Inscritos", valor: "—" },
+    { icon: Eye, label: "Visitas", valor: String(metricas.visitas) },
+    { icon: Users, label: "Inscritos", valor: String(metricas.inscritos) },
     { icon: TrendingUp, label: "Tardeos", valor: String(misTardeos.length) },
   ];
 

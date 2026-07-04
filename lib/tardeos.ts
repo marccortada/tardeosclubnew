@@ -93,6 +93,18 @@ export async function getMiLocal(ownerId: string): Promise<any | null> {
   return data ?? null;
 }
 
+/** Métricas de un local (visitas totales + inscritos activos). Requiere Lote 5. */
+export async function getMetricasLocal(localId: string): Promise<{ visitas: number; inscritos: number }> {
+  try {
+    const { data, error } = await supabase.rpc("metricas_de_local", { p_local: localId });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return { visitas: Number(row?.visitas ?? 0), inscritos: Number(row?.inscritos ?? 0) };
+  } catch {
+    return { visitas: 0, inscritos: 0 };
+  }
+}
+
 /** El perfil DJ del usuario (si lo tiene). */
 export async function getMiDj(profileId: string): Promise<any | null> {
   const { data } = await supabase

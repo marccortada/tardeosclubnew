@@ -3,6 +3,7 @@ import { getTardeoById } from "@/lib/tardeos";
 import AccionTardeo from "@/components/AccionTardeo";
 import ResenasLocal from "@/components/ResenasLocal";
 import CompartirBtn from "@/components/CompartirBtn";
+import RegistrarVisita from "@/components/RegistrarVisita";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -43,6 +44,7 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
 
   return (
     <main className="mx-auto max-w-3xl pb-28 md:pb-12">
+      <RegistrarVisita tardeoId={tardeo.id} />
       <div className="relative px-4 pt-4 md:pt-8">
         <Link
           href="/tardeos"
