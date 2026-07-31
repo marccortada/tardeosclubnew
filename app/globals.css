@@ -120,6 +120,63 @@ label {
   }
 }
 
+/* ---------- Páginas legales ---------- */
+/* Texto grande y aireado: el público de TardeosClub es mayor. */
+.legal h2 {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin: 1.75rem 0 0.5rem;
+}
+.legal h2:first-child {
+  margin-top: 0;
+}
+.legal h3 {
+  font-size: 1.05rem;
+  font-weight: 900;
+  margin: 1.25rem 0 0.35rem;
+}
+.legal p {
+  margin: 0.6rem 0;
+}
+.legal ul {
+  list-style: disc;
+  padding-left: 1.35rem;
+  margin: 0.6rem 0;
+}
+.legal li {
+  margin: 0.35rem 0;
+}
+.legal a {
+  color: #c00040;
+  font-weight: 800;
+  text-decoration: underline;
+}
+.legal strong {
+  font-weight: 900;
+}
+.legal table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.95rem;
+}
+.legal th,
+.legal td {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+.legal th {
+  background: #fde7f0;
+  font-weight: 900;
+}
+/* Las tablas no rompen el ancho en móvil */
+.legal .tabla-scroll {
+  overflow-x: auto;
+}
+
 /* ---------- Mapa ---------- */
 .leaflet-container {
   width: 100%;

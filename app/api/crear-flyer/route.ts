@@ -4,9 +4,13 @@ import sharp from "sharp";
 import { NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
+import { autorizarLocalOAdmin, pasaLimite, respuestaLimite } from "@/lib/apiAuth";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
+
+// Generar una imagen se paga por llamada: aquí el límite es más estricto.
+const FLYERS_POR_HORA = 15;
 
 // ---------- El "toque TardeosClub" + normas de seguridad ----------
 const SISTEMA_MARCA = `Eres el diseñador de flyers de TardeosClub. Conviertes la petición de un local en un PROMPT detallado (en español) para un generador de imágenes, SIEMPRE con el estilo de la marca y respetando las normas.
@@ -93,12 +97,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Falta OPENAI_API_KEY en el servidor." }, { status: 500 });
   }
 
-  let body: { descripcion?: string; titulo?: string; fecha?: string; dj?: string; estilo?: string; hora?: string };
+  let body: {
+    descripcion?: string; titulo?: string; fecha?: string;
+    dj?: string; estilo?: string; hora?: string; accessToken?: string;
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Cuerpo inválido." }, { status: 400 });
   }
+
+  // Solo locales dados de alta (o admin): cada flyer generado se paga.
+  const auth = await autorizarLocalOAdmin(body.accessToken);
+  if (auth instanceof NextResponse) return auth;
+  if (!pasaLimite(`crear:${auth.uid}`, FLYERS_POR_HORA)) return respuestaLimite("flyers generados");
+
   const { descripcion = "", titulo = "", fecha = "", dj = "", estilo = "", hora = "" } = body;
 
   const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());

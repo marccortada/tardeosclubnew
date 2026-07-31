@@ -84,10 +84,11 @@ export default function CrearTardeo() {
     setError("");
     setEstado("procesando");
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/crear-flyer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ descripcion: prompt, titulo: form.titulo, estilo: form.estilo, dj: form.dj, fecha: form.fecha, hora: form.horaInicio }),
+        body: JSON.stringify({ descripcion: prompt, titulo: form.titulo, estilo: form.estilo, dj: form.dj, fecha: form.fecha, hora: form.horaInicio, accessToken: session?.access_token }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || "No se pudo generar el flyer.");
@@ -135,10 +136,11 @@ export default function CrearTardeo() {
     setEstado("procesando");
     try {
       const imageBase64 = await fileToBase64(file);
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/leer-flyer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64, mediaType: file.type }),
+        body: JSON.stringify({ imageBase64, mediaType: file.type, accessToken: session?.access_token }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || "No se pudo leer el flyer.");

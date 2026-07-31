@@ -39,9 +39,9 @@ export default function Footer() {
         <div className="mt-6 flex flex-col gap-2 border-t border-black/5 pt-6 text-xs font-semibold text-tinta/50 sm:flex-row sm:items-center sm:justify-between">
           <p>© 2026 TardeosClub · Costa de Catalunya</p>
           <div className="flex gap-4">
-            <Link href="#" className="transition hover:text-magenta">Términos</Link>
-            <Link href="#" className="transition hover:text-magenta">Privacidad</Link>
-            <Link href="#" className="transition hover:text-magenta">Cookies</Link>
+            <Link href="/legal/aviso-legal" className="transition hover:text-magenta">Aviso legal</Link>
+            <Link href="/legal/privacidad" className="transition hover:text-magenta">Privacidad</Link>
+            <Link href="/legal/cookies" className="transition hover:text-magenta">Cookies</Link>
           </div>
         </div>
       </div>

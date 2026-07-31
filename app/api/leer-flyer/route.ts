@@ -1,7 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
+import { autorizarLocalOAdmin, pasaLimite, respuestaLimite } from "@/lib/apiAuth";
 
 export const runtime = "nodejs";
+
+// Leer un flyer cuesta una llamada a Claude por intento.
+const LECTURAS_POR_HORA = 40;
 
 // Esquema de salida estructurada (JSON garantizado)
 const schema = {
@@ -34,12 +38,18 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { imageBase64?: string; mediaType?: string };
+  let body: { imageBase64?: string; mediaType?: string; accessToken?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Cuerpo inválido." }, { status: 400 });
   }
+
+  // Solo locales dados de alta (o admin): esta ruta gasta créditos de IA.
+  const auth = await autorizarLocalOAdmin(body.accessToken);
+  if (auth instanceof NextResponse) return auth;
+  if (!pasaLimite(`leer:${auth.uid}`, LECTURAS_POR_HORA)) return respuestaLimite("lecturas de flyer");
+
   if (!body.imageBase64) {
     return NextResponse.json({ error: "Falta la imagen del flyer." }, { status: 400 });
   }
