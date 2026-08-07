@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+.env*.local
+.DS_Store
+npm-debug.log*
+tsconfig.tsbuildinfo
+scratchpad
+ANALISIS.md
+PEDIR_AL_DUENO.md

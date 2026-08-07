@@ -1,0 +1,78 @@
+# TardeosClub · DigitalOcean App Platform
+#
+# Para crear la app:
+#   doctl apps create --spec .do/app.yaml
+# O desde el panel: Apps -> Create App -> importar este fichero.
+#
+# Region fra (Frankfurt) porque ANALISIS.md §17.12 fija los datos en la UE.
+#
+# NOTA IMPORTANTE sobre los secretos: aqui van VACIOS a proposito. Se rellenan
+# en el panel de DigitalOcean (Settings -> App-Level Environment Variables) para
+# que no acaben en git. Los marcados como SECRET quedan cifrados.
+
+name: tardeosclub
+region: fra
+
+services:
+  - name: web
+    dockerfile_path: Dockerfile
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xxs
+
+    github:
+      repo: marccortada/tardeosclubnew
+      branch: main
+      deploy_on_push: true
+
+    health_check:
+      http_path: /legal/aviso-legal
+
+    envs:
+      # --- Necesarias TAMBIEN en el build ---
+      # Next.js incrusta las NEXT_PUBLIC_* en el JS del navegador al compilar.
+      # Si su scope no incluye BUILD_TIME, la app compila pero el navegador se
+      # queda sin conexion a Supabase y no carga ningun tardeo.
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        scope: RUN_AND_BUILD_TIME
+        value: ""
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        scope: RUN_AND_BUILD_TIME
+        value: ""
+      - key: NEXT_PUBLIC_SITE_URL
+        scope: RUN_AND_BUILD_TIME
+        value: ${APP_URL}
+
+      # --- Solo en ejecucion, y cifradas ---
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ""
+      - key: ANTHROPIC_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ""
+      - key: OPENAI_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ""
+      - key: RESEND_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ""
+      - key: RESEND_FROM
+        scope: RUN_TIME
+        value: "TardeosClub <onboarding@resend.dev>"
+      - key: CRON_SECRET
+        scope: RUN_TIME
+        type: SECRET
+        value: ""
+
+# Recordatorios diarios a los apuntados del dia siguiente.
+# Se activa cuando exista base de datos con tardeos.
+# jobs:
+#   - name: recordatorios
+#     kind: POST_DEPLOY
+#     ...
+# Alternativa mas simple: un cron externo que llame cada dia a
+#   curl -H "x-cron-secret: $CRON_SECRET" https://TU_APP/api/recordatorios
