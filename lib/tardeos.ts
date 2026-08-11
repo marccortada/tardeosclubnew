@@ -157,9 +157,19 @@ export async function subirFotoLocal(id: string, file: File): Promise<string | n
 
 /** El primer local del usuario (owner). Devuelve la fila cruda o null. */
 export async function getMiLocal(ownerId: string): Promise<any | null> {
-  const { data } = await supabase
-    .from("locales").select("*").eq("owner_id", ownerId)
+  // Columnas explícitas y no `*`: con `*` cualquier columna que el rol no
+  // pueda leer hace fallar la consulta entera, y el dueño se queda sin su
+  // local. Pasó con `email` al restringirla en el lote 14.
+  const { data, error } = await supabase
+    .from("locales")
+    .select("id,nombre,descripcion,direccion,lat,lng,zona,codigo_postal,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,owner_id")
+    .eq("owner_id", ownerId)
     .order("created_at", { ascending: true }).limit(1).maybeSingle();
+  // Antes el error se tragaba en silencio y devolvía null, que la app
+  // interpreta como "no tienes local": el dueño creaba otro y acababa con
+  // duplicados. Sigue devolviendo null (cinco sitios la llaman y varios sin
+  // catch), pero al menos deja rastro de que fue un fallo y no una ausencia.
+  if (error) console.error("[locales] no se pudo cargar tu local:", error.message);
   return data ?? null;
 }
 

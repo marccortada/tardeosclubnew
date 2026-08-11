@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
@@ -36,12 +36,55 @@ function UnirseContent() {
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
+  // null = todavía no lo sabemos. Sin esto, si la consulta tarda o falla, la
+  // página ofrece crear una ficha que ya existe y salen duplicados.
+  const [yaTiene, setYaTiene] = useState<"local" | "dj" | "no" | null>(null);
+
+  useEffect(() => {
+    if (!user) { setYaTiene("no"); return; }
+    (async () => {
+      const [l, d] = await Promise.all([
+        supabase.from("locales").select("id,tipo").eq("owner_id", user.id).limit(1).maybeSingle(),
+        supabase.from("djs").select("id").eq("profile_id", user.id).limit(1).maybeSingle(),
+      ]);
+      // Ante la duda no dejamos crear: es más fácil recuperarse de "no puedo
+      // crear" que de dos fichas duplicadas en la base.
+      if (l.error || d.error) { setYaTiene("local"); return; }
+      setYaTiene(l.data ? "local" : d.data ? "dj" : "no");
+    })();
+  }, [user]);
 
   if (!loading && !user) {
     return (
       <main className="mx-auto max-w-lg px-4 pt-16 text-center">
         <p className="text-lg font-bold text-tinta/70">Primero entra o crea tu cuenta.</p>
         <Link href="/perfil" className="mt-4 inline-block rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">Ir a entrar</Link>
+      </main>
+    );
+  }
+
+  // Mientras no sepamos si ya tiene ficha, no se enseña el formulario. Este
+  // hueco es por donde se colaba el duplicado: la página ofrecía crear antes
+  // de haber comprobado nada.
+  if (loading || yaTiene === null) {
+    return <main className="flex items-center justify-center gap-2 pt-24 text-tinta/50"><Loader2 className="animate-spin" /> Cargando…</main>;
+  }
+
+  // Ya tiene ficha: en vez de dejarle crear otra, se le lleva a la suya.
+  if (yaTiene === "local" || yaTiene === "dj") {
+    const esLocal = yaTiene === "local";
+    return (
+      <main className="mx-auto flex max-w-lg flex-col items-center gap-4 px-4 pt-16 text-center">
+        <span className="grid h-20 w-20 place-items-center rounded-full bg-oro text-tinta"><Check size={44} /></span>
+        <h2 className="font-display text-2xl font-black">Ya estás dentro</h2>
+        <p className="font-semibold text-tinta/70">
+          {esLocal
+            ? "Tu ficha ya existe. Si no la ves, entra en tu panel: no hace falta crearla otra vez."
+            : "Ya tienes perfil de DJ."}
+        </p>
+        <Link href={esLocal ? "/local" : "/perfil"} className="mt-2 rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">
+          {esLocal ? "Ir a mi panel" : "Ir a mi perfil"}
+        </Link>
       </main>
     );
   }
