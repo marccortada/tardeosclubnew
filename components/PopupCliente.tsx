@@ -3,32 +3,109 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/useAuth";
 import { X, Sparkles, ArrowRight } from "lucide-react";
 
-type Popup = { id: string; titulo: string; mensaje: string; tipo: string };
+type Popup = {
+  id: string;
+  titulo: string;
+  mensaje: string;
+  tipo: string;
+  /** null = una sola vez · 0 = cada visita · N = cada N horas */
+  repetir_horas: number | null;
+  publico: "todos" | "anonimos" | "registrados" | "locales" | "djs";
+  desde: string | null;
+  hasta: string | null;
+};
+
+const CLAVE = (id: string) => `popup-visto-${id}`;
+
+/**
+ * ¿Toca enseñar este popup a este visitante?
+ *
+ * Guardamos la fecha del último visto, no un simple "ya lo vio": con un
+ * booleano no había forma de repetirlo cada día o cada semana.
+ * (Las marcas antiguas eran un "1", que se trata como "visto hace mucho".)
+ */
+function tocaEnsenar(p: Popup): boolean {
+  // `?? null` y no `=== null` a secas: si el lote 17 todavía no está aplicado la
+  // columna llega como undefined, y sin esto el popup saldría en CADA visita en
+  // vez de una sola vez.
+  const horas = p.repetir_horas ?? null;
+  if (horas === null) return !localStorage.getItem(CLAVE(p.id));
+  if (horas === 0) return true;
+
+  const marca = localStorage.getItem(CLAVE(p.id));
+  if (!marca) return true;
+  const visto = Number(marca);
+  if (!Number.isFinite(visto) || visto <= 1) return true; // marca vieja o corrupta
+  return Date.now() - visto >= horas * 3600_000;
+}
+
+function dentroDeFechas(p: Popup): boolean {
+  const ahora = Date.now();
+  if (p.desde && ahora < new Date(p.desde).getTime()) return false;
+  if (p.hasta && ahora > new Date(p.hasta).getTime()) return false;
+  return true;
+}
 
 export default function PopupCliente() {
+  const { user, loading } = useAuth();
   const [popup, setPopup] = useState<Popup | null>(null);
 
   useEffect(() => {
+    if (loading) return;
+    let cancel = false;
+
     (async () => {
       try {
         const { data } = await supabase
           .from("popups").select("*").eq("activo", true)
-          .order("created_at", { ascending: false }).limit(1).maybeSingle();
-        if (!data) return;
-        if (localStorage.getItem("popup-visto-" + data.id)) return;
-        setPopup(data as Popup);
+          .order("created_at", { ascending: false });
+        if (cancel || !data?.length) return;
+
+        // Primero lo barato: fechas y frecuencia se resuelven sin consultar nada.
+        const candidatos = (data as Popup[]).filter(
+          (p) => dentroDeFechas(p) && tocaEnsenar(p)
+        );
+        if (!candidatos.length) return;
+
+        // Saber si es local o DJ cuesta dos consultas, así que solo se
+        // averigua cuando algún candidato lo necesita de verdad.
+        const necesitaRol = candidatos.some((p) => p.publico === "locales" || p.publico === "djs");
+        let esLocal = false, esDj = false;
+        if (necesitaRol && user) {
+          const [l, d] = await Promise.all([
+            supabase.from("locales").select("id").eq("owner_id", user.id).limit(1).maybeSingle(),
+            supabase.from("djs").select("id").eq("profile_id", user.id).limit(1).maybeSingle(),
+          ]);
+          esLocal = !!l.data; esDj = !!d.data;
+        }
+        if (cancel) return;
+
+        const elegido = candidatos.find((p) => {
+          switch (p.publico) {
+            case "anonimos": return !user;
+            case "registrados": return !!user;
+            case "locales": return esLocal;
+            case "djs": return esDj;
+            default: return true;
+          }
+        });
+        if (elegido) setPopup(elegido);
       } catch {
         /* tabla aún no creada u otro error: no mostramos nada */
       }
     })();
-  }, []);
+
+    return () => { cancel = true; };
+  }, [user, loading]);
 
   if (!popup) return null;
 
   const cerrar = () => {
-    localStorage.setItem("popup-visto-" + popup.id, "1");
+    // La hora, no un "1": es lo que permite volver a enseñarlo pasado el plazo.
+    localStorage.setItem(CLAVE(popup.id), String(Date.now()));
     setPopup(null);
   };
 

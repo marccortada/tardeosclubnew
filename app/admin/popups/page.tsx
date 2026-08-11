@@ -5,14 +5,40 @@ import PanelHeader from "@/components/PanelHeader";
 import { supabase } from "@/lib/supabase";
 import { Bell, Send, Trash2, Sparkles, Loader2 } from "lucide-react";
 
-type Popup = { id: string; titulo: string; mensaje: string; tipo: string; activo: boolean };
+type Popup = {
+  id: string; titulo: string; mensaje: string; tipo: string; activo: boolean;
+  repetir_horas: number | null; publico: string;
+};
 
 const TIPOS = ["Oferta", "Noticia", "Promo"];
+
+// null = una sola vez y no vuelve. 0 = cada visita.
+const FRECUENCIAS: { valor: number | null; label: string }[] = [
+  { valor: null, label: "Una vez" },
+  { valor: 24, label: "Cada día" },
+  { valor: 168, label: "Cada semana" },
+  { valor: 0, label: "Cada visita" },
+];
+
+const PUBLICOS: { valor: string; label: string; pista: string }[] = [
+  { valor: "todos", label: "Todos", pista: "Cualquiera que entre" },
+  { valor: "anonimos", label: "Sin cuenta", pista: "Para empujar al registro" },
+  { valor: "registrados", label: "Registrados", pista: "Solo quien ya tiene cuenta" },
+  { valor: "locales", label: "Locales", pista: "Dueños de un local o promotores" },
+  { valor: "djs", label: "DJs", pista: "Solo perfiles de DJ" },
+];
+
+const etiquetaFrec = (h: number | null) =>
+  FRECUENCIAS.find((f) => f.valor === h)?.label ?? `Cada ${h} h`;
+const etiquetaPublico = (p: string) =>
+  PUBLICOS.find((x) => x.valor === p)?.label ?? p;
 
 export default function AdminPopups() {
   const [titulo, setTitulo] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [tipo, setTipo] = useState("Oferta");
+  const [repetir, setRepetir] = useState<number | null>(null);
+  const [publico, setPublico] = useState("todos");
   const [popups, setPopups] = useState<Popup[]>([]);
   const [cargando, setCargando] = useState(true);
   const [enviando, setEnviando] = useState(false);
@@ -29,7 +55,10 @@ export default function AdminPopups() {
     setEnviando(true);
     const { data } = await supabase
       .from("popups")
-      .insert({ titulo: titulo.trim(), mensaje: mensaje.trim(), tipo, activo: true })
+      .insert({
+        titulo: titulo.trim(), mensaje: mensaje.trim(), tipo, activo: true,
+        repetir_horas: repetir, publico,
+      })
       .select()
       .single();
     setEnviando(false);
@@ -76,6 +105,32 @@ export default function AdminPopups() {
               </button>
             ))}
           </div>
+          <label className="mb-1 mt-4 block text-sm font-black text-tinta/70">Cada cuánto le sale</label>
+          <div className="flex flex-wrap gap-2">
+            {FRECUENCIAS.map((f) => (
+              <button key={f.label} onClick={() => setRepetir(f.valor)}
+                className={`min-h-[44px] flex-1 rounded-xl px-3 text-sm font-extrabold transition ${repetir === f.valor ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100"}`}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-xs font-semibold text-tinta/50">
+            Se cuenta desde que ese visitante lo cierra, en su propio navegador.
+          </p>
+
+          <label className="mb-1 mt-4 block text-sm font-black text-tinta/70">A quién</label>
+          <div className="flex flex-wrap gap-2">
+            {PUBLICOS.map((p) => (
+              <button key={p.valor} onClick={() => setPublico(p.valor)} title={p.pista}
+                className={`min-h-[44px] rounded-xl px-4 text-sm font-extrabold transition ${publico === p.valor ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100"}`}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-xs font-semibold text-tinta/50">
+            {PUBLICOS.find((p) => p.valor === publico)?.pista}
+          </p>
+
           <button onClick={lanzar} disabled={enviando || !titulo.trim()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white transition active:scale-[0.98] disabled:opacity-40">
             {enviando ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />} Lanzar popup
           </button>
@@ -93,6 +148,14 @@ export default function AdminPopups() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-black leading-tight">{u.titulo}</p>
                   <p className="truncate text-sm font-semibold text-tinta/60">{u.mensaje}</p>
+                  <p className="mt-1 flex flex-wrap gap-1.5">
+                    <span className="rounded-full bg-magenta-50 px-2 py-0.5 text-[11px] font-black text-magenta">
+                      {etiquetaFrec(u.repetir_horas)}
+                    </span>
+                    <span className="rounded-full bg-oro/15 px-2 py-0.5 text-[11px] font-black text-oro-600">
+                      {etiquetaPublico(u.publico)}
+                    </span>
+                  </p>
                 </div>
                 <button onClick={() => toggle(u)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${u.activo ? "bg-magenta-50 text-magenta-700" : "bg-black/5 text-tinta/50"}`}>
                   {u.activo ? "Activo" : "Pausado"}
