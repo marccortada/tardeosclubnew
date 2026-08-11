@@ -1,4 +1,5 @@
 "use client";
+import ActivarNotificaciones from "@/components/ActivarNotificaciones";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -86,6 +87,10 @@ export default function Perfil() {
               className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-white/15 px-6 py-3 font-extrabold text-white ring-1 ring-white/30 active:scale-[0.98]">
               <LogOut size={20} /> Cerrar sesión
             </button>
+          </div>
+
+          <div className="mt-4">
+            <ActivarNotificaciones />
           </div>
 
           <div className="mt-4 flex flex-col gap-3">

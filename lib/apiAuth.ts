@@ -18,7 +18,7 @@ export async function autorizarLocalOAdmin(accessToken?: string): Promise<NextRe
     return NextResponse.json({ error: "Falta SUPABASE_SERVICE_ROLE_KEY en el servidor." }, { status: 500 });
   }
   if (!accessToken) {
-    return NextResponse.json({ error: "Inicia sesión para usar la IA." }, { status: 401 });
+    return NextResponse.json({ error: "Inicia sesión para hacer esto." }, { status: 401 });
   }
 
   const admin = createClient(URL, SERVICE_ROLE);
@@ -32,10 +32,24 @@ export async function autorizarLocalOAdmin(accessToken?: string): Promise<NextRe
 
   const { data: local } = await admin.from("locales").select("id").eq("owner_id", uid).limit(1).maybeSingle();
   if (!local) {
-    return NextResponse.json({ error: "Necesitas tener un local dado de alta para usar la IA." }, { status: 403 });
+    return NextResponse.json({ error: "Necesitas tener un local dado de alta." }, { status: 403 });
   }
 
   return { uid, esAdmin: false };
+}
+
+/**
+ * Como autorizarLocalOAdmin, pero SOLO admin. Para rutas que actúan sobre toda
+ * la base de usuarios, como mandar una notificación push a todo el mundo: eso
+ * no es algo que deba poder hacer un local.
+ */
+export async function autorizarAdmin(accessToken?: string): Promise<NextResponse | Autorizado> {
+  const auth = await autorizarLocalOAdmin(accessToken);
+  if (auth instanceof NextResponse) return auth;
+  if (!auth.esAdmin) {
+    return NextResponse.json({ error: "Solo para administradores." }, { status: 403 });
+  }
+  return auth;
 }
 
 // ---------- Límite de uso ----------

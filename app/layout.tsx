@@ -7,6 +7,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import BottomNav from "@/components/BottomNav";
 import SiteNav from "@/components/SiteNav";
+import RegistrarSW from "@/components/RegistrarSW";
 
 const nunito = Nunito({
   subsets: ["latin"],
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className={`${nunito.variable} ${playfair.variable} ${caveat.variable}`}>
       <body className="font-sans min-h-screen bg-[#f5f3f4]">
+        <RegistrarSW />
         <SiteNav />
         <div className="min-h-screen pb-24 md:pb-12">{children}</div>
         <BottomNav />

@@ -58,6 +58,9 @@ Los ficheros de `supabase/` se aplican **en orden** desde el SQL Editor de Supab
 | `13_email_local.sql` | `locales.email`: contacto del local, para mandarle la invitación |
 | `14_email_no_publico.sql` | Quita `locales.email` al rol anónimo. **Aplícalo junto al 13.** |
 | `15_limite_ia.sql` | El límite por hora de las rutas de IA, contado en la base |
+| `16_logo_y_promotor.sql` | `logo_url` (chincheta del mapa) y `tipo` local/promotor |
+| `17_popups_frecuencia.sql` | Popups: cada cuánto salen, a quién y ventana de fechas |
+| `18_push.sql` | Suscripciones a notificaciones push (buzón de solo escritura) |
 
 Después, hazte admin con tu email:
 
