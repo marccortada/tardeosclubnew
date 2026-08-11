@@ -107,6 +107,26 @@ Programa una llamada diaria a:
 curl -H "x-cron-secret: $CRON_SECRET" https://TU_DOMINIO/api/recordatorios
 ```
 
+## Sincronización con la app anterior
+
+Mientras las dos apps convivan, la vieja es la que manda: los locales publican
+allí. [`scripts/migrar.mjs`](scripts/migrar.mjs) trae locales, DJs y tardeos, y
+es repetible — la columna `origen_id` (lote 11) hace que la segunda pasada
+actualice en vez de duplicar.
+
+```bash
+node scripts/migrar.mjs              # ensayo: enseña los números, no escribe
+node scripts/migrar.mjs --escribir   # escribe de verdad
+```
+
+Las credenciales van en `.env.migracion` (ignorado por git):
+`VIEJO_URL`, `VIEJO_SERVICE_KEY`, `NUEVO_URL`, `NUEVO_SERVICE_KEY`.
+
+A diario lo lanza solo [`.github/workflows/sincronizar.yml`](.github/workflows/sincronizar.yml),
+con esas cuatro como *secrets* del repositorio. **Los tardeos migrados se editan
+en la app vieja**: si los tocas aquí, la sincronización del día siguiente
+revierte el cambio. Los creados en esta app no se ven afectados.
+
 ## Comandos
 
 ```bash

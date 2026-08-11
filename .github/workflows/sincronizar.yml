@@ -1,0 +1,64 @@
+name: Sincronizar tardeos
+
+# Mientras la app vieja siga viva es ella la que manda: los locales publican
+# allí y aquí llega una foto fija. Sin esto, la app nueva se queda con lo que
+# hubiera el día de la migración y se vacía sola según van pasando las fechas.
+#
+# Se ejecuta aquí y no en un cron del portátil porque el script habla directo
+# con los dos Supabase: no necesita la app levantada ni que nadie tenga el
+# ordenador encendido.
+#
+# OJO, DOS COSAS QUE HAY QUE TENER PRESENTES:
+#
+# 1. La app vieja MANDA. El script reescribe cada tardeo migrado con lo que
+#    diga el origen. Si corriges un título o cambias un flyer desde el panel
+#    nuevo, la sincronización de mañana te lo revierte. Mientras convivan las
+#    dos apps, los tardeos migrados se editan en la vieja.
+#    (Los creados aquí no se tocan: no tienen origen_id.)
+#
+# 2. No borra. Un evento eliminado en la app vieja simplemente deja de llegar,
+#    pero el tardeo se queda aquí como estuviera. Los cancelados sí se
+#    propagan, porque el origen los marca y el script lee ese estado.
+
+on:
+  schedule:
+    # 06:15 UTC = 08:15 en España (07:15 en invierno). Antes de que empiece el
+    # día, para que lo publicado ayer por la tarde ya esté cuando alguien mire.
+    - cron: "15 6 * * *"
+  workflow_dispatch:      # y a mano, desde la pestaña Actions
+
+# Dos sincronizaciones a la vez se pisarían geocodificando y escribiendo.
+concurrency:
+  group: sincronizar
+  cancel-in-progress: false
+
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Ensayo (no escribe)
+        env:
+          VIEJO_URL: ${{ secrets.VIEJO_URL }}
+          VIEJO_SERVICE_KEY: ${{ secrets.VIEJO_SERVICE_KEY }}
+          NUEVO_URL: ${{ secrets.NUEVO_URL }}
+          NUEVO_SERVICE_KEY: ${{ secrets.NUEVO_SERVICE_KEY }}
+        run: node scripts/migrar.mjs
+
+      - name: Sincronizar de verdad
+        env:
+          VIEJO_URL: ${{ secrets.VIEJO_URL }}
+          VIEJO_SERVICE_KEY: ${{ secrets.VIEJO_SERVICE_KEY }}
+          NUEVO_URL: ${{ secrets.NUEVO_URL }}
+          NUEVO_SERVICE_KEY: ${{ secrets.NUEVO_SERVICE_KEY }}
+        run: node scripts/migrar.mjs --escribir
