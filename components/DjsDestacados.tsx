@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, Star, Disc3, ArrowRight } from "lucide-react";
 
@@ -25,7 +26,7 @@ export default function DjsDestacados({ djs }: { djs: any[] }) {
               className="flex w-28 shrink-0 flex-col items-center gap-1.5 rounded-3xl bg-white p-3 text-center shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg"
             >
               {dj.avatar_url ? (
-                <img src={dj.avatar_url} alt="" className="h-16 w-16 rounded-full object-cover ring-2 ring-magenta-100" />
+                <Image src={dj.avatar_url} alt="" width={64} height={64} className="h-16 w-16 rounded-full object-cover ring-2 ring-magenta-100" />
               ) : (
                 <span className="grid h-16 w-16 place-items-center rounded-full bg-marca font-display text-2xl font-black text-white">{inicial}</span>
               )}

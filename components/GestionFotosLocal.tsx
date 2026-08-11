@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 import { useRef, useState } from "react";
 import { subirFotoLocal, updateMiLocal } from "@/lib/tardeos";
@@ -31,7 +32,7 @@ export default function GestionFotosLocal({ localId, iniciales }: { localId: str
       <div className="grid grid-cols-3 gap-3">
         {fotos.map((f, i) => (
           <div key={f} className="relative aspect-square overflow-hidden rounded-2xl ring-1 ring-black/5">
-            <img src={f} alt="" className="h-full w-full object-cover" />
+            <Image src={f} alt="" fill sizes="(max-width: 640px) 33vw, 200px" className="object-cover" />
             {i === 0 && (
               <span className="absolute left-1.5 top-1.5 rounded-full bg-magenta px-2 py-0.5 text-[10px] font-black text-white">Portada</span>
             )}

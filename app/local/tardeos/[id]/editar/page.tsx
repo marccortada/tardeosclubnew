@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -112,7 +113,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
       <div className="mx-auto max-w-lg px-4 pt-5 md:px-8">
         {/* Miniatura del flyer */}
         <div className="mb-4 flex items-center gap-3 rounded-2xl bg-white p-3 shadow-tarjeta ring-1 ring-black/5">
-          <img src={flyerSrc(tardeo)} alt="" className="h-16 w-[52px] shrink-0 rounded-xl object-cover" />
+          <Image src={flyerSrc(tardeo)} alt="" width={52} height={64} className="h-16 w-[52px] shrink-0 rounded-xl object-cover" />
           <div>
             <p className="font-black leading-tight">{tardeo.titulo}</p>
             <span className={`text-xs font-black ${publicado ? "text-oro-600" : "text-tinta/50"}`}>

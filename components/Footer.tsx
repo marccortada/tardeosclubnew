@@ -32,7 +32,7 @@ export default function Footer() {
             className="inline-flex items-center transition hover:opacity-70"
             aria-label="Gnerai"
           >
-            <img src="/branding/gnerailogo.png" alt="Gnerai" className="h-8 w-8" />
+            <Image src="/branding/gnerailogo.png" alt="Gnerai" width={32} height={32} className="h-8 w-8" />
           </a>
         </div>
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import PanelHeader from "@/components/PanelHeader";
-import { Store, Disc3, CreditCard } from "lucide-react";
+import { Store, Disc3 } from "lucide-react";
 
 type Sub = { id: string; nombre: string; rol: "local" | "dj"; plan: string; estado: "activa" | "impago" };
 

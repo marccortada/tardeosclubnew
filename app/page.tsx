@@ -1,3 +1,4 @@
+import Image from "next/image";
 import TopBar from "@/components/TopBar";
 import CarruselTardeos from "@/components/CarruselTardeos";
 import ZonasRapidas from "@/components/ZonasRapidas";
@@ -44,7 +45,9 @@ export default async function Inicio() {
       {/* HERO inmersivo */}
       <section className="hero-fiesta rounded-b-[2.5rem] px-6 pb-8 pt-10 text-white md:rounded-b-[3rem] md:px-10 md:pb-14 md:pt-16">
         {/* Foto de ambiente de fondo */}
-        <img src="/img/hero.jpg" alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
+        {/* Es lo primero que se ve al entrar: priority para que no aparezca
+            un hueco oscuro mientras baja. */}
+        <Image src="/img/hero.jpg" alt="" aria-hidden="true" fill priority sizes="100vw" className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-br from-[#2a0616]/90 via-[#58072f]/75 to-[#8a0d49]/60" />
         <span className="bokeh" style={{ width: 90, height: 90, top: 20, left: 24, background: "#ff3c82" }} />
         <span className="bokeh" style={{ width: 60, height: 60, top: 70, right: 40, background: "#f5b301" }} />

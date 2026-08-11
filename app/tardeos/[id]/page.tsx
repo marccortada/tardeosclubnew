@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { formatFecha, flyerSrc } from "@/lib/mockData";
 import { getTardeoById } from "@/lib/tardeos";
 import AccionTardeo from "@/components/AccionTardeo";
@@ -78,18 +79,23 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
         <div className="pointer-events-none absolute left-4 right-4 top-4 z-10 h-20 rounded-t-3xl bg-gradient-to-b from-black/35 to-transparent md:left-1/2 md:w-full md:max-w-sm md:-translate-x-1/2" />
         {/* Flyer vertical completo */}
         <div className="relative mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden rounded-3xl bg-tinta">
-          <img
+          {/* El fondo va difuminado: con una miniatura basta. */}
+          <Image
             src={flyerSrc(tardeo)}
             alt=""
             aria-hidden="true"
-            decoding="async"
-            className="absolute inset-0 h-full w-full scale-125 object-cover opacity-70 blur-2xl"
+            fill
+            sizes="32px"
+            className="scale-125 object-cover opacity-70 blur-2xl"
           />
-          <img
+          <Image
             src={flyerSrc(tardeo)}
             alt={`Flyer de ${tardeo.titulo}`}
-            decoding="async"
-            className="relative z-10 mx-auto h-full object-contain"
+            fill
+            // Es la imagen principal de la página: que empiece a bajar ya.
+            priority
+            sizes="(max-width: 640px) 100vw, 384px"
+            className="relative z-10 object-contain"
           />
         </div>
       </div>
@@ -128,7 +134,7 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
               <Link key={dj.id} href={`/djs/${dj.id}`} className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-tarjeta ring-1 ring-magenta-100 transition hover:-translate-y-0.5 hover:shadow-lg">
                 <div className="flex items-center gap-3">
                   {dj.avatar ? (
-                    <img src={dj.avatar} alt="" className="h-11 w-11 rounded-full object-cover" />
+                    <Image src={dj.avatar} alt="" width={44} height={44} className="h-11 w-11 rounded-full object-cover" />
                   ) : (
                     <div className="grid h-11 w-11 place-items-center rounded-full bg-marca font-black text-white">
                       {dj.nombre.replace("DJ ", "").charAt(0)}

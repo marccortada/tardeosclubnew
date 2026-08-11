@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { getLocalById, getTardeosPublicadosDeLocal } from "@/lib/tardeos";
 import TardeoCard from "@/components/TardeoCard";
 import Resenas from "@/components/Resenas";
@@ -36,7 +37,7 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
       {/* Portada */}
       <div className="relative h-44 overflow-hidden bg-marca md:h-60">
         {fotos[0] ? (
-          <img src={fotos[0]} alt="" className="h-full w-full object-cover" />
+          <Image src={fotos[0]} alt="" fill sizes="(max-width: 768px) 100vw, 768px" className="object-cover" />
         ) : (
           <div className="grid h-full w-full place-items-center bg-marca text-white/30"><Store size={72} /></div>
         )}

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { getDjById, getTardeosPublicadosDeDj } from "@/lib/tardeos";
 import TardeoCard from "@/components/TardeoCard";
 import Resenas from "@/components/Resenas";
@@ -65,7 +66,7 @@ export default async function PaginaDj({ params }: { params: Promise<{ id: strin
         />
         <div className="relative flex items-center gap-4">
           {dj.avatar_url ? (
-            <img src={dj.avatar_url} alt="" className="h-20 w-20 rounded-3xl object-cover ring-2 ring-white/20" />
+            <Image src={dj.avatar_url} alt="" width={80} height={80} className="h-20 w-20 rounded-3xl object-cover ring-2 ring-white/20" />
           ) : (
             <span className="grid h-20 w-20 place-items-center rounded-3xl bg-white/15 font-display text-3xl font-black text-oro">{inicial}</span>
           )}

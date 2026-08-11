@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Tardeo, formatFecha, flyerSrc } from "@/lib/mockData";
 import { MapPin, Clock, Ticket, ListChecks, Gift, ChevronRight } from "lucide-react";
 import CompartirBtn from "@/components/CompartirBtn";
@@ -22,20 +23,23 @@ export default function TardeoCard({ tardeo }: { tardeo: Tardeo }) {
     >
       {/* Flyer VERTICAL, siempre entero (contain sobre relleno difuminado) */}
       <div className="relative aspect-[4/5] w-full overflow-hidden bg-tinta">
-        <img
+        {/* El relleno del fondo se ve difuminado, así que basta una miniatura:
+            con sizes="32px" Next sirve una versión diminuta en lugar del flyer
+            entero. Antes se bajaban 800 KB para enseñarlos borrosos. */}
+        <Image
           src={src}
           alt=""
           aria-hidden="true"
-          loading="lazy"
-          decoding="async"
-          className="absolute inset-0 h-full w-full scale-125 object-cover opacity-70 blur-2xl"
+          fill
+          sizes="32px"
+          className="scale-125 object-cover opacity-70 blur-2xl"
         />
-        <img
+        <Image
           src={src}
           alt={`Flyer de ${tardeo.titulo}`}
-          loading="lazy"
-          decoding="async"
-          className="relative z-10 mx-auto h-full object-contain"
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          className="relative z-10 object-contain"
         />
         {/* badge de entrada: blanco + texto oscuro = contraste alto sobre cualquier flyer */}
         <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-sm font-black text-tinta shadow-md backdrop-blur">

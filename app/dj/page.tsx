@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -129,7 +130,7 @@ export default function PanelDj() {
           <div className="relative flex items-center gap-4">
             <div className="relative">
               {avatarActual ? (
-                <img src={avatarActual} alt="" className="h-16 w-16 rounded-2xl object-cover ring-2 ring-white/20" />
+                <Image src={avatarActual} alt="" width={64} height={64} className="h-16 w-16 rounded-2xl object-cover ring-2 ring-white/20" />
               ) : (
                 <span className="grid h-16 w-16 place-items-center rounded-2xl bg-white/15 font-display text-2xl font-black text-oro">{inicial}</span>
               )}

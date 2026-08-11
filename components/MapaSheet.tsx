@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -52,7 +53,7 @@ export default function MapaSheet({ tardeo, onClose }: { tardeo: Tardeo; onClose
 
         {/* Flyer */}
         <div className="relative aspect-[4/5] max-h-[42vh] w-full overflow-hidden bg-tinta">
-          <img src={flyerSrc(tardeo)} alt={tardeo.titulo} className="h-full w-full object-contain" />
+          <Image src={flyerSrc(tardeo)} alt={tardeo.titulo} fill sizes="(max-width: 640px) 100vw, 420px" className="object-contain" />
         </div>
 
         {/* Detalles */}

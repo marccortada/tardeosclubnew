@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Store, Disc3 } from "lucide-react";
 
@@ -5,7 +6,7 @@ export default function CtaLocalDj() {
   return (
     <section className="mx-auto max-w-6xl px-4 pt-10 md:px-8 md:pt-14">
       <div className="relative overflow-hidden rounded-3xl bg-marca p-6 text-white shadow-tarjeta md:p-10">
-        <img src="/img/dj.jpg" alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
+        <Image src="/img/dj.jpg" alt="" aria-hidden="true" fill sizes="(max-width: 768px) 100vw, 900px" className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#2a0616]/90 via-[#8a0d49]/75 to-[#8a0d49]/40" />
         <span className="bokeh" style={{ width: 120, height: 120, top: -20, right: 40, background: "#ffd36b", opacity: 0.4 }} />
         <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">

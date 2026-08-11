@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
 import {
   CalendarDays, Store, Disc3, Euro, BadgeCheck, X, Check, Bot,
-  Megaphone, Bell, Users, ShieldAlert, ChevronRight, Loader2,
+  Megaphone, Bell, ShieldAlert, ChevronRight, Loader2,
   Plus, CreditCard, ShieldCheck, Sparkles, Mail,
 } from "lucide-react";
 

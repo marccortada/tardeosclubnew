@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, Star } from "lucide-react";
 
@@ -11,7 +12,7 @@ export default function DjCard({ dj }: { dj: any }) {
       className="flex flex-col items-center gap-2 rounded-3xl bg-white p-4 text-center shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg"
     >
       {dj.avatar_url ? (
-        <img src={dj.avatar_url} alt="" className="h-20 w-20 rounded-full object-cover ring-2 ring-magenta-100" />
+        <Image src={dj.avatar_url} alt="" width={80} height={80} className="h-20 w-20 rounded-full object-cover ring-2 ring-magenta-100" />
       ) : (
         <span className="grid h-20 w-20 place-items-center rounded-full bg-marca font-display text-3xl font-black text-white">{inicial}</span>
       )}

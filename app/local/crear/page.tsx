@@ -430,6 +430,7 @@ export default function CrearTardeo() {
           <section className="flex flex-col gap-4">
             {flyerGen && (
               <div className="overflow-hidden rounded-2xl bg-tinta ring-1 ring-magenta-100">
+                {/* eslint-disable-next-line @next/next/no-img-element -- llega en base64 desde la IA y vive solo en memoria: next/image no optimiza data URLs */}
                 <img src={`data:image/jpeg;base64,${flyerGen}`} alt="Flyer generado por IA" className="mx-auto max-h-[420px] w-auto" />
               </div>
             )}

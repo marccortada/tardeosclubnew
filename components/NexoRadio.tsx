@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Globe, ArrowUpRight } from "lucide-react";
 
 export default function NexoRadio() {
@@ -13,9 +14,11 @@ export default function NexoRadio() {
         <span className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-[#ff2d9e] opacity-30 blur-3xl" />
         <span className="pointer-events-none absolute -bottom-12 right-10 h-40 w-40 rounded-full bg-[#22d3ee] opacity-25 blur-3xl" />
 
-        <img
+        <Image
           src="/branding/nexo-radio.png"
           alt="Nexo Radio"
+          width={128}
+          height={128}
           className="relative h-28 w-28 shrink-0 rounded-2xl object-cover md:h-32 md:w-32"
         />
 

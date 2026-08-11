@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -128,7 +129,8 @@ export default function PanelLocal() {
                 return (
                   <div key={t.id} className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-tarjeta ring-1 ring-black/5">
                     <Link href={`/tardeos/${t.id}`} className="flex min-w-0 flex-1 items-center gap-3">
-                      <img src={flyerSrc(t)} alt="" loading="lazy" className="h-[70px] w-14 shrink-0 rounded-xl object-cover" />
+                      {/* Miniatura de 56 px: antes se bajaba el flyer entero. */}
+                      <Image src={flyerSrc(t)} alt="" width={56} height={70} className="h-[70px] w-14 shrink-0 rounded-xl object-cover" />
                       <div className="min-w-0">
                         <p className="font-script text-base capitalize leading-none text-magenta-600">{formatFecha(t.fecha)}</p>
                         <h3 className="truncate font-display text-lg font-black leading-tight">{t.titulo}</h3>
