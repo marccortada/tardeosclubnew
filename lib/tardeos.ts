@@ -1,7 +1,34 @@
 import { supabase } from "./supabase";
 import { Tardeo } from "./types";
 
-const SELECT = "*, locales(*), tardeo_djs(djs(*))";
+// Acotado a lo que usa mapRow. Con `locales(*)` venían descripción, redes,
+// fotos, horarios y el email de cada local: 42 KB por consulta en vez de 30.
+const SELECT =
+  "*, locales(id,nombre,zona,direccion,verificado)," +
+  "tardeo_djs(djs(id,nombre_artistico,estilos,verificado,reputacion_score,avatar_url))";
+
+/**
+ * Caché en memoria de la lista pública de tardeos.
+ *
+ * Home, /tardeos y /mapa piden exactamente lo mismo, y antes cada navegación
+ * disparaba su propia consulta: se veía el spinner otra vez para enseñar datos
+ * que ya teníamos. Dura poco a propósito, que esto cambia cuando un local
+ * publica.
+ */
+const CACHE_MS = 60_000;
+let cache: { cuando: number; datos: Tardeo[] } | null = null;
+let enVuelo: Promise<Tardeo[]> | null = null;
+// Sube en cada invalidación. Una consulta que empezó antes no puede guardar su
+// resultado si mientras tanto alguien publicó: traería datos ya viejos y los
+// dejaría fijados otro minuto.
+let generacion = 0;
+
+/** Tira la caché: úsalo tras publicar o editar un tardeo. */
+export function invalidarCacheTardeos() {
+  cache = null;
+  enVuelo = null;
+  generacion++;
+}
 
 function mapRow(r: any): Tardeo {
   const loc = r.locales ?? {};
@@ -48,28 +75,51 @@ export function hoyISO(): string {
 /**
  * Tardeos publicados y NO expirados (fecha de hoy en adelante).
  * Un tardeo cuya fecha ya pasó no se muestra (ni en mapa, ni home, ni listado).
- * Si la BBDD está vacía o falla, usa el mock (transición).
+ * Cachea un minuto y comparte la petición en vuelo, para que dos componentes
+ * que la piden a la vez no hagan dos viajes.
  */
 export async function getTardeosPublicados(): Promise<Tardeo[]> {
+  if (cache && Date.now() - cache.cuando < CACHE_MS) return cache.datos;
+  if (enVuelo) return enVuelo;
+
   const hoy = hoyISO();
-  try {
-    const { data, error } = await supabase
-      .from("tardeos")
-      .select(SELECT)
-      .eq("estado", "publicado")
-      .gte("fecha", hoy)
-      .order("fecha", { ascending: true });
-    if (error) throw error;
-    return (data ?? []).map(mapRow);
-  } catch (e) {
-    console.error("[tardeos] Error cargando tardeos:", e);
-    return [];
-  }
+  const gen = generacion;
+  enVuelo = (async () => {
+    try {
+      const { data, error } = await supabase
+        .from("tardeos")
+        .select(SELECT)
+        .eq("estado", "publicado")
+        .gte("fecha", hoy)
+        .order("fecha", { ascending: true });
+      if (error) throw error;
+      const datos = (data ?? []).map(mapRow);
+      // Si alguien invalidó mientras esto viajaba, no lo guardamos.
+      if (gen === generacion) cache = { cuando: Date.now(), datos };
+      return datos;
+    } catch (e) {
+      console.error("[tardeos] Error cargando tardeos:", e);
+      return [];
+    } finally {
+      enVuelo = null;
+    }
+  })();
+  return enVuelo;
 }
 
-/** Un local por id (para su página pública). */
+/**
+ * Un local por id (para su página pública).
+ *
+ * Columnas explícitas y sin `email`: la política de lectura hace pública la
+ * fila entera de un local activo, así que con `select("*")` cualquiera podía
+ * bajarse los 59 correos de golpe. La ficha nunca los ha enseñado.
+ */
 export async function getLocalById(id: string): Promise<any | null> {
-  const { data } = await supabase.from("locales").select("*").eq("id", id).maybeSingle();
+  const { data } = await supabase
+    .from("locales")
+    .select("id,nombre,descripcion,direccion,lat,lng,zona,telefono,redes,fotos,horarios,verificado,estado")
+    .eq("id", id)
+    .maybeSingle();
   return data ?? null;
 }
 
@@ -195,18 +245,24 @@ export async function getTardeoRow(id: string): Promise<any | null> {
   return data ?? null;
 }
 
+// Los tres tiran la caché: si no, el local edita o despublica y sigue viendo
+// lo de antes durante un minuto, que parece que la app no le ha hecho caso.
+
 /** Actualiza un tardeo (solo el dueño o admin, por RLS). Devuelve las filas afectadas en `data`. */
 export async function updateTardeo(id: string, fields: Record<string, unknown>) {
+  invalidarCacheTardeos();
   return supabase.from("tardeos").update(fields).eq("id", id).select("id");
 }
 
 /** Cambia el estado (publicado / borrador / finalizado / cancelado). */
 export async function setEstadoTardeo(id: string, estado: string) {
+  invalidarCacheTardeos();
   return supabase.from("tardeos").update({ estado }).eq("id", id).select("id");
 }
 
 /** Borra un tardeo (solo el dueño o admin, por RLS). `count` indica filas borradas. */
 export async function borrarTardeo(id: string) {
+  invalidarCacheTardeos();
   return supabase.from("tardeos").delete({ count: "exact" }).eq("id", id);
 }
 

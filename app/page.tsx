@@ -7,11 +7,17 @@ import CtaLocalDj from "@/components/CtaLocalDj";
 import Footer from "@/components/Footer";
 import PopupCliente from "@/components/PopupCliente";
 import { getTardeosPublicados, getDjsPublicos } from "@/lib/tardeos";
+import { zonasDe } from "@/lib/zonas";
 import { CalendarDays, SlidersHorizontal, MapPin, ArrowRight, Sparkles, Sun, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import MapaClient from "@/components/MapaClient";
 
-export const dynamic = "force-dynamic";
+// Con force-dynamic el servidor esperaba a Supabase en CADA visita. Ahora el
+// HTML se reaprovecha un minuto: el mismo margen que la caché de cliente de
+// lib/tardeos, así que un tardeo recién publicado tarda como mucho eso en
+// asomar. Al publicar se invalida la caché de cliente, que es lo que ve el
+// local al terminar.
+export const revalidate = 60;
 
 export default async function Inicio() {
   const [tardeos, djs] = await Promise.all([getTardeosPublicados(), getDjsPublicos()]);
@@ -27,11 +33,7 @@ export default async function Inicio() {
   }
   const esteFinde = tardeos.filter((t) => finde.has(t.fecha));
 
-  const conteo = new Map<string, number>();
-  tardeos.forEach((t) => conteo.set(t.zona, (conteo.get(t.zona) ?? 0) + 1));
-  const zonas = Array.from(conteo.entries())
-    .map(([zona, n]) => ({ zona, n }))
-    .sort((a, b) => a.zona.localeCompare(b.zona, "es"));
+  const zonas = zonasDe(tardeos);
 
   return (
     <main>
@@ -94,7 +96,9 @@ export default async function Inicio() {
             <div className="glass overflow-hidden rounded-3xl p-2">
               <div className="relative h-44 overflow-hidden rounded-2xl md:h-80">
                 <div className="pointer-events-none absolute inset-0">
-                  <MapaClient />
+                  {/* Le pasamos los tardeos que ya trajo el servidor: sin esto
+                      el mapa los volvía a pedir por su cuenta al montarse. */}
+                  <MapaClient tardeos={tardeos} />
                 </div>
                 <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/70 to-transparent px-4 py-3">
                   <span className="inline-flex items-center gap-1.5 font-extrabold text-white">

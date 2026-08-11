@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import TardeoCard from "@/components/TardeoCard";
 import { ESTILOS } from "@/lib/mockData";
 import { getTardeosPublicados } from "@/lib/tardeos";
+import { zonaGrande, zonasDe } from "@/lib/zonas";
 import { Tardeo } from "@/lib/types";
 import { SlidersHorizontal, X, Loader2, Search } from "lucide-react";
 
@@ -60,7 +61,8 @@ function TardeosContent() {
 
   const set = (k: keyof Filtro, v: string) => setF((p) => ({ ...p, [k]: p[k] === v ? null : v }));
 
-  const zonasDisponibles = Array.from(new Set(todos.map((t) => t.zona))).sort((a, b) => a.localeCompare(b, "es"));
+  // Agrupadas (Barcelona, Maresme, Costa Brava…) en vez de una por municipio.
+  const zonasDisponibles = zonasDe(todos).map((z) => z.zona);
 
   // --- Búsqueda por texto (título, local, zona, estilo, DJ) ---
   const coincideTexto = (t: Tardeo) => {
@@ -92,7 +94,7 @@ function TardeosContent() {
 
   const lista = todos.filter(
     (t) =>
-      (!f.zona || t.zona === f.zona) &&
+      (!f.zona || zonaGrande(t.zona) === f.zona) &&
       (!f.estilo || t.estilo === f.estilo) &&
       (!f.tipo || t.tipoEntrada === f.tipo) &&
       coincideTexto(t) &&

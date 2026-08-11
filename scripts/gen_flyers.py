@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Genera flyers verticales de ejemplo (formato cartel 2:3) con el sello estampado.
-Reutilizable: python3 scripts/gen_flyers.py"""
-import numpy as np, textwrap
+Reutilizable: python3 scripts/gen_flyers.py
+
+La fecha estampada se calcula desde hoy con los mismos offsets que usa el seed
+(supabase/02_seed.sql), para que el cartel nunca contradiga la fecha de la tarjeta."""
+import datetime, numpy as np, textwrap
 from PIL import Image, ImageDraw, ImageFont
 
 def font(sz):
@@ -22,21 +25,32 @@ def grad(w,h,c1,c2):
 
 sello = Image.open('public/branding/sello.png').convert('RGBA')
 
+DIAS  = ['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM']
+MESES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC']
+HOY   = datetime.date.today()
+
+def etiqueta(offset):
+    """'LUN 10 AGO' para hoy + offset días."""
+    f = HOY + datetime.timedelta(days=offset)
+    return f'{DIAS[f.weekday()]} {f.day} {MESES[f.month-1]}'
+
+# El 4º campo es el offset en días desde hoy: mismo escalonado que el seed.
 data=[
- ('t1','Tardeo Remember Sunset','DJ Nando · DJ Kiko','SAB 11 JUL','Sala Blau · Barcelona','#E10A5A','#F5B301'),
- ('t2','Latino Beach Party','DJ Marta Sound · DJ Rumba Viva','DOM 12 JUL','Chiringuito La Marea','#7A0033','#E10A5A'),
- ('t3','Tardeo del Mar','DJ Sonia','DOM 12 JUL','Terraza Costa · Lloret','#F5B301','#EE3E80'),
- ('t4','Rumba y Salsa Tarde','DJ Rumba Viva','LUN 13 JUL','El Patio Latino · BCN','#C00040','#FBC63A'),
- ('t5','Años 80-90 Fiesta','DJ Kiko · DJ Nando','SAB 18 JUL','Beach Club Sol · Calella','#2A1721','#E10A5A'),
- ('t6','House Sunset Session','DJ Sonia · DJ Marta','DOM 19 JUL','Terraza Costa','#EE3E80','#F5B301'),
- ('t7','Comercial Hits Tarde','DJ Sonia','LUN 20 JUL','Masia Fest · Sant Boi','#E10A5A','#F5B301'),
- ('t8','Gran Tardeo Verano','DJ Nando · DJ Rumba Viva','SAB 25 JUL','Sala Blau · Barcelona','#7A0033','#E10A5A'),
+ ('t1','Tardeo Remember Sunset','DJ Nando · DJ Kiko', 0,'Sala Blau · Barcelona','#E10A5A','#F5B301'),
+ ('t2','Latino Beach Party','DJ Marta Sound · DJ Rumba Viva', 1,'Chiringuito La Marea','#7A0033','#E10A5A'),
+ ('t3','Tardeo del Mar','DJ Sonia', 1,'Terraza Costa · Lloret','#F5B301','#EE3E80'),
+ ('t4','Rumba y Salsa Tarde','DJ Rumba Viva', 2,'El Patio Latino · BCN','#C00040','#FBC63A'),
+ ('t5','Años 80-90 Fiesta','DJ Kiko · DJ Nando', 7,'Beach Club Sol · Calella','#2A1721','#E10A5A'),
+ ('t6','House Sunset Session','DJ Sonia · DJ Marta', 8,'Terraza Costa','#EE3E80','#F5B301'),
+ ('t7','Comercial Hits Tarde','DJ Sonia', 9,'Masia Fest · Sant Boi','#E10A5A','#F5B301'),
+ ('t8','Gran Tardeo Verano','DJ Nando · DJ Rumba Viva',14,'Sala Blau · Barcelona','#7A0033','#E10A5A'),
 ]
 
 W,H=1000,1500
 s=sello.copy(); s.thumbnail((230,230), Image.LANCZOS)  # proporción correcta
 
-for id,titulo,dj,fecha,local,c1,c2 in data:
+for id,titulo,dj,offset,local,c1,c2 in data:
+    fecha=etiqueta(offset)
     im=grad(W,H,c1,c2).convert('RGBA'); d=ImageDraw.Draw(im)
     for yy in range(0,H,26):
         for xx in range(0,W,26):
@@ -55,3 +69,5 @@ for id,titulo,dj,fecha,local,c1,c2 in data:
     im.convert('RGB').save(f'public/flyers/{id}.jpg',quality=88)
 
 print('Flyers regenerados:', len(data), '| sello', s.size)
+for id,_,_,off,*_ in data:
+    print(f'  {id}.jpg -> {etiqueta(off)}  ({HOY + datetime.timedelta(days=off)})')

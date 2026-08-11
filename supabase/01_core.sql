@@ -43,9 +43,16 @@ create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
 
 -- Helper: ¿el usuario actual es admin? (security definer evita recursión RLS)
+-- La service role también cuenta: es el backend, ya se salta RLS, y los
+-- triggers del Lote 9 preguntan por esta función para dejar pasar escrituras
+-- privilegiadas (ver 12_service_role.sql).
 create or replace function public.is_admin()
 returns boolean language sql stable security definer set search_path = public as $$
-  select coalesce((select is_admin from public.profiles where id = auth.uid()), false);
+  select coalesce(
+           nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role',
+           ''
+         ) = 'service_role'
+      or coalesce((select is_admin from public.profiles where id = auth.uid()), false);
 $$;
 
 -- 2) LOCALES ---------------------------------------------------
@@ -58,6 +65,7 @@ create table if not exists public.locales (
   lat double precision,
   lng double precision,
   zona text,
+  codigo_postal text,             -- lo rellena el buscador de direcciones
   telefono text,
   redes jsonb default '{}'::jsonb,
   fotos jsonb default '[]'::jsonb,
@@ -68,6 +76,10 @@ create table if not exists public.locales (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+-- Para las bases que ya existían antes de que se añadiera la columna: el
+-- 'create table if not exists' de arriba no las toca, así que hay que forzarla.
+-- Sin ella, el alta de local (/unirse y /admin/crear) falla al insertar.
+alter table public.locales add column if not exists codigo_postal text;
 create index if not exists idx_locales_zona on public.locales(zona);
 create index if not exists idx_locales_owner on public.locales(owner_id);
 drop trigger if exists trg_locales_updated on public.locales;

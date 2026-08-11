@@ -52,6 +52,12 @@ Los ficheros de `supabase/` se aplican **en orden** desde el SQL Editor de Supab
 | `07_reputacion_dj.sql` | Reputación automática a partir de las reseñas |
 | `08_inscritos_local.sql` | Listado de apuntados para el local |
 | `09_seguridad.sql` | **Protege las columnas privilegiadas. No te lo saltes.** |
+| `10_invitaciones.sql` | Enlaces con token para que un local o DJ reclame su ficha |
+| `11_origen_migracion.sql` | `origen_id`: rastro de la app vieja, hace repetible la migración |
+| `12_service_role.sql` | La service role cuenta como admin en los triggers del lote 9 |
+| `13_email_local.sql` | `locales.email`: contacto del local, para mandarle la invitación |
+| `14_email_no_publico.sql` | Quita `locales.email` al rol anónimo. **Aplícalo junto al 13.** |
+| `15_limite_ia.sql` | El límite por hora de las rutas de IA, contado en la base |
 
 Después, hazte admin con tu email:
 

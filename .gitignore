@@ -6,6 +6,7 @@
 .DS_Store
 npm-debug.log*
 .env*.local
+.env.migracion
 .vercel
 next-env.d.ts
 tsconfig.tsbuildinfo

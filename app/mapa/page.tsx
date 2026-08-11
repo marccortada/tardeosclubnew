@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { getTardeosPublicados } from "@/lib/tardeos";
+import { zonaGrande, zonasDe } from "@/lib/zonas";
 import { Tardeo } from "@/lib/types";
 import { MapPin, X } from "lucide-react";
 
@@ -57,13 +58,11 @@ export default function Mapa() {
     getTardeosPublicados().then(setTodos);
   }, []);
 
-  const zonas = useMemo(
-    () => Array.from(new Set(todos.map((t) => t.zona))).sort((a, b) => a.localeCompare(b, "es")),
-    [todos]
-  );
+  // Agrupadas (Barcelona, Maresme, Costa Brava…) en vez de una por municipio.
+  const zonas = useMemo(() => zonasDe(todos).map((z) => z.zona), [todos]);
 
   const lista = useMemo(
-    () => todos.filter((t) => (!zona || t.zona === zona) && enRango(t.fecha, cuando)),
+    () => todos.filter((t) => (!zona || zonaGrande(t.zona) === zona) && enRango(t.fecha, cuando)),
     [todos, zona, cuando]
   );
 

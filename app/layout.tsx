@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Nunito, Playfair_Display, Caveat } from "next/font/google";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
+// Solo la base (posicionado y animación de agrupar/desagrupar).
+// El aspecto del cluster es propio, en MapaClient.
+import "leaflet.markercluster/dist/MarkerCluster.css";
 import BottomNav from "@/components/BottomNav";
 import SiteNav from "@/components/SiteNav";
 

@@ -3,7 +3,8 @@ import DjCard from "@/components/DjCard";
 import type { Metadata } from "next";
 import { Disc3 } from "lucide-react";
 
-export const dynamic = "force-dynamic";
+// La lista de DJs cambia poco: no hace falta consultar Supabase en cada visita.
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "DJs · TardeosClub",

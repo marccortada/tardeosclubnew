@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   // Solo locales dados de alta (o admin): esta ruta gasta créditos de IA.
   const auth = await autorizarLocalOAdmin(body.accessToken);
   if (auth instanceof NextResponse) return auth;
-  if (!pasaLimite(`leer:${auth.uid}`, LECTURAS_POR_HORA)) return respuestaLimite("lecturas de flyer");
+  if (!(await pasaLimite(`leer:${auth.uid}`, LECTURAS_POR_HORA))) return respuestaLimite("lecturas de flyer");
 
   if (!body.imageBase64) {
     return NextResponse.json({ error: "Falta la imagen del flyer." }, { status: 400 });
@@ -91,7 +91,16 @@ export async function POST(req: Request) {
     const text = textBlock && "text" in textBlock ? textBlock.text : "{}";
     return NextResponse.json({ data: JSON.parse(text) });
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : "Error al leer el flyer.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[leer-flyer] falló la lectura:", e);
+    // Mismo criterio que crear-flyer: el detalle al log, y a la pantalla algo
+    // en español que el dueño de un bar pueda entender.
+    const err = e as { status?: number };
+    const message =
+      err?.status === 429 || err?.status === 529
+        ? "La IA está saturada ahora mismo. Prueba dentro de un minuto."
+        : err?.status === 401 || err?.status === 403
+          ? "La IA no está bien configurada. Avisa a TardeosClub."
+          : "No se ha podido leer el flyer. Prueba con otra imagen o rellénalo a mano.";
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 }

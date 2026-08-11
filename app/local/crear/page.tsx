@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import PanelHeader from "@/components/PanelHeader";
 import { useAuth } from "@/lib/useAuth";
-import { getMiLocal, vincularDjsPorNombre } from "@/lib/tardeos";
+import { getMiLocal, vincularDjsPorNombre, invalidarCacheTardeos } from "@/lib/tardeos";
 import { supabase } from "@/lib/supabase";
 import {
   Upload, Wand2, Sparkles, Loader2, Check, AlertTriangle,
-  Calendar, Clock, Music, MapPin, Disc3, Ticket, ArrowRight,
+  Calendar, Clock, Music, MapPin, Disc3, Ticket, ArrowRight, Store,
 } from "lucide-react";
 
 type Modo = "elegir" | "subir" | "crear";
@@ -62,7 +62,10 @@ export default function CrearTardeo() {
   const [estado, setEstado] = useState<Estado>("inicio");
   const [form, setForm] = useState(EXTRAIDO);
   const [prompt, setPrompt] = useState("");
-  const [miLocal, setMiLocal] = useState<any | null>(null);
+  // El admin puede publicar en cualquier local; el resto, solo en el suyo.
+  const [esAdmin, setEsAdmin] = useState(false);
+  const [locales, setLocales] = useState<any[]>([]);
+  const [localId, setLocalId] = useState("");
   const [publicando, setPublicando] = useState(false);
   const [error, setError] = useState("");
   const [revisar, setRevisar] = useState<Set<string>>(new Set());
@@ -71,11 +74,36 @@ export default function CrearTardeo() {
 
   useEffect(() => {
     if (!user) return;
-    getMiLocal(user.id).then((l) => {
-      setMiLocal(l);
-      if (l) setForm((f) => ({ ...f, ubicacion: f.ubicacion || l.direccion, zona: l.zona }));
-    });
+    (async () => {
+      const { data: perfil } = await supabase
+        .from("profiles").select("is_admin").eq("id", user.id).maybeSingle();
+      const admin = !!perfil?.is_admin;
+      setEsAdmin(admin);
+
+      const propio = await getMiLocal(user.id);
+      if (admin) {
+        // RLS deja al admin ver todos los locales, tenga o no uno propio.
+        const { data } = await supabase
+          .from("locales").select("id,nombre,zona,direccion,lat,lng").order("nombre");
+        const todos = data ?? [];
+        setLocales(todos);
+        setLocalId(propio?.id ?? todos[0]?.id ?? "");
+      } else {
+        setLocales(propio ? [propio] : []);
+        setLocalId(propio?.id ?? "");
+      }
+    })();
   }, [user]);
+
+  const local = locales.find((l) => l.id === localId) ?? null;
+
+  // La dirección y la zona del tardeo salen del local elegido. Si el admin
+  // cambia de local a media faena, hay que rehacerlas o publicaría en el sitio
+  // equivocado con las coordenadas del anterior.
+  useEffect(() => {
+    if (!local) return;
+    setForm((f) => ({ ...f, ubicacion: local.direccion ?? "", zona: local.zona ?? "" }));
+  }, [localId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (k: keyof typeof form, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -104,8 +132,8 @@ export default function CrearTardeo() {
         estilo: d.estilo || f.estilo,
         tipo: d.tipoEntrada || f.tipo,
         precio: d.precio || f.precio,
-        ubicacion: miLocal?.direccion ?? f.ubicacion,
-        zona: miLocal?.zona ?? f.zona,
+        ubicacion: local?.direccion ?? f.ubicacion,
+        zona: local?.zona ?? f.zona,
       }));
       setEstado("revisar");
     } catch (e: any) {
@@ -155,8 +183,8 @@ export default function CrearTardeo() {
         estilo: d.estilo || "",
         tipo: d.tipoEntrada || "gratis",
         precio: d.precio || "",
-        ubicacion: miLocal?.direccion ?? f.ubicacion,
-        zona: miLocal?.zona ?? f.zona,
+        ubicacion: local?.direccion ?? f.ubicacion,
+        zona: local?.zona ?? f.zona,
       }));
       setRevisar(new Set(Array.isArray(d.revisar) ? d.revisar : []));
       setEstado("revisar");
@@ -167,7 +195,14 @@ export default function CrearTardeo() {
   };
 
   const publicar = async () => {
-    if (!user || !miLocal) { setError("Necesitas un local para publicar. Créalo primero."); return; }
+    if (!user || !local) {
+      setError(
+        esAdmin
+          ? "Elige en qué local se publica el tardeo."
+          : "Necesitas un local para publicar. Créalo primero."
+      );
+      return;
+    }
 
     // --- Validación antes de publicar ---
     const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
@@ -200,15 +235,15 @@ export default function CrearTardeo() {
     }
 
     const { data: nuevo, error } = await supabase.from("tardeos").insert({
-      local_id: miLocal.id,
+      local_id: local.id,
       titulo: form.titulo.trim(),
       fecha: form.fecha,
       hora_inicio: form.horaInicio,
       hora_fin: form.horaFin || null,
-      direccion: form.ubicacion || miLocal.direccion,
-      lat: miLocal.lat,
-      lng: miLocal.lng,
-      zona: miLocal.zona,
+      direccion: form.ubicacion || local.direccion,
+      lat: local.lat,
+      lng: local.lng,
+      zona: local.zona,
       estilo: form.estilo,
       es_de_pago: form.tipo === "pago",
       tiene_lista: form.tipo === "lista",
@@ -227,14 +262,20 @@ export default function CrearTardeo() {
 
     setPublicando(false);
     if (error) setError(error.message);
-    else setEstado("publicado");
+    else {
+      invalidarCacheTardeos(); // que el listado y el mapa lo vean ya
+      setEstado("publicado");
+    }
   };
+
+  // El admin llega desde /admin/crear, así que ahí debe volver.
+  const panelHref = esAdmin ? "/admin" : "/local";
 
   // ---------- Publicado ----------
   if (estado === "publicado") {
     return (
       <main className="pb-10">
-        <PanelHeader titulo="Crear tardeo" volverHref="/local" />
+        <PanelHeader titulo="Crear tardeo" volverHref={panelHref} />
         <div className="mx-auto flex max-w-lg flex-col items-center gap-4 px-4 pt-16 text-center">
           <span className="grid h-20 w-20 place-items-center rounded-full bg-oro text-tinta">
             <Check size={44} />
@@ -243,8 +284,11 @@ export default function CrearTardeo() {
           <p className="font-semibold text-tinta/70">
             «{form.titulo}» ya está visible para todos los tardícolas de {form.zona}.
           </p>
+          {esAdmin && local && (
+            <p className="-mt-2 text-sm font-semibold text-tinta/50">Publicado en {local.nombre}.</p>
+          )}
           <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-            <Link href="/local" className="rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">
+            <Link href={panelHref} className="rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">
               Ir al panel
             </Link>
             <Link href="/tardeos" className="rounded-2xl bg-white px-6 py-4 text-lg font-extrabold text-magenta ring-2 ring-magenta-100">
@@ -258,8 +302,45 @@ export default function CrearTardeo() {
 
   return (
     <main className="pb-10">
-      <PanelHeader titulo="Crear tardeo" volverHref="/local" />
+      <PanelHeader titulo="Crear tardeo" volverHref={panelHref} />
       <div className="mx-auto max-w-lg px-4 pt-5 md:px-8">
+        {/* Selector de local: solo para admin, que publica en nombre de otros.
+            Va arriba y visible en todos los pasos porque de él salen la
+            dirección y las coordenadas con las que acabará el tardeo. */}
+        {esAdmin && (
+          <div className="mb-4 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
+            <label className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
+              <Store size={16} className="text-magenta" /> Publicar en
+            </label>
+            {locales.length === 0 ? (
+              <p className="text-sm font-bold text-tinta/50">
+                No hay locales todavía.{" "}
+                <Link href="/admin/crear" className="text-magenta underline">Crea uno primero</Link>.
+              </p>
+            ) : (
+              <>
+                <select
+                  value={localId}
+                  onChange={(e) => setLocalId(e.target.value)}
+                  className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 font-semibold outline-none focus:border-magenta"
+                >
+                  {locales.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.nombre}{l.zona ? ` · ${l.zona}` : ""}
+                    </option>
+                  ))}
+                </select>
+                {local && !(local.lat && local.lng) && (
+                  <p className="mt-2 flex items-start gap-1.5 text-xs font-bold text-magenta">
+                    <AlertTriangle size={14} className="mt-px shrink-0" />
+                    Este local no tiene coordenadas: el tardeo no saldrá en el mapa.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         {/* Paso 1: elegir método */}
         {modo === "elegir" && (
           <section className="flex flex-col gap-4">

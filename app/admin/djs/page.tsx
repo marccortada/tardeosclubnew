@@ -1,19 +1,41 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import PanelHeader from "@/components/PanelHeader";
+import AsignarDueno from "@/components/AsignarDueno";
 import { supabase } from "@/lib/supabase";
-import { BadgeCheck, Star, Eye, EyeOff, Loader2 } from "lucide-react";
+import { BadgeCheck, Star, Eye, EyeOff, Loader2, Plus } from "lucide-react";
 
-type D = { id: string; nombre_artistico: string; estilos: string[] | null; verificado: boolean; reputacion_score: number | null; oculto: boolean };
+type D = {
+  id: string; nombre_artistico: string; estilos: string[] | null; verificado: boolean;
+  reputacion_score: number | null; oculto: boolean;
+  profile_id: string | null; duenoEmail: string | null;
+};
 
 export default function AdminDjs() {
   const [djs, setDjs] = useState<D[]>([]);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    supabase.from("djs").select("id,nombre_artistico,estilos,verificado,reputacion_score,oculto").order("created_at", { ascending: false })
-      .then(({ data }) => { setDjs((data as D[]) ?? []); setCargando(false); });
+    (async () => {
+      const { data } = await supabase
+        .from("djs").select("id,nombre_artistico,estilos,verificado,reputacion_score,oculto,profile_id")
+        .order("created_at", { ascending: false });
+      const filas = data ?? [];
+
+      const ids = [...new Set(filas.map((d) => d.profile_id).filter(Boolean))] as string[];
+      const emails = new Map<string, string>();
+      if (ids.length) {
+        const { data: perfiles } = await supabase.from("profiles").select("id,email").in("id", ids);
+        (perfiles ?? []).forEach((p) => emails.set(p.id, p.email ?? "—"));
+      }
+
+      setDjs(filas.map((d) => ({
+        ...d, duenoEmail: d.profile_id ? emails.get(d.profile_id) ?? "—" : null,
+      })) as D[]);
+      setCargando(false);
+    })();
   }, []);
 
   const toggle = async (d: D, campo: "verificado" | "oculto") => {
@@ -30,7 +52,12 @@ export default function AdminDjs() {
           <div className="flex items-center justify-center gap-2 py-16 text-tinta/50"><Loader2 className="animate-spin" /> Cargando…</div>
         ) : (
           <>
-            <p className="mb-4 text-sm font-bold text-tinta/60">{djs.length} DJs</p>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <p className="text-sm font-bold text-tinta/60">{djs.length} DJs</p>
+              <Link href="/admin/crear" className="inline-flex items-center gap-1.5 rounded-full bg-magenta px-4 py-2 text-sm font-black text-white active:scale-[0.98]">
+                <Plus size={16} /> Crear DJ
+              </Link>
+            </div>
             <div className="flex flex-col gap-3">
               {djs.map((d) => (
                 <div key={d.id} className={`flex items-center gap-3 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5 ${d.oculto ? "opacity-60" : ""}`}>
@@ -46,6 +73,10 @@ export default function AdminDjs() {
                       {(d.estilos ?? []).join(" · ") || "—"}
                       <span className="inline-flex items-center gap-0.5 text-oro-600"><Star size={12} fill="currentColor" /> {Number(d.reputacion_score ?? 0).toFixed(1)}</span>
                     </p>
+                    <AsignarDueno
+                      tabla="djs" campo="profile_id" id={d.id} duenoEmail={d.duenoEmail}
+                      onAsignado={(email) => setDjs((p) => p.map((x) => x.id === d.id ? { ...x, duenoEmail: email } : x))}
+                    />
                   </div>
                   <button onClick={() => toggle(d, "verificado")} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${d.verificado ? "bg-oro/20 text-oro-600" : "bg-black/5 text-tinta/50"}`}>
                     {d.verificado ? "Verificado" : "Verificar"}

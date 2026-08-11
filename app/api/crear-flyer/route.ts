@@ -110,7 +110,7 @@ export async function POST(req: Request) {
   // Solo locales dados de alta (o admin): cada flyer generado se paga.
   const auth = await autorizarLocalOAdmin(body.accessToken);
   if (auth instanceof NextResponse) return auth;
-  if (!pasaLimite(`crear:${auth.uid}`, FLYERS_POR_HORA)) return respuestaLimite("flyers generados");
+  if (!(await pasaLimite(`crear:${auth.uid}`, FLYERS_POR_HORA))) return respuestaLimite("flyers generados");
 
   const { descripcion = "", titulo = "", fecha = "", dj = "", estilo = "", hora = "" } = body;
 
@@ -185,7 +185,21 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ image: final.toString("base64"), datos });
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : "Error al generar el flyer.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    // El detalle crudo, al log: es donde hay que mirar para depurar.
+    console.error("[crear-flyer] falló la generación:", e);
+
+    // A la pantalla, un mensaje en español y sin tripas. Esto lo lee el dueño
+    // de un bar: devolverle el texto de OpenAI le enseñaba la URL de
+    // facturación y un error en inglés que no puede resolver.
+    const err = e as { status?: number; code?: string };
+    const sinSaldo = err?.code === "insufficient_quota" || err?.code === "credit_balance_exhausted";
+    const message = sinSaldo
+      ? "El generador de imágenes se ha quedado sin saldo. Avisa a TardeosClub y lo solucionamos."
+      : err?.status === 429
+        ? "El generador está saturado ahora mismo. Prueba dentro de un minuto."
+        : err?.status === 400
+          ? "Esa descripción no ha pasado el filtro de contenido. Prueba a contarlo de otra forma."
+          : "No se ha podido generar el flyer. Vuelve a intentarlo en un momento.";
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 }

@@ -39,32 +39,36 @@ export async function autorizarLocalOAdmin(accessToken?: string): Promise<NextRe
 }
 
 // ---------- Límite de uso ----------
-// En memoria del proceso: se reinicia en cada despliegue y no se comparte
-// entre instancias. Suficiente para frenar el abuso obvio de un endpoint que
-// cuesta dinero por llamada. Si algún día hay varias instancias, esto debe
-// pasar a Supabase o a un Redis.
-const usos = new Map<string, number[]>();
-
-export function pasaLimite(clave: string, maxPorHora: number): boolean {
-  const ahora = Date.now();
-  const hace1h = ahora - 60 * 60 * 1000;
-  const previos = (usos.get(clave) ?? []).filter((t) => t > hace1h);
-  if (previos.length >= maxPorHora) {
-    usos.set(clave, previos);
+/**
+ * Cuenta los usos de la última hora en Supabase (tabla `uso_ia`, Lote 15).
+ *
+ * Antes vivía en un Map en memoria del proceso, con dos problemas: se ponía a
+ * cero en cada despliegue, y con más de una instancia cada una llevaba su
+ * cuenta, así que el tope real se multiplicaba por el número de contenedores.
+ * En un endpoint que se paga por imagen, eso es dinero.
+ *
+ * Falla CERRADO a propósito: si no podemos contar, no dejamos pasar. Preferimos
+ * que la IA no funcione un rato a que alguien la use sin freno.
+ */
+export async function pasaLimite(clave: string, maxPorHora: number): Promise<boolean> {
+  const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!URL || !SERVICE_ROLE) {
+    console.error("[limite] faltan las credenciales de servidor");
     return false;
   }
-  previos.push(ahora);
-  usos.set(clave, previos);
 
-  // Limpieza perezosa para que el Map no crezca sin fin.
-  if (usos.size > 500) {
-    for (const [k, v] of usos) {
-      const vivos = v.filter((t) => t > hace1h);
-      if (vivos.length === 0) usos.delete(k);
-      else usos.set(k, vivos);
-    }
+  const admin = createClient(URL, SERVICE_ROLE);
+  const { data, error } = await admin.rpc("consumir_cuota", {
+    p_clave: clave,
+    p_max: maxPorHora,
+  });
+
+  if (error) {
+    console.error("[limite] no se pudo consultar la cuota:", error.message);
+    return false;
   }
-  return true;
+  return data === true;
 }
 
 export function respuestaLimite(que: string) {
