@@ -171,22 +171,34 @@ export default function MapaClient({ tardeos: tardeosProp }: { tardeos?: Tardeo[
     const map = mapRef.current;
     if (!L || !map) return;
 
-    const pin = (destacado: boolean) =>
-      L.divIcon({
+    /**
+     * La chincheta lleva el logo del local si lo tiene, y el de TardeosClub si
+     * no. El logo se recorta a cuadrado (object-fit) porque los que suben los
+     * locales vienen de cualquier proporción y sin esto se deforman.
+     *
+     * Va como HTML plano y no como JSX porque Leaflet dibuja el icono a partir
+     * de una cadena: aquí no hay React, así que tampoco next/image.
+     */
+    const pin = (destacado: boolean, logo?: string) => {
+      const color = destacado ? "#F5B301" : "#E10A5A";
+      const dentro = logo
+        ? `<img src="${logo}" style="width:100%;height:100%;object-fit:cover;display:block" alt=""
+             onerror="this.src='/branding/pin-logo.png';this.style.objectFit='contain';this.style.padding='5px'"/>`
+        : `<img src="/branding/pin-logo.png" style="width:40px;height:auto;display:block" alt=""/>`;
+      return L.divIcon({
         className: "",
         html: `<div style="position:relative;width:54px;height:60px">
-          <div style="display:grid;place-items:center;width:54px;height:50px;border-radius:16px;
-            border:3px solid ${destacado ? "#F5B301" : "#E10A5A"};background:#fff;
-            box-shadow:0 3px 8px rgba(0,0,0,.35)">
-            <img src="/branding/pin-logo.png" style="width:40px;height:auto;display:block" alt=""/>
-          </div>
+          <div style="display:grid;place-items:center;overflow:hidden;width:54px;height:50px;border-radius:16px;
+            border:3px solid ${color};background:#fff;
+            box-shadow:0 3px 8px rgba(0,0,0,.35)">${dentro}</div>
           <div style="position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:0;height:0;
             border-left:7px solid transparent;border-right:7px solid transparent;
-            border-top:9px solid ${destacado ? "#F5B301" : "#E10A5A"}"></div>
+            border-top:9px solid ${color}"></div>
         </div>`,
         iconSize: [54, 60],
         iconAnchor: [27, 60],
       });
+    };
 
     // La burbuja del grupo: número de tardeos, dorada si alguno es destacado.
     const burbuja = (cluster: any) => {
@@ -227,7 +239,7 @@ export default function MapaClient({ tardeos: tardeosProp }: { tardeos?: Tardeo[
         iconCreateFunction: burbuja,
       });
       items.forEach((t) => {
-        L.marker([t.lat, t.lng], { icon: pin(t.destacado), tardeoDestacado: t.destacado })
+        L.marker([t.lat, t.lng], { icon: pin(t.destacado, t.local?.logo), tardeoDestacado: t.destacado })
           .addTo(capa)
           .on("click", () => setSel(t));
       });

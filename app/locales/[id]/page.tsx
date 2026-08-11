@@ -6,7 +6,7 @@ import CompartirBtn from "@/components/CompartirBtn";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowLeft, MapPin, Phone, BadgeCheck, Store, CalendarDays } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, BadgeCheck, Store, CalendarDays , Megaphone } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +61,15 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
           {local.nombre}
           {local.verificado && <BadgeCheck size={22} className="shrink-0 text-oro-600" />}
         </h1>
-        {local.zona && <p className="text-sm font-bold text-tinta/60">{local.zona}</p>}
+        {/* Un promotor no tiene zona ni dirección fija, así que sin esto su
+            ficha parece la de un local al que le faltan datos. */}
+        {local.tipo === "promotor" ? (
+          <p className="inline-flex items-center gap-1.5 rounded-full bg-magenta-50 px-3 py-1 text-sm font-black text-magenta">
+            <Megaphone size={14} /> Promotor de eventos
+          </p>
+        ) : (
+          local.zona && <p className="text-sm font-bold text-tinta/60">{local.zona}</p>
+        )}
 
         {local.descripcion && <p className="mt-4 font-semibold text-tinta/80">{local.descripcion}</p>}
 

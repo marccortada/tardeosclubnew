@@ -15,6 +15,13 @@ export interface Local {
   zona: string;
   direccion: string;
   verificado: boolean;
+  /** Logo del local. Si lo tiene, es lo que sale en la chincheta del mapa. */
+  logo?: string;
+  /**
+   * "promotor" organiza fiestas sin local fijo: su ficha no tiene dirección
+   * propia y el sitio lo pone cada tardeo.
+   */
+  tipo: "local" | "promotor";
 }
 
 export interface Tardeo {

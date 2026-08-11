@@ -14,12 +14,12 @@ const djs: Dj[] = [
 ];
 
 const locales: Local[] = [
-  { id: "l1", nombre: "Sala Blau", zona: "Barcelona", direccion: "C/ Marina 120, Barcelona", verificado: true },
-  { id: "l2", nombre: "Chiringuito La Marea", zona: "Maresme", direccion: "Passeig Marítim 8, Mataró", verificado: true },
-  { id: "l3", nombre: "Terraza Costa", zona: "Costa Brava", direccion: "Av. del Mar 45, Lloret de Mar", verificado: false },
-  { id: "l4", nombre: "El Patio Latino", zona: "Barcelona", direccion: "C/ Gran Via 500, Barcelona", verificado: true },
-  { id: "l5", nombre: "Beach Club Sol", zona: "Maresme", direccion: "Passeig del Callao 2, Calella", verificado: true },
-  { id: "l6", nombre: "Masia Fest", zona: "Baix Llobregat", direccion: "Ctra. Sant Boi 12, Sant Boi", verificado: false },
+  { id: "l1", nombre: "Sala Blau", zona: "Barcelona", direccion: "C/ Marina 120, Barcelona", verificado: true, tipo: "local" },
+  { id: "l2", nombre: "Chiringuito La Marea", zona: "Maresme", direccion: "Passeig Marítim 8, Mataró", verificado: true, tipo: "local" },
+  { id: "l3", nombre: "Terraza Costa", zona: "Costa Brava", direccion: "Av. del Mar 45, Lloret de Mar", verificado: false, tipo: "local" },
+  { id: "l4", nombre: "El Patio Latino", zona: "Barcelona", direccion: "C/ Gran Via 500, Barcelona", verificado: true, tipo: "local" },
+  { id: "l5", nombre: "Beach Club Sol", zona: "Maresme", direccion: "Passeig del Callao 2, Calella", verificado: true, tipo: "local" },
+  { id: "l6", nombre: "Masia Fest", zona: "Baix Llobregat", direccion: "Ctra. Sant Boi 12, Sant Boi", verificado: false, tipo: "local" },
 ];
 
 const paletas = [

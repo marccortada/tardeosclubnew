@@ -4,7 +4,7 @@ import { Tardeo } from "./types";
 // Acotado a lo que usa mapRow. Con `locales(*)` venían descripción, redes,
 // fotos, horarios y el email de cada local: 42 KB por consulta en vez de 30.
 const SELECT =
-  "*, locales(id,nombre,zona,direccion,verificado)," +
+  "*, locales(id,nombre,zona,direccion,verificado,logo_url,tipo)," +
   "tardeo_djs(djs(id,nombre_artistico,estilos,verificado,reputacion_score,avatar_url))";
 
 /**
@@ -41,6 +41,8 @@ function mapRow(r: any): Tardeo {
       zona: loc.zona ?? r.zona ?? "",
       direccion: loc.direccion ?? r.direccion ?? "",
       verificado: loc.verificado ?? false,
+      logo: loc.logo_url ?? undefined,
+      tipo: loc.tipo === "promotor" ? "promotor" : "local",
     },
     djs: (r.tardeo_djs ?? []).map((td: any) => ({
       id: td.djs?.id,
@@ -117,7 +119,7 @@ export async function getTardeosPublicados(): Promise<Tardeo[]> {
 export async function getLocalById(id: string): Promise<any | null> {
   const { data } = await supabase
     .from("locales")
-    .select("id,nombre,descripcion,direccion,lat,lng,zona,telefono,redes,fotos,horarios,verificado,estado")
+    .select("id,nombre,descripcion,direccion,lat,lng,zona,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo")
     .eq("id", id)
     .maybeSingle();
   return data ?? null;
@@ -231,6 +233,23 @@ export async function updateMiDj(id: string, fields: Record<string, unknown>) {
 export async function subirAvatarDj(id: string, file: File): Promise<string | null> {
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
   const ruta = `djs/${id}-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("flyers").upload(ruta, file, {
+    contentType: file.type || "image/jpeg",
+    upsert: true,
+  });
+  if (error) return null;
+  return supabase.storage.from("flyers").getPublicUrl(ruta).data.publicUrl;
+}
+
+/**
+ * Sube el logo del local al Storage y devuelve su URL pública.
+ *
+ * Es el que sale en la chincheta del mapa, así que conviene que sea cuadrado o
+ * casi: la chincheta lo recorta al centro.
+ */
+export async function subirLogoLocal(id: string, file: File): Promise<string | null> {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const ruta = `locales/${id}-${Date.now()}.${ext}`;
   const { error } = await supabase.storage.from("flyers").upload(ruta, file, {
     contentType: file.type || "image/jpeg",
     upsert: true,

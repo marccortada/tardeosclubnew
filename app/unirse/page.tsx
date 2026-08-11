@@ -9,16 +9,19 @@ import { ESTILOS } from "@/lib/mockData";
 import AddressSearch, { Direccion } from "@/components/AddressSearch";
 import PanelHeader from "@/components/PanelHeader";
 import {
-  PartyPopper, Store, Disc3, ArrowRight, Check, Loader2, Store as StoreIcon,
+  PartyPopper, Store, Disc3, ArrowRight, Check, Loader2, Store as StoreIcon, Megaphone,
 } from "lucide-react";
 
-type Paso = "rol" | "local" | "dj" | "fin";
+type Paso = "rol" | "local" | "promotor" | "dj" | "fin";
 
 function UnirseContent() {
   const { user, loading } = useAuth();
   const rolParam = useSearchParams().get("rol");
   const [paso, setPaso] = useState<Paso>(
-    rolParam === "local" ? "local" : rolParam === "dj" ? "dj" : "rol"
+    rolParam === "local" ? "local"
+      : rolParam === "promotor" ? "promotor"
+      : rolParam === "dj" ? "dj"
+      : "rol"
   );
   const [finRol, setFinRol] = useState("");
 
@@ -49,11 +52,28 @@ function UnirseContent() {
     const { error } = await supabase.from("locales").insert({
       owner_id: user!.id, nombre: nombreLocal.trim(), telefono: tel.trim(),
       direccion: dir.display, lat: dir.lat, lng: dir.lng,
-      codigo_postal: dir.cp, zona: dir.zona, estado: "borrador",
+      codigo_postal: dir.cp, zona: dir.zona, estado: "borrador", tipo: "local",
     });
     setGuardando(false);
     if (error) setError(error.message);
     else { setFinRol("local"); setPaso("fin"); }
+  };
+
+  /**
+   * El promotor comparte tabla con el local: es la misma ficha con `tipo`
+   * distinto. Lo que cambia es que NO lleva dirección — organiza en sitios
+   * distintos, así que el sitio lo pone cada tardeo al publicarlo.
+   */
+  const crearPromotor = async () => {
+    if (!nombreLocal.trim()) { setError("Pon el nombre con el que organizas."); return; }
+    setGuardando(true); setError("");
+    const { error } = await supabase.from("locales").insert({
+      owner_id: user!.id, nombre: nombreLocal.trim(), telefono: tel.trim(),
+      estado: "borrador", tipo: "promotor",
+    });
+    setGuardando(false);
+    if (error) setError(error.message);
+    else { setFinRol("promotor"); setPaso("fin"); }
   };
 
   const crearDj = async () => {
@@ -69,18 +89,23 @@ function UnirseContent() {
 
   // ---------- FIN ----------
   if (paso === "fin") {
-    const esLocal = finRol === "local";
+    // Local y promotor comparten panel: los dos son fichas de `locales`.
+    const conPanel = finRol === "local" || finRol === "promotor";
+    const titulo = finRol === "local" ? "¡Local creado!"
+      : finRol === "promotor" ? "¡Ya eres promotor!"
+      : "¡Perfil DJ creado!";
+    const texto = finRol === "local"
+      ? "Queda pendiente de verificación por el admin. Mientras, ya puedes preparar tus tardeos."
+      : finRol === "promotor"
+        ? "Queda pendiente de verificación. Al crear cada tardeo te pediremos dónde se hace, que es lo que te diferencia de un local fijo."
+        : "Ya apareces como DJ. Los locales podrán añadirte a sus tardeos.";
     return (
       <main className="mx-auto flex max-w-lg flex-col items-center gap-4 px-4 pt-16 text-center">
         <span className="grid h-20 w-20 place-items-center rounded-full bg-oro text-tinta"><Check size={44} /></span>
-        <h2 className="font-display text-3xl font-black">{esLocal ? "¡Local creado!" : "¡Perfil DJ creado!"}</h2>
-        <p className="font-semibold text-tinta/70">
-          {esLocal
-            ? "Queda pendiente de verificación por el admin. Mientras, ya puedes preparar tus tardeos."
-            : "Ya apareces como DJ. Los locales podrán añadirte a sus tardeos."}
-        </p>
-        <Link href={esLocal ? "/local" : "/"} className="mt-2 rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">
-          {esLocal ? "Ir a mi panel" : "Ir a la app"}
+        <h2 className="font-display text-3xl font-black">{titulo}</h2>
+        <p className="font-semibold text-tinta/70">{texto}</p>
+        <Link href={conPanel ? "/local" : "/"} className="mt-2 rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">
+          {conPanel ? "Ir a mi panel" : "Ir a la app"}
         </Link>
       </main>
     );
@@ -104,6 +129,12 @@ function UnirseContent() {
             <button onClick={() => { setPaso("local"); setError(""); }} className="group flex items-center gap-4 rounded-3xl bg-white p-5 text-left shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-xl">
               <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-oro text-tinta"><Store size={28} /></span>
               <span className="flex-1"><span className="block font-display text-xl font-black">Soy un local</span><span className="text-sm font-semibold text-tinta/60">Quiero publicar mis tardeos</span></span>
+              <ArrowRight className="text-magenta transition group-hover:translate-x-1" />
+            </button>
+
+            <button onClick={() => { setPaso("promotor"); setError(""); }} className="group flex items-center gap-4 rounded-3xl bg-white p-5 text-left shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-xl">
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-magenta text-white"><Megaphone size={28} /></span>
+              <span className="flex-1"><span className="block font-display text-xl font-black">Soy promotor</span><span className="text-sm font-semibold text-tinta/60">Organizo fiestas en sitios distintos</span></span>
               <ArrowRight className="text-magenta transition group-hover:translate-x-1" />
             </button>
 
@@ -137,6 +168,35 @@ function UnirseContent() {
             <button onClick={crearLocal} disabled={guardando}
               className="mt-2 flex items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white active:scale-[0.98] disabled:opacity-40">
               {guardando ? <Loader2 size={20} className="animate-spin" /> : <StoreIcon size={20} />} Crear mi local
+            </button>
+          </div>
+        )}
+
+        {/* Paso 2: PROMOTOR — igual que el local pero sin dirección fija */}
+        {paso === "promotor" && (
+          <div className="flex flex-col gap-3">
+            <button onClick={() => setPaso("rol")} className="text-sm font-bold text-magenta">← Cambiar rol</button>
+            <h2 className="font-display text-2xl font-black">Datos de promotor</h2>
+
+            <label className="text-sm font-black text-tinta/70">Nombre con el que organizas</label>
+            <input value={nombreLocal} onChange={(e) => setNombreLocal(e.target.value)} placeholder="Tardeos del Maresme"
+              className="rounded-xl border-2 border-magenta-100 px-4 py-3 font-semibold outline-none focus:border-magenta" />
+            <p className="-mt-1 text-xs font-semibold text-tinta/50">Es el nombre que verá la gente en cada tardeo que publiques.</p>
+
+            <label className="mt-1 text-sm font-black text-tinta/70">Teléfono (opcional)</label>
+            <input value={tel} onChange={(e) => setTel(e.target.value)} placeholder="600 000 000"
+              className="rounded-xl border-2 border-magenta-100 px-4 py-3 font-semibold outline-none focus:border-magenta" />
+
+            <div className="mt-1 flex items-start gap-2 rounded-2xl bg-oro/10 p-3 text-sm font-semibold text-tinta/80">
+              <Megaphone size={18} className="mt-0.5 shrink-0 text-oro-600" />
+              No te pedimos dirección: como organizas en sitios distintos, el lugar se elige
+              al crear cada tardeo.
+            </div>
+
+            {error && <p className="text-sm font-bold text-magenta">{error}</p>}
+            <button onClick={crearPromotor} disabled={guardando}
+              className="mt-2 flex items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white active:scale-[0.98] disabled:opacity-40">
+              {guardando ? <Loader2 size={20} className="animate-spin" /> : <Megaphone size={20} />} Crear mi perfil de promotor
             </button>
           </div>
         )}

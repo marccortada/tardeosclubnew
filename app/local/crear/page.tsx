@@ -6,9 +6,10 @@ import PanelHeader from "@/components/PanelHeader";
 import { useAuth } from "@/lib/useAuth";
 import { getMiLocal, vincularDjsPorNombre, invalidarCacheTardeos } from "@/lib/tardeos";
 import { supabase } from "@/lib/supabase";
+import AddressSearch, { Direccion } from "@/components/AddressSearch";
 import {
   Upload, Wand2, Sparkles, Loader2, Check, AlertTriangle,
-  Calendar, Clock, Music, MapPin, Disc3, Ticket, ArrowRight, Store,
+  Calendar, Clock, Music, MapPin, Disc3, Ticket, ArrowRight, Store, Megaphone,
 } from "lucide-react";
 
 type Modo = "elegir" | "subir" | "crear";
@@ -71,6 +72,9 @@ export default function CrearTardeo() {
   const [revisar, setRevisar] = useState<Set<string>>(new Set());
   const [flyerGen, setFlyerGen] = useState<string | null>(null);
   const [archivoSubido, setArchivoSubido] = useState<File | null>(null);
+  // Solo para promotores: su ficha no tiene dirección, así que el sitio se
+  // elige aquí, en cada tardeo.
+  const [dirTardeo, setDirTardeo] = useState<Direccion | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -84,7 +88,7 @@ export default function CrearTardeo() {
       if (admin) {
         // RLS deja al admin ver todos los locales, tenga o no uno propio.
         const { data } = await supabase
-          .from("locales").select("id,nombre,zona,direccion,lat,lng").order("nombre");
+          .from("locales").select("id,nombre,zona,direccion,lat,lng,tipo").order("nombre");
         const todos = data ?? [];
         setLocales(todos);
         setLocalId(propio?.id ?? todos[0]?.id ?? "");
@@ -97,11 +101,17 @@ export default function CrearTardeo() {
 
   const local = locales.find((l) => l.id === localId) ?? null;
 
+  const esPromotor = local?.tipo === "promotor";
+
   // La dirección y la zona del tardeo salen del local elegido. Si el admin
   // cambia de local a media faena, hay que rehacerlas o publicaría en el sitio
   // equivocado con las coordenadas del anterior.
+  //
+  // Con un promotor no hay nada que heredar: su ficha no tiene dirección, así
+  // que se limpia y se pide abajo con el buscador.
   useEffect(() => {
     if (!local) return;
+    setDirTardeo(null);
     setForm((f) => ({ ...f, ubicacion: local.direccion ?? "", zona: local.zona ?? "" }));
   }, [localId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -211,6 +221,9 @@ export default function CrearTardeo() {
     if (form.fecha < hoy) { setError("La fecha ya ha pasado. Pon una fecha de hoy en adelante."); return; }
     if (!form.horaInicio) { setError("Falta la hora de inicio."); return; }
     if (form.tipo === "pago" && !(Number(form.precio) > 0)) { setError("Indica el precio de la entrada."); return; }
+    // Sin sitio, el tardeo de un promotor entraría sin coordenadas y no saldría
+    // en el mapa, que es medio producto.
+    if (esPromotor && !dirTardeo) { setError("Busca dónde se hace este tardeo."); return; }
 
     setPublicando(true); setError("");
 
@@ -240,10 +253,11 @@ export default function CrearTardeo() {
       fecha: form.fecha,
       hora_inicio: form.horaInicio,
       hora_fin: form.horaFin || null,
-      direccion: form.ubicacion || local.direccion,
-      lat: local.lat,
-      lng: local.lng,
-      zona: local.zona,
+      // El promotor pone el sitio en cada tardeo; el local lo hereda del suyo.
+      direccion: dirTardeo?.display ?? form.ubicacion ?? local.direccion,
+      lat: dirTardeo?.lat ?? local.lat,
+      lng: dirTardeo?.lng ?? local.lng,
+      zona: dirTardeo?.zona ?? local.zona,
       estilo: form.estilo,
       es_de_pago: form.tipo === "pago",
       tiene_lista: form.tipo === "lista",
@@ -326,11 +340,11 @@ export default function CrearTardeo() {
                 >
                   {locales.map((l) => (
                     <option key={l.id} value={l.id}>
-                      {l.nombre}{l.zona ? ` · ${l.zona}` : ""}
+                      {l.tipo === "promotor" ? "🎪 " : ""}{l.nombre}{l.zona ? ` · ${l.zona}` : ""}
                     </option>
                   ))}
                 </select>
-                {local && !(local.lat && local.lng) && (
+                {local && !esPromotor && !(local.lat && local.lng) && (
                   <p className="mt-2 flex items-start gap-1.5 text-xs font-bold text-magenta">
                     <AlertTriangle size={14} className="mt-px shrink-0" />
                     Este local no tiene coordenadas: el tardeo no saldrá en el mapa.
@@ -338,6 +352,21 @@ export default function CrearTardeo() {
                 )}
               </>
             )}
+          </div>
+        )}
+
+        {/* Un promotor no tiene dirección fija: el sitio se elige aquí, en cada
+            tardeo. Sin esto entraría sin coordenadas y no saldría en el mapa. */}
+        {esPromotor && (
+          <div className="mb-4 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
+            <label className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
+              <Megaphone size={16} className="text-magenta" /> ¿Dónde se hace este tardeo?
+            </label>
+            <AddressSearch onSelect={setDirTardeo} />
+            <p className="mt-1 text-xs font-semibold text-tinta/50">
+              Como organizas en sitios distintos, cada tardeo lleva su propia dirección.
+              De aquí salen el punto del mapa y la zona de los filtros.
+            </p>
           </div>
         )}
 

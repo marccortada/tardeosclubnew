@@ -279,6 +279,10 @@ async function main() {
       telefono: v.phone || null,
       // El de contacto del local, no el de la cuenta de quien lo registró.
       email: v.email || null,
+      logo_url: v.logo_url || null,
+      // Los paraguas son promotores: organizan sin local fijo y cada evento
+      // suyo lleva su propia dirección.
+      tipo: paraguas.has(v.id) ? "promotor" : "local",
       redes,
       estado: ESTADO_LOCAL[v.status] ?? ESTADO_LOCAL_POR_DEFECTO,
     });
