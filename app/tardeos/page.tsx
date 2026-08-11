@@ -6,8 +6,10 @@ import TardeoCard from "@/components/TardeoCard";
 import { ESTILOS } from "@/lib/mockData";
 import { getTardeosPublicados } from "@/lib/tardeos";
 import { zonaGrande, zonasDe } from "@/lib/zonas";
+import { useUbicacion } from "@/lib/ubicacion";
+import { distanciaKm } from "@/lib/geo";
 import { Tardeo } from "@/lib/types";
-import { SlidersHorizontal, X, Loader2, Search } from "lucide-react";
+import { SlidersHorizontal, X, Loader2, Search, Navigation } from "lucide-react";
 
 const CUANDOS = [
   { k: "hoy", label: "Hoy" },
@@ -48,6 +50,11 @@ function TardeosContent() {
   const [cuando, setCuando] = useState<string | null>(null);
   const [todos, setTodos] = useState<Tardeo[]>([]);
   const [cargando, setCargando] = useState(true);
+  const { coords, estado: estadoUbi, pedir: pedirUbicacion } = useUbicacion();
+
+  /** Distancia del tardeo a donde estás, o null si le faltan coordenadas. */
+  const distanciaDe = (t: Tardeo) =>
+    coords && t.lat && t.lng ? distanciaKm(coords, { lat: t.lat, lng: t.lng }) : null;
 
   // Cargar tardeos desde Supabase (con fallback a mock)
   useEffect(() => {
@@ -92,7 +99,7 @@ function TardeosContent() {
     return true;
   };
 
-  const lista = todos.filter(
+  const filtrados = todos.filter(
     (t) =>
       (!f.zona || zonaGrande(t.zona) === f.zona) &&
       (!f.estilo || t.estilo === f.estilo) &&
@@ -100,6 +107,17 @@ function TardeosContent() {
       coincideTexto(t) &&
       enRango(t)
   );
+
+  /**
+   * Con la ubicación puesta, manda la cercanía: si estás en Mataró lo primero
+   * que quieres ver es lo que tienes al lado, no lo que pasa antes en el
+   * calendario. Sin ubicación se mantiene el orden por fecha de siempre.
+   *
+   * Los que no tienen coordenadas se van al final en vez de colarse arriba.
+   */
+  const lista = coords
+    ? [...filtrados].sort((a, b) => (distanciaDe(a) ?? Infinity) - (distanciaDe(b) ?? Infinity))
+    : filtrados;
 
   const nFiltros = [f.zona, f.estilo, f.tipo].filter(Boolean).length;
 
@@ -201,10 +219,28 @@ function TardeosContent() {
         </div>
       ) : (
         <>
-          <p className="mb-3 text-sm font-bold text-tinta/60">{lista.length} tardeos</p>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-bold text-tinta/60">
+              {lista.length} tardeos{coords && " · los más cercanos primero"}
+            </p>
+            {/* El permiso se pide con un gesto, no al entrar: el navegador solo
+                enseña el diálogo si lo dispara el usuario. */}
+            {!coords && estadoUbi !== "no-soportada" && (
+              <button
+                onClick={pedirUbicacion}
+                disabled={estadoUbi === "pidiendo"}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-black text-magenta shadow-tarjeta ring-1 ring-magenta-100 disabled:opacity-50"
+              >
+                {estadoUbi === "pidiendo"
+                  ? <Loader2 size={14} className="animate-spin" />
+                  : <Navigation size={14} />}
+                Ver los más cercanos
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
             {lista.map((t) => (
-              <TardeoCard key={t.id} tardeo={t} />
+              <TardeoCard key={t.id} tardeo={t} distanciaKm={distanciaDe(t)} />
             ))}
           </div>
           {lista.length === 0 && (

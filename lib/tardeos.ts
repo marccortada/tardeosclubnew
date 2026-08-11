@@ -208,8 +208,12 @@ export async function getMiDj(profileId: string): Promise<any | null> {
 export async function getDjsPublicos(): Promise<any[]> {
   const { data } = await supabase
     .from("djs")
-    .select("id,nombre_artistico,estilos,avatar_url,verificado,reputacion_score")
+    .select("id,nombre_artistico,estilos,avatar_url,verificado,reputacion_score,destacado_orden")
     .eq("oculto", false)
+    // Los destacados mandan y en el orden que fijó el admin (1, 2, 3…).
+    // nullsFirst: false deja detrás a los que no lo están; entre ellos sigue
+    // decidiendo la reputación de siempre.
+    .order("destacado_orden", { ascending: true, nullsFirst: false })
     .order("verificado", { ascending: false })
     .order("reputacion_score", { ascending: false });
   return data ?? [];

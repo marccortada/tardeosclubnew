@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
 import {
   CalendarDays, Store, Disc3, Euro, BadgeCheck, X, Check, Bot,
-  Megaphone, Bell, BellRing, ShieldAlert, ChevronRight, Loader2,
+  Megaphone, Bell, BellRing, ShieldAlert, ChevronRight, Loader2, Star,
   Plus, CreditCard, ShieldCheck, Sparkles, Mail,
 } from "lucide-react";
 
@@ -23,6 +23,7 @@ const GESTION = [
   { icon: Mail, label: "Ofertas a locales", sub: "Enviar ofertas por email", href: "/admin/ofertas" },
   { icon: Bell, label: "Popups", sub: "Ofertas y noticias", href: "/admin/popups" },
   { icon: BellRing, label: "Notificaciones push", sub: "Aviso al móvil de los suscritos", href: "/admin/notificaciones" },
+  { icon: Star, label: "Destacados", sub: "Quién sale primero en la home", href: "/admin/destacados" },
   { icon: ShieldCheck, label: "Moderación", sub: "Reseñas y flyers", href: "/admin/moderacion" },
   { icon: CreditCard, label: "Suscripciones", sub: "Pagos e impagos", href: "/admin/suscripciones" },
   { icon: Store, label: "Locales", sub: "Gestión de locales", href: "/admin/locales" },

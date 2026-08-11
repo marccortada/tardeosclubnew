@@ -1,7 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Tardeo, formatFecha, flyerSrc } from "@/lib/mockData";
-import { MapPin, Clock, Ticket, ListChecks, Gift, ChevronRight } from "lucide-react";
+import { MapPin, Clock, Ticket, ListChecks, Gift, ChevronRight, Navigation } from "lucide-react";
+import { formatDistancia } from "@/lib/geo";
 import CompartirBtn from "@/components/CompartirBtn";
 
 const entrada = {
@@ -10,7 +11,14 @@ const entrada = {
   lista: { label: "Por lista", icon: ListChecks },
 };
 
-export default function TardeoCard({ tardeo }: { tardeo: Tardeo }) {
+export default function TardeoCard({
+  tardeo,
+  distanciaKm,
+}: {
+  tardeo: Tardeo;
+  /** Km hasta el visitante. Solo llega cuando ha dado su ubicación. */
+  distanciaKm?: number | null;
+}) {
   const e = entrada[tardeo.tipoEntrada];
   const Icon = e.icon;
   const src = flyerSrc(tardeo);
@@ -66,6 +74,11 @@ export default function TardeoCard({ tardeo }: { tardeo: Tardeo }) {
             <span className="inline-flex items-center gap-1.5 truncate">
               <MapPin size={15} className="shrink-0 text-magenta" /> {tardeo.local.nombre} · {tardeo.zona}
             </span>
+            {distanciaKm != null && (
+              <span className="inline-flex items-center gap-1.5 font-black text-magenta">
+                <Navigation size={14} className="shrink-0" /> a {formatDistancia(distanciaKm)}
+              </span>
+            )}
             <span className="inline-flex items-center gap-1.5">
               <Clock size={15} className="text-magenta" /> {tardeo.horaInicio}–{tardeo.horaFin}
             </span>
