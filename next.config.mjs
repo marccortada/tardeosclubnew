@@ -5,10 +5,15 @@ const nextConfig = {
   // Empaqueta solo lo necesario para ejecutar: imagen de Docker pequeña.
   output: "standalone",
   images: {
-    // De dónde pueden venir los flyers. Los dos son buckets públicos de
-    // Supabase: el nuestro y —ojo— el de la app anterior, de donde salen 23 de
-    // los 26 flyers migrados. Mientras esa dependencia exista, ese proyecto no
-    // se puede pausar ni borrar sin quedarnos sin imágenes.
+    // De dónde pueden venir las imágenes. Las 683 (flyers, logos de locales y
+    // avatares de DJs) ya viven en nuestro propio proyecto: scripts/traer-imagenes.mjs
+    // las trajo del de la app anterior.
+    //
+    // El host antiguo sigue permitido a propósito. La sincronización de cada
+    // mañana reescribe las URLs con las del origen y el rescate las vuelve a
+    // corregir en el paso siguiente del mismo workflow: durante esos minutos
+    // la base apunta otra vez allí. Quitar este patrón antes de retirar la app
+    // vieja dejaría la web sin imágenes en esa ventana.
     remotePatterns: [
       { protocol: "https", hostname: "fmbzcjsbyazkzsiiykto.supabase.co", pathname: "/storage/v1/object/public/**" },
       { protocol: "https", hostname: "obevrycebhqdqtvxnxoy.supabase.co", pathname: "/storage/v1/object/public/**" },

@@ -62,3 +62,15 @@ jobs:
           NUEVO_URL: ${{ secrets.NUEVO_URL }}
           NUEVO_SERVICE_KEY: ${{ secrets.NUEVO_SERVICE_KEY }}
         run: node scripts/migrar.mjs --escribir
+
+      # La sincronización copia `image_url` tal cual, así que cada evento nuevo
+      # llega apuntando al almacenamiento del proyecto viejo. Sin este paso, el
+      # día que se apague ese proyecto los tardeos recién sincronizados se
+      # quedan sin flyer aunque los antiguos ya estén rescatados.
+      - name: Traer las imágenes nuevas al proyecto nuevo
+        env:
+          VIEJO_URL: ${{ secrets.VIEJO_URL }}
+          VIEJO_SERVICE_KEY: ${{ secrets.VIEJO_SERVICE_KEY }}
+          NUEVO_URL: ${{ secrets.NUEVO_URL }}
+          NUEVO_SERVICE_KEY: ${{ secrets.NUEVO_SERVICE_KEY }}
+        run: node scripts/traer-imagenes.mjs --escribir
