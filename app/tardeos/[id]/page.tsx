@@ -10,6 +10,8 @@ import DestacarTardeo from "@/components/DestacarTardeo";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
+import DatosEstructurados from "@/components/DatosEstructurados";
+import { jsonLdEvento, urlAbsoluta } from "@/lib/seo";
 import { ArrowLeft, MapPin, Clock, Music, BadgeCheck, Star, CalendarPlus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -34,10 +36,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title: `${tardeo.titulo} · TardeosClub`,
     description: desc,
+    // Imprescindible: sin esto hereda la canónica de app/tardeos/layout.tsx y
+    // la ficha le diría a Google que la página buena es el listado.
+    alternates: { canonical: urlAbsoluta(`/tardeos/${id}`) },
     openGraph: {
       title: tardeo.titulo,
       description: desc,
       images: [{ url: img }],
+      url: urlAbsoluta(`/tardeos/${id}`),
       type: "website",
     },
     twitter: {
@@ -61,6 +67,9 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
 
   return (
     <main className="mx-auto max-w-3xl pb-28 md:pb-12">
+      {/* Para que Google lo enseñe como evento —con fecha, sitio y precio en
+          el propio resultado— y no como un enlace más. */}
+      <DatosEstructurados datos={jsonLdEvento(tardeo)} />
       <RegistrarVisita tardeoId={tardeo.id} />
       <div className="relative px-4 pt-4 md:pt-8">
         <Link

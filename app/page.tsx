@@ -9,7 +9,10 @@ import CtaLocalDj from "@/components/CtaLocalDj";
 import Footer from "@/components/Footer";
 import PopupCliente from "@/components/PopupCliente";
 import { getTardeosPublicados, getDjsPublicos, getLocalesDestacados } from "@/lib/tardeos";
+import DatosEstructurados from "@/components/DatosEstructurados";
+import { jsonLdSitio, urlAbsoluta } from "@/lib/seo";
 import { zonasDe } from "@/lib/zonas";
+import type { Metadata } from "next";
 import { CalendarDays, SlidersHorizontal, MapPin, ArrowRight, Sparkles, Sun, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import MapaClient from "@/components/MapaClient";
@@ -20,6 +23,12 @@ import MapaClient from "@/components/MapaClient";
 // asomar. Al publicar se invalida la caché de cliente, que es lo que ve el
 // local al terminar.
 export const revalidate = 60;
+
+// El título y la descripción los pone el layout; aquí solo falta decirle a
+// Google cuál es la dirección buena de la portada.
+export const metadata: Metadata = {
+  alternates: { canonical: urlAbsoluta("/") },
+};
 
 export default async function Inicio() {
   const [tardeos, djs, localesTop] = await Promise.all([
@@ -53,6 +62,7 @@ export default async function Inicio() {
 
   return (
     <main>
+      <DatosEstructurados datos={jsonLdSitio()} />
       <div className="md:hidden">
         <TopBar />
       </div>

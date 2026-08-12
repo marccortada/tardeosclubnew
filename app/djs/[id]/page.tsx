@@ -6,6 +6,8 @@ import CompartirBtn from "@/components/CompartirBtn";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
+import DatosEstructurados from "@/components/DatosEstructurados";
+import { jsonLdDj, urlAbsoluta } from "@/lib/seo";
 import { ArrowLeft, BadgeCheck, Star, Music, Disc3, CalendarDays, Instagram, Youtube, Music2, Phone } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +33,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title: `${dj.nombre_artistico} · TardeosClub`,
     description: desc,
-    openGraph: { title: dj.nombre_artistico, description: desc, images: dj.avatar_url ? [{ url: dj.avatar_url }] : undefined, type: "website" },
+    alternates: { canonical: urlAbsoluta(`/djs/${id}`) },
+    openGraph: {
+      title: dj.nombre_artistico,
+      description: desc,
+      images: dj.avatar_url ? [{ url: dj.avatar_url }] : undefined,
+      url: urlAbsoluta(`/djs/${id}`),
+      type: "website",
+    },
   };
 }
 
@@ -53,6 +62,8 @@ export default async function PaginaDj({ params }: { params: Promise<{ id: strin
 
   return (
     <main className="mx-auto max-w-4xl pb-12">
+      {/* Las redes van ya en URL absoluta: en la base son "@usuario". */}
+      <DatosEstructurados datos={jsonLdDj(dj, tardeos, socials.map((s) => s.url))} />
       {/* Cabecera oscura */}
       <div className="relative overflow-hidden bg-tinta px-4 pb-8 pt-16 text-white md:px-8">
         <span className="bokeh" style={{ width: 160, height: 160, top: -40, right: 20, background: "#E10A5A", opacity: 0.5 }} />

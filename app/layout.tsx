@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 // Solo la base (posicionado y animación de agrupar/desagrupar).
 // El aspecto del cluster es propio, en MapaClient.
 import "leaflet.markercluster/dist/MarkerCluster.css";
+import { SITE_URL } from "@/lib/seo";
 import BottomNav from "@/components/BottomNav";
 import SiteNav from "@/components/SiteNav";
 import RegistrarSW from "@/components/RegistrarSW";
@@ -27,8 +28,6 @@ const caveat = Caveat({
   variable: "--font-caveat",
   weight: ["500", "600", "700"],
 });
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://app.tardeosclub.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

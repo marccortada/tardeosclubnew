@@ -6,6 +6,8 @@ import CompartirBtn from "@/components/CompartirBtn";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
+import DatosEstructurados from "@/components/DatosEstructurados";
+import { jsonLdLocal, urlAbsoluta } from "@/lib/seo";
 import { ArrowLeft, MapPin, Phone, BadgeCheck, Store, CalendarDays , Megaphone } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +21,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title: `${local.nombre} · TardeosClub`,
     description: desc,
-    openGraph: { title: local.nombre, description: desc, images: fotos[0] ? [{ url: fotos[0] }] : undefined, type: "website" },
+    alternates: { canonical: urlAbsoluta(`/locales/${id}`) },
+    openGraph: {
+      title: local.nombre,
+      description: desc,
+      images: fotos[0] ? [{ url: fotos[0] }] : undefined,
+      url: urlAbsoluta(`/locales/${id}`),
+      type: "website",
+    },
   };
 }
 
@@ -34,6 +43,9 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
 
   return (
     <main className="mx-auto max-w-4xl pb-12">
+      {/* Negocio + su cartelera, para que Google entienda que esto es un sitio
+          real con eventos y no una página suelta. */}
+      <DatosEstructurados datos={jsonLdLocal(local, tardeos)} />
       {/* Portada */}
       <div className="relative h-44 overflow-hidden bg-marca md:h-60">
         {fotos[0] ? (

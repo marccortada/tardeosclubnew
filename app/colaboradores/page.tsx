@@ -1,16 +1,17 @@
 import { getDjsPublicos, getLocalesPublicos } from "@/lib/tardeos";
 import ColaboradoresLista from "@/components/ColaboradoresLista";
 import type { Metadata } from "next";
+import { metadataPublica } from "@/lib/seo";
 import { Handshake } from "lucide-react";
 
 // Cambia poco: no hace falta consultar Supabase en cada visita.
 export const revalidate = 60;
 
-export const metadata: Metadata = {
-  title: "Colaboradores · TardeosClub",
-  description:
-    "Los locales, promotores y DJs que hacen los tardeos de la costa catalana.",
-};
+export const metadata: Metadata = metadataPublica(
+  "Colaboradores · TardeosClub",
+  "Los locales, promotores y DJs que hacen los tardeos de la costa catalana.",
+  "/colaboradores"
+);
 
 /**
  * Directorio único de quien hace los tardeos. Antes solo existía el de DJs, y
