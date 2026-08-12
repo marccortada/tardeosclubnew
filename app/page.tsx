@@ -3,11 +3,12 @@ import TopBar from "@/components/TopBar";
 import CarruselTardeos from "@/components/CarruselTardeos";
 import ZonasRapidas from "@/components/ZonasRapidas";
 import DjsDestacados from "@/components/DjsDestacados";
+import LocalesDestacados from "@/components/LocalesDestacados";
 import NexoRadio from "@/components/NexoRadio";
 import CtaLocalDj from "@/components/CtaLocalDj";
 import Footer from "@/components/Footer";
 import PopupCliente from "@/components/PopupCliente";
-import { getTardeosPublicados, getDjsPublicos } from "@/lib/tardeos";
+import { getTardeosPublicados, getDjsPublicos, getLocalesDestacados } from "@/lib/tardeos";
 import { zonasDe } from "@/lib/zonas";
 import { CalendarDays, SlidersHorizontal, MapPin, ArrowRight, Sparkles, Sun, MessageCircle } from "lucide-react";
 import Link from "next/link";
@@ -21,7 +22,11 @@ import MapaClient from "@/components/MapaClient";
 export const revalidate = 60;
 
 export default async function Inicio() {
-  const [tardeos, djs] = await Promise.all([getTardeosPublicados(), getDjsPublicos()]);
+  const [tardeos, djs, localesTop] = await Promise.all([
+    getTardeosPublicados(),
+    getDjsPublicos(),
+    getLocalesDestacados(),
+  ]);
   const destacados = tardeos.filter((t) => t.destacado);
 
   // "Este finde": viernes, sábado y domingo de la semana en curso (dinámico)
@@ -122,6 +127,7 @@ export default async function Inicio() {
       <CarruselTardeos titulo={<>Este finde <Sun size={22} className="text-oro" /></>} tardeos={esteFinde} />
 
       <DjsDestacados djs={djs.slice(0, 10)} />
+      <LocalesDestacados locales={localesTop} />
       <ZonasRapidas zonas={zonas} />
       <NexoRadio />
       <CtaLocalDj />

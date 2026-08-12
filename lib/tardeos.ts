@@ -110,6 +110,24 @@ export async function getTardeosPublicados(): Promise<Tardeo[]> {
 }
 
 /**
+ * Locales y promotores destacados, en el orden que fijó el admin.
+ *
+ * Solo activos: un local en borrador o suspendido por impago no puede salir
+ * en portada aunque alguien lo destacara en su día.
+ */
+export async function getLocalesDestacados(limite = 10): Promise<any[]> {
+  const { data, error } = await supabase
+    .from("locales")
+    .select("id,nombre,zona,logo_url,tipo,verificado,destacado_orden")
+    .eq("estado", "activo")
+    .not("destacado_orden", "is", null)
+    .order("destacado_orden", { ascending: true })
+    .limit(limite);
+  if (error) console.error("[locales] destacados:", error.message);
+  return data ?? [];
+}
+
+/**
  * Un local por id (para su página pública).
  *
  * Columnas explícitas y sin `email`: la política de lectura hace pública la
