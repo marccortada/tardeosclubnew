@@ -22,8 +22,11 @@ self.addEventListener("push", (event) => {
   const titulo = datos.titulo || "TardeosClub";
   const opciones = {
     body: datos.mensaje || "",
-    icon: "/branding/icon.png",
-    badge: "/branding/emblema.png",
+    // Recortes pequeños a propósito: el móvil se los baja con CADA
+    // notificación. El emblema original son 19 MB para pintar un badge que
+    // Android enseña como una silueta de 24 píxeles en la barra de estado.
+    icon: "/branding/icon-192.png",
+    badge: "/branding/badge-96.png",
     // La URL que se abre al tocarla viaja dentro de la notificación.
     data: { url: datos.url || "/" },
   };

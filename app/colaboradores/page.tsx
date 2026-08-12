@@ -34,6 +34,8 @@ export default async function Colaboradores() {
         </h1>
       </div>
 
+      {/* Sin Suspense a propósito: la lista ya no usa useSearchParams, así que
+          se renderiza en el servidor y las fichas llegan dentro del HTML. */}
       <ColaboradoresLista locales={locales} djs={djs} />
     </main>
   );

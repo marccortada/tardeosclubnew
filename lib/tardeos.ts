@@ -257,11 +257,22 @@ export async function getInscritosLocal(localId: string): Promise<any[]> {
   }
 }
 
-/** El perfil DJ del usuario (si lo tiene). */
+/**
+ * El perfil DJ del usuario (si lo tiene).
+ *
+ * Mismo cuidado que en getMiLocal, y por el mismo motivo: /dj enseña "Crear mi
+ * perfil DJ" en cuanto esto devuelve null, así que un fallo de lectura no se
+ * ve como un fallo — se ve como que no tienes perfil, y acabas con dos. Con
+ * `select("*")` bastaba con restringir una columna cualquiera de `djs` (como
+ * pasó con `email` en locales) para que la consulta entera reventara.
+ */
 export async function getMiDj(profileId: string): Promise<any | null> {
-  const { data } = await supabase
-    .from("djs").select("*").eq("profile_id", profileId)
+  const { data, error } = await supabase
+    .from("djs")
+    .select("id,profile_id,nombre_artistico,bio,estilos,galeria,redes,verificado,reputacion_score,oculto,avatar_url")
+    .eq("profile_id", profileId)
     .order("created_at", { ascending: true }).limit(1).maybeSingle();
+  if (error) console.error("[djs] no se pudo cargar tu perfil DJ:", error.message);
   return data ?? null;
 }
 
@@ -280,9 +291,19 @@ export async function getDjsPublicos(): Promise<any[]> {
   return data ?? [];
 }
 
-/** Un DJ por id (para su página pública). */
+/**
+ * Un DJ por id (para su página pública).
+ *
+ * Columnas explícitas, como en getLocalById: con `*` la ficha pública servía
+ * también `profile_id` (el id de la cuenta) y `origen_id`, que no pinta nada
+ * ahí y ata al DJ con su usuario de auth.
+ */
 export async function getDjById(id: string): Promise<any | null> {
-  const { data } = await supabase.from("djs").select("*").eq("id", id).maybeSingle();
+  const { data } = await supabase
+    .from("djs")
+    .select("id,nombre_artistico,bio,estilos,galeria,redes,verificado,reputacion_score,avatar_url")
+    .eq("id", id)
+    .maybeSingle();
   return data ?? null;
 }
 

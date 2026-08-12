@@ -38,13 +38,17 @@ export const metadata: Metadata = {
   },
   description: "El buscador de tardeos que va contigo. Sal, conecta y vive el tardeo.",
   manifest: "/manifest.json",
-  icons: { icon: "/branding/icon.png", apple: "/branding/icon.png" },
+  // Estas rutas se sirven crudas: next/image no las toca. Por eso apuntan a
+  // los recortes de scripts/iconos.mjs y no al arte original de 3840px, que
+  // convertía el favicon en una descarga de 1,4 MB en cada visita.
+  icons: { icon: "/branding/icon-192.png", apple: "/branding/icon-512.png" },
   openGraph: {
     type: "website",
     siteName: "TardeosClub",
     title: "TardeosClub — Tu comunidad tardícola",
     description: "El buscador de tardeos que va contigo. Sal, conecta y vive el tardeo.",
-    images: [{ url: "/branding/logo.png" }],
+    // 1200x630: el logo cuadrado salía recortado por los lados al compartir.
+    images: [{ url: "/branding/og.png", width: 1200, height: 630 }],
   },
   twitter: { card: "summary_large_image" },
 };
