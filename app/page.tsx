@@ -126,8 +126,10 @@ export default async function Inicio() {
       <CarruselTardeos titulo={<>Destacados <Sparkles size={22} className="text-oro" /></>} tardeos={destacados} />
       <CarruselTardeos titulo={<>Este finde <Sun size={22} className="text-oro" /></>} tardeos={esteFinde} />
 
-      <DjsDestacados djs={djs.slice(0, 10)} />
+      {/* Locales antes que DJs: el local es quien paga y quien pone el sitio;
+          el DJ acompaña. */}
       <LocalesDestacados locales={localesTop} />
+      <DjsDestacados djs={djs.slice(0, 10)} />
       <ZonasRapidas zonas={zonas} />
       <NexoRadio />
       <CtaLocalDj />

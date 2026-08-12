@@ -18,8 +18,8 @@ export default function LocalesDestacados({ locales }: { locales: any[] }) {
         <h2 className="flex items-center gap-2 font-display text-2xl font-black md:text-3xl">
           Locales destacados <Store size={22} className="text-magenta" />
         </h2>
-        <Link href="/mapa" className="inline-flex items-center gap-1 text-sm font-extrabold text-magenta">
-          Ver el mapa <ArrowRight size={16} />
+        <Link href="/colaboradores" className="inline-flex items-center gap-1 text-sm font-extrabold text-magenta">
+          Ver todos <ArrowRight size={16} />
         </Link>
       </div>
 

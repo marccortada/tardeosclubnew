@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
-import { Home, CalendarDays, Disc3, MapPin, Heart, User, Store, Megaphone } from "lucide-react";
+import { Home, CalendarDays, MapPin, Heart, User, Store, Megaphone, Handshake } from "lucide-react";
 
 const BASE = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/tardeos", label: "Tardeos", icon: CalendarDays },
-  { href: "/djs", label: "DJs", icon: Disc3 },
+  { href: "/colaboradores", label: "Colaboradores", icon: Handshake },
   { href: "/mapa", label: "Mapa", icon: MapPin },
   { href: "/favoritos", label: "Favoritos", icon: Heart },
   { href: "/perfil", label: "Perfil", icon: User },
@@ -61,10 +61,12 @@ export default function BottomNav() {
                 strokeWidth={active ? 2.6 : 2}
                 className={active ? "text-magenta" : "text-tinta/50"}
               />
+              {/* "Colaboradores" no cabe al tamaño normal. En vez de inventar
+                  una abreviatura que se lea raro, la etiqueta larga se encoge. */}
               <span
-                className={`w-full truncate text-center font-bold ${apretado ? "text-[10px]" : "text-[11px]"} ${
-                  active ? "text-magenta" : "text-tinta/50"
-                }`}
+                className={`w-full truncate text-center font-bold ${
+                  label.length > 9 ? "text-[9px]" : apretado ? "text-[10px]" : "text-[11px]"
+                } ${active ? "text-magenta" : "text-tinta/50"}`}
               >
                 {label}
               </span>

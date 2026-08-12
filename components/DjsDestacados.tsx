@@ -11,7 +11,7 @@ export default function DjsDestacados({ djs }: { djs: any[] }) {
         <h2 className="flex items-center gap-2 font-display text-2xl font-black md:text-3xl">
           DJs destacados <Disc3 size={22} className="text-magenta" />
         </h2>
-        <Link href="/djs" className="inline-flex items-center gap-1 text-sm font-extrabold text-magenta">
+        <Link href="/colaboradores?ver=djs" className="inline-flex items-center gap-1 text-sm font-extrabold text-magenta">
           Ver todos <ArrowRight size={16} />
         </Link>
       </div>

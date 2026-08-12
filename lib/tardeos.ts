@@ -110,6 +110,25 @@ export async function getTardeosPublicados(): Promise<Tardeo[]> {
 }
 
 /**
+ * Directorio público de locales y promotores.
+ *
+ * Solo activos. Los destacados salen primero, en el orden del admin; el resto,
+ * los verificados por delante y luego alfabético, que en un listado de negocios
+ * es lo que la gente espera.
+ */
+export async function getLocalesPublicos(): Promise<any[]> {
+  const { data, error } = await supabase
+    .from("locales")
+    .select("id,nombre,zona,direccion,logo_url,tipo,verificado,destacado_orden")
+    .eq("estado", "activo")
+    .order("destacado_orden", { ascending: true, nullsFirst: false })
+    .order("verificado", { ascending: false })
+    .order("nombre", { ascending: true });
+  if (error) console.error("[locales] directorio:", error.message);
+  return data ?? [];
+}
+
+/**
  * Locales y promotores destacados, en el orden que fijó el admin.
  *
  * Solo activos: un local en borrador o suspendido por impago no puede salir
