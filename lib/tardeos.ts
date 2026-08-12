@@ -134,7 +134,7 @@ export async function getLocalesPublicos(): Promise<any[]> {
  * Solo activos: un local en borrador o suspendido por impago no puede salir
  * en portada aunque alguien lo destacara en su día.
  */
-export async function getLocalesDestacados(limite = 10): Promise<any[]> {
+export async function getLocalesDestacados(limite = 10): Promise<{ locales: any[]; sonDePago: boolean }> {
   const { data, error } = await supabase
     .from("locales")
     .select("id,nombre,zona,logo_url,tipo,verificado,destacado_orden")
@@ -143,7 +143,31 @@ export async function getLocalesDestacados(limite = 10): Promise<any[]> {
     .order("destacado_orden", { ascending: true })
     .limit(limite);
   if (error) console.error("[locales] destacados:", error.message);
-  return data ?? [];
+  if (data?.length) return { locales: data, sonDePago: true };
+
+  // Nadie destacado todavía: en vez de dejar el hueco, se enseñan los locales
+  // que tienen tardeos publicados. Son los que están vivos, que es lo que le
+  // interesa a quien entra. El que llama cambia el título para no llamar
+  // "destacado" a algo que nadie ha pagado.
+  const hoy = hoyISO();
+  const { data: conTardeos } = await supabase
+    .from("tardeos")
+    .select("locales(id,nombre,zona,logo_url,tipo,verificado)")
+    .eq("estado", "publicado")
+    .gte("fecha", hoy)
+    .order("fecha", { ascending: true })
+    .limit(60);
+
+  const vistos = new Set<string>();
+  const locales: any[] = [];
+  for (const fila of (conTardeos ?? []) as any[]) {
+    const l = fila.locales;
+    if (!l?.id || vistos.has(l.id)) continue;
+    vistos.add(l.id);
+    locales.push(l);
+    if (locales.length >= limite) break;
+  }
+  return { locales, sonDePago: false };
 }
 
 /**

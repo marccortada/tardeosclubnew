@@ -27,7 +27,17 @@ export default async function Inicio() {
     getDjsPublicos(),
     getLocalesDestacados(),
   ]);
-  const destacados = tardeos.filter((t) => t.destacado);
+  /**
+   * El primer carrusel enseña los destacados de pago si los hay y, si no, los
+   * próximos por fecha. Antes desaparecía cuando no había ninguno destacado, y
+   * la portada se quedaba vacía teniendo 27 tardeos que enseñar.
+   *
+   * El título cambia con el contenido: llamar "Destacados" a los que salen
+   * solo por ser los siguientes sería vender algo que nadie ha pagado.
+   */
+  const marcados = tardeos.filter((t) => t.destacado);
+  const hayDestacados = marcados.length > 0;
+  const destacados = hayDestacados ? marcados : tardeos.slice(0, 10);
 
   // "Este finde": viernes, sábado y domingo de la semana en curso (dinámico)
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
@@ -123,12 +133,17 @@ export default async function Inicio() {
       </section>
 
       {/* Carruseles y secciones */}
-      <CarruselTardeos titulo={<>Destacados <Sparkles size={22} className="text-oro" /></>} tardeos={destacados} />
+      <CarruselTardeos
+        titulo={hayDestacados
+          ? <>Destacados <Sparkles size={22} className="text-oro" /></>
+          : <>Próximos tardeos <CalendarDays size={22} className="text-oro" /></>}
+        tardeos={destacados}
+      />
       <CarruselTardeos titulo={<>Este finde <Sun size={22} className="text-oro" /></>} tardeos={esteFinde} />
 
       {/* Locales antes que DJs: el local es quien paga y quien pone el sitio;
           el DJ acompaña. */}
-      <LocalesDestacados locales={localesTop} />
+      <LocalesDestacados locales={localesTop.locales} sonDePago={localesTop.sonDePago} />
       <DjsDestacados djs={djs.slice(0, 10)} />
       <ZonasRapidas zonas={zonas} />
       <NexoRadio />

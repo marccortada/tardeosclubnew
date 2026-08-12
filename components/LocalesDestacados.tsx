@@ -9,14 +9,22 @@ import { BadgeCheck, Store, Megaphone, ArrowRight } from "lucide-react";
  * Si no hay ninguno destacado no se pinta la sección: más vale que no exista a
  * que salga un hueco vacío entre los DJs y las zonas.
  */
-export default function LocalesDestacados({ locales }: { locales: any[] }) {
+export default function LocalesDestacados({
+  locales,
+  sonDePago = true,
+}: {
+  locales: any[];
+  /** false = no hay ninguno destacado y se enseñan los que tienen tardeos. */
+  sonDePago?: boolean;
+}) {
   if (!locales || locales.length === 0) return null;
 
   return (
     <section className="mx-auto max-w-6xl px-4 pt-10 md:px-8">
       <div className="mb-3 flex items-end justify-between">
         <h2 className="flex items-center gap-2 font-display text-2xl font-black md:text-3xl">
-          Locales destacados <Store size={22} className="text-magenta" />
+          {sonDePago ? "Locales destacados" : "Locales con tardeos"}
+          <Store size={22} className="text-magenta" />
         </h2>
         <Link href="/colaboradores" className="inline-flex items-center gap-1 text-sm font-extrabold text-magenta">
           Ver todos <ArrowRight size={16} />
