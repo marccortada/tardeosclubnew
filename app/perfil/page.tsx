@@ -57,7 +57,16 @@ export default function Perfil() {
     if (modo === "signup" && !mayor) { setEstado("error"); setMsg("Debes confirmar que eres mayor de 18."); return; }
     setEstado("cargando");
     if (modo === "signup") {
-      const { data, error } = await supabase.auth.signUp({ email: email.trim(), password: pass });
+      // Sin emailRedirectTo, el enlace del correo de verificación va a la
+      // "Site URL" que haya puesta en Supabase — que era localhost, así que
+      // quien se registraba desde el móvil acababa en un "no se puede acceder
+      // a esta página". Con esto vuelve al sitio desde el que se registró, sea
+      // el dominio de pruebas o el definitivo, y aterriza donde lo dejó.
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: pass,
+        options: { emailRedirectTo: `${window.location.origin}/unirse?rol=${rol}` },
+      });
       if (error) { setEstado("error"); setMsg(error.message); }
       else if (!data.session) setEstado("confirmar"); // requiere confirmar email
       else router.push(`/unirse?rol=${rol}`); // cuenta creada → completar rol elegido
