@@ -5,7 +5,7 @@ import "leaflet/dist/leaflet.css";
 // Solo la base (posicionado y animación de agrupar/desagrupar).
 // El aspecto del cluster es propio, en MapaClient.
 import "leaflet.markercluster/dist/MarkerCluster.css";
-import { SITE_URL } from "@/lib/seo";
+import { SITE_URL, INDEXABLE } from "@/lib/seo";
 import BottomNav from "@/components/BottomNav";
 import SiteNav from "@/components/SiteNav";
 import RegistrarSW from "@/components/RegistrarSW";
@@ -36,6 +36,10 @@ export const metadata: Metadata = {
     template: "%s",
   },
   description: "El buscador de tardeos que va contigo. Sal, conecta y vive el tardeo.",
+  // Cae en cascada a todas las páginas. Las privadas ya lo llevan aparte, así
+  // que ponerlo aquí solo afecta a las públicas mientras el dominio no sea el
+  // definitivo. Ver INDEXABLE en lib/seo.ts.
+  ...(INDEXABLE ? {} : { robots: { index: false, follow: false } }),
   manifest: "/manifest.json",
   // Estas rutas se sirven crudas: next/image no las toca. Por eso apuntan a
   // los recortes de scripts/iconos.mjs y no al arte original de 3840px, que

@@ -18,6 +18,19 @@ export function urlAbsoluta(ruta: string): string {
 }
 
 /**
+ * Si esta copia de la web puede salir en Google.
+ *
+ * Mientras la app viva en un dominio provisional (ahora crm.gnerai.com, que es
+ * el del CRM) no interesa que se indexe: cuando se mude al definitivo tendría
+ * dos webs iguales compitiendo entre ellas y habría que montar redirecciones
+ * para no perder lo ganado. El sitemap y los datos estructurados quedan
+ * hechos, solo dormidos.
+ *
+ * Se activa poniendo PERMITIR_INDEXACION=true en el servidor del dominio bueno.
+ */
+export const INDEXABLE = process.env.PERMITIR_INDEXACION === "true";
+
+/**
  * Metadatos de una pantalla privada (cuenta, panel, alta de local).
  *
  * Llevan noindex en vez de bloquearse por robots.txt a propósito: una ruta

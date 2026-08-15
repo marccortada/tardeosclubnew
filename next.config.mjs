@@ -25,6 +25,23 @@ const nextConfig = {
   turbopack: {
     root: import.meta.dirname,
   },
+
+  /**
+   * Mientras la web viva en un dominio provisional, se le dice a Google que no
+   * la indexe también por cabecera y no solo con la etiqueta del HTML: así
+   * quedan cubiertos el sitemap.xml, los flyers y todo lo que no es una página.
+   *
+   * Se quita solo al poner PERMITIR_INDEXACION=true en el dominio definitivo.
+   */
+  async headers() {
+    if (process.env.PERMITIR_INDEXACION === "true") return [];
+    return [
+      {
+        source: "/:ruta*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
