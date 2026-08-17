@@ -7,12 +7,49 @@ import { zonaGrande, zonasDe } from "@/lib/zonas";
 import { useUbicacion } from "@/lib/ubicacion";
 import { distanciaKm } from "@/lib/geo";
 import { Tardeo } from "@/lib/types";
-import { SlidersHorizontal, X, Loader2, Search, Navigation } from "lucide-react";
+import {
+  SlidersHorizontal, X, Loader2, Search, Navigation, CalendarDays, Music, ChevronDown,
+} from "lucide-react";
 
 const CUANDOS = [
   { k: "hoy", label: "Hoy" },
   { k: "finde", label: "Este finde" },
   { k: "semana", label: "Esta semana" },
+];
+
+/**
+ * Tramos de precio en vez de "gratis / entrada / por lista".
+ *
+ * Los 157 tardeos con importe van de 0,01 € a 39 €, con la mediana en 10: por
+ * eso el corte está ahí y no en cifras redondas inventadas.
+ *
+ * OJO con los 361 de pago SIN importe: la app antigua deja publicar sin
+ * ponerlo, y son el 55% de la cartelera. No se meten en "hasta 10 €" porque
+ * sería adivinar —y quien filtra por precio lo hace justo porque lleva un
+ * presupuesto—, pero tampoco pueden quedarse sin tramo: con cualquier filtro
+ * puesto desaparecería más de la mitad del catálogo sin que se sepa por qué.
+ * Van en su propio grupo, diciendo la verdad: hay que pagar, no sabemos cuánto.
+ */
+const PRECIOS = [
+  { k: "gratis", label: "Gratis" },
+  { k: "hasta10", label: "Hasta 10 €" },
+  { k: "de10a20", label: "10–20 €" },
+  { k: "mas20", label: "Más de 20 €" },
+  { k: "sinprecio", label: "Con entrada", pie: "precio sin indicar" },
+  { k: "lista", label: "Por lista" },
+];
+
+/**
+ * Franjas horarias. Los cortes salen de cómo se reparten de verdad: 18h y 20h
+ * concentran la mitad de la cartelera.
+ *
+ * Las que empiezan de madrugada (39 tardeos entre las 00h y las 06h) cuentan
+ * como noche y no como mediodía: son los que se alargan, no los que madrugan.
+ */
+const HORAS = [
+  { k: "mediodia", label: "Mediodía", pie: "antes de 17 h" },
+  { k: "tarde", label: "Tarde", pie: "17–20 h" },
+  { k: "noche", label: "Noche", pie: "desde 20 h" },
 ];
 
 /**
@@ -26,14 +63,15 @@ type Filtro = {
   zona: string | null;
   familia: string | null;
   estilo: string | null;
-  tipo: string | null;
+  precio: string | null;
+  hora: string | null;
 };
 
-const TIPOS = [
-  { k: "gratis", label: "Gratis" },
-  { k: "pago", label: "Entrada" },
-  { k: "lista", label: "Por lista" },
-];
+const VACIO: Filtro = { zona: null, familia: null, estilo: null, precio: null, hora: null };
+
+/** Qué panel está desplegado. Solo uno a la vez: en un móvil, dos abiertos
+ *  empujan la cartelera fuera de la pantalla. */
+type Panel = null | "cuando" | "musica" | "mas";
 
 function Chip({ activo, children, onClick }: { activo: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
@@ -50,23 +88,60 @@ function Chip({ activo, children, onClick }: { activo: boolean; children: React.
   );
 }
 
+/** Botón de filtro principal: enseña si está puesto y qué lleva. */
+function Principal({
+  icono: Icono,
+  texto,
+  valor,
+  activo,
+  desplegable = true,
+  onClick,
+}: {
+  icono: typeof Music;
+  texto: string;
+  /** Lo elegido, para verlo sin abrir el panel. */
+  valor?: string | null;
+  activo: boolean;
+  desplegable?: boolean;
+  onClick: () => void;
+}) {
+  const puesto = Boolean(valor) || activo;
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold transition ${
+        puesto ? "bg-magenta text-white" : "bg-white text-tinta/80 ring-1 ring-magenta-100 hover:ring-magenta"
+      }`}
+    >
+      <Icono size={17} />
+      {valor || texto}
+      {desplegable && <ChevronDown size={15} className={`transition ${activo ? "rotate-180" : ""}`} />}
+    </button>
+  );
+}
+
 /**
  * El listado con sus filtros.
  *
- * Los tardeos llegan ya cargados del servidor (`todos`) en vez de pedirlos al
- * montar. Antes esta página era cliente entera y su HTML salía sin una sola
- * ficha: el buscador veía el título, los filtros y un "Cargando tardeos…".
- * Para la página que más tráfico debería traer, eso es no existir.
+ * La estructura es la del documento: ¿cuándo? + ¿dónde? + ¿qué música? arriba,
+ * y el resto detrás de "Más filtros". La idea es encontrar un plan en diez
+ * segundos, no rellenar un formulario.
  *
- * Por lo mismo no se usa `useSearchParams` para leer ?zona=: ese hook saca la
- * página del renderizado de servidor y volveríamos justo a lo de antes. Se lee
- * al montar, que es cuando se llega desde "Explora por zona".
+ * Falta "Ambiente", que es el cuarto principal: no existe en la base todavía y
+ * un botón que no filtra nada es peor que no tenerlo.
+ *
+ * Los tardeos llegan ya cargados del servidor (`todos`) en vez de pedirlos al
+ * montar: así el HTML sale con las fichas dentro y Google no ve una página
+ * vacía. Por lo mismo no se usa `useSearchParams` para leer ?zona=, que ese
+ * hook saca la página del renderizado de servidor. Se lee al montar, que es
+ * cuando se llega desde "Explora por zona".
  */
 export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
-  const [f, setF] = useState<Filtro>({ zona: null, familia: null, estilo: null, tipo: null });
-  const [abierto, setAbierto] = useState(false);
+  const [f, setF] = useState<Filtro>(VACIO);
+  const [panel, setPanel] = useState<Panel>(null);
   const [q, setQ] = useState("");
   const [cuando, setCuando] = useState<string | null>(null);
+  const [cerca, setCerca] = useState(false);
   const { coords, estado: estadoUbi, pedir: pedirUbicacion } = useUbicacion();
 
   /** Distancia del tardeo a donde estás, o null si le faltan coordenadas. */
@@ -86,6 +161,15 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
   const elegirFamilia = (id: string) =>
     setF((p) => (p.familia === id ? { ...p, familia: null, estilo: null } : { ...p, familia: id, estilo: null }));
 
+  const abrir = (p: Panel) => setPanel((actual) => (actual === p ? null : p));
+
+  /** El permiso se pide con un gesto, no al entrar: el navegador solo enseña el
+   *  diálogo si lo dispara el usuario. */
+  const alternarCerca = () => {
+    if (!coords) { pedirUbicacion(); setCerca(true); return; }
+    setCerca((v) => !v);
+  };
+
   // Agrupadas (Barcelona, Maresme, Costa Brava…) en vez de una por municipio.
   const zonasDisponibles = zonasDe(todos).map((z) => z.zona);
 
@@ -102,7 +186,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
     );
   };
 
-  // --- Filtro rápido de fecha (Hoy / Este finde / Esta semana) ---
+  // --- ¿CUÁNDO? (Hoy / Este finde / Esta semana) ---
   const enRango = (t: Tardeo) => {
     if (!cuando) return true;
     const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
@@ -129,43 +213,68 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
     return true;
   };
 
+  const encajaPrecio = (t: Tardeo) => {
+    if (!f.precio) return true;
+    if (f.precio === "gratis") return t.tipoEntrada === "gratis";
+    if (f.precio === "lista") return t.tipoEntrada === "lista";
+    if (f.precio === "sinprecio") return t.tipoEntrada === "pago" && t.precio == null;
+    if (t.precio == null) return false; // de pago pero sin importe: no adivinamos
+    if (f.precio === "hasta10") return t.precio <= 10;
+    if (f.precio === "de10a20") return t.precio > 10 && t.precio <= 20;
+    return t.precio > 20;
+  };
+
+  const encajaHora = (t: Tardeo) => {
+    if (!f.hora) return true;
+    const h = Number((t.horaInicio || "").slice(0, 2));
+    if (!Number.isFinite(h)) return false;
+    if (f.hora === "mediodia") return h >= 7 && h < 17;
+    if (f.hora === "tarde") return h >= 17 && h < 20;
+    return h >= 20 || h < 7;
+  };
+
   const filtrados = todos.filter(
     (t) =>
       (!f.zona || zonaGrande(t.zona) === f.zona) &&
       encajaMusica(t) &&
-      (!f.tipo || t.tipoEntrada === f.tipo) &&
+      encajaPrecio(t) &&
+      encajaHora(t) &&
       coincideTexto(t) &&
       enRango(t)
   );
 
   /**
-   * Con la ubicación puesta, manda la cercanía: si estás en Mataró lo primero
+   * Con "Cerca de mí" puesto manda la cercanía: si estás en Mataró lo primero
    * que quieres ver es lo que tienes al lado, no lo que pasa antes en el
-   * calendario. Sin ubicación se mantiene el orden por fecha de siempre.
-   *
-   * Los que no tienen coordenadas se van al final en vez de colarse arriba.
+   * calendario. Los que no tienen coordenadas se van al final.
    */
-  const lista = coords
+  const porCercania = cerca && coords;
+  const lista = porCercania
     ? [...filtrados].sort((a, b) => (distanciaDe(a) ?? Infinity) - (distanciaDe(b) ?? Infinity))
     : filtrados;
 
-  const nFiltros = [f.zona, f.familia, f.tipo].filter(Boolean).length;
+  const etiquetaMusica = f.estilo ? etiquetaDe(f.estilo) : f.familia ? etiquetaDe(f.familia) : null;
+  const nMas = [f.zona, f.precio, f.hora].filter(Boolean).length;
+  const nTotal = nMas + (etiquetaMusica ? 1 : 0) + (cuando ? 1 : 0) + (porCercania ? 1 : 0);
+
+  const activas: string[] = [
+    cuando ? CUANDOS.find((c) => c.k === cuando)!.label : null,
+    porCercania ? "Cerca de mí" : null,
+    etiquetaMusica,
+    f.zona,
+    f.precio ? PRECIOS.find((p) => p.k === f.precio)!.label : null,
+    f.hora ? HORAS.find((h) => h.k === f.hora)!.label : null,
+  ].filter(Boolean) as string[];
+
+  const limpiar = () => { setF(VACIO); setCuando(null); setCerca(false); };
 
   return (
     <main className="mx-auto max-w-6xl px-4 pt-5 md:px-8 md:pt-8">
       <div className="mb-3">
         <p className="font-script text-xl leading-none text-magenta-600 md:text-2xl">Encuentra tu sitio</p>
-        <div className="mt-1 flex items-center justify-between gap-3">
-          <h1 className="font-display text-2xl font-black leading-tight md:text-3xl">
-            {f.zona ? `Tardeos en ${f.zona}` : "Conecta con tu tardeo"}
-          </h1>
-          <button
-            onClick={() => setAbierto((v) => !v)}
-            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-marca px-4 py-2.5 text-sm font-extrabold text-white transition hover:brightness-105"
-          >
-            <SlidersHorizontal size={18} /> Filtrar {nFiltros > 0 && `(${nFiltros})`}
-          </button>
-        </div>
+        <h1 className="mt-1 font-display text-2xl font-black leading-tight md:text-3xl">
+          {f.zona ? `Tardeos en ${f.zona}` : "Conecta con tu tardeo"}
+        </h1>
       </div>
 
       {/* Buscador */}
@@ -185,56 +294,67 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
         )}
       </div>
 
-      {/* Chips rápidos de fecha */}
-      <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-        {CUANDOS.map((c) => (
-          <button
-            key={c.k}
-            onClick={() => setCuando((p) => (p === c.k ? null : c.k))}
-            className={`min-h-[44px] whitespace-nowrap rounded-full px-4 py-2 text-sm font-extrabold transition ${
-              cuando === c.k ? "bg-magenta text-white" : "bg-white text-tinta/80 ring-1 ring-magenta-100 hover:ring-magenta"
-            }`}
-          >
-            {c.label}
-          </button>
-        ))}
+      {/* Filtros principales: cuándo + dónde + qué música, y el resto detrás. */}
+      <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
+        <Principal
+          icono={CalendarDays}
+          texto="Cuándo"
+          valor={cuando ? CUANDOS.find((c) => c.k === cuando)!.label : null}
+          activo={panel === "cuando"}
+          onClick={() => abrir("cuando")}
+        />
+        <Principal
+          icono={estadoUbi === "pidiendo" ? Loader2 : Navigation}
+          texto="Cerca de mí"
+          activo={Boolean(porCercania)}
+          desplegable={false}
+          onClick={alternarCerca}
+        />
+        <Principal
+          icono={Music}
+          texto="Música"
+          valor={etiquetaMusica}
+          activo={panel === "musica"}
+          onClick={() => abrir("musica")}
+        />
+        <Principal
+          icono={SlidersHorizontal}
+          texto={nMas > 0 ? `Más filtros (${nMas})` : "Más filtros"}
+          activo={panel === "mas"}
+          onClick={() => abrir("mas")}
+        />
       </div>
 
-      {/* Filtros activos visibles */}
-      {nFiltros > 0 && (
+      {/* Lo que hay puesto, siempre a la vista aunque los paneles estén cerrados. */}
+      {nTotal > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          {/* Etiquetas legibles: el estilo se guarda como "electronica:afro house"
-              y eso no se le puede enseñar a nadie. */}
-          {[
-            f.zona,
-            f.estilo ? etiquetaDe(f.estilo) : f.familia ? etiquetaDe(f.familia) : null,
-            f.tipo ? TIPOS.find((t) => t.k === f.tipo)?.label : null,
-          ].filter(Boolean).map((v) => (
-            <span key={v as string} className="inline-flex items-center gap-1 rounded-full bg-magenta-50 px-3 py-1.5 text-sm font-extrabold text-magenta-700">
+          {activas.map((v) => (
+            <span key={v} className="inline-flex items-center gap-1 rounded-full bg-magenta-50 px-3 py-1.5 text-sm font-extrabold text-magenta-700">
               {v}
             </span>
           ))}
-          <button
-            onClick={() => setF({ zona: null, familia: null, estilo: null, tipo: null })}
-            className="inline-flex items-center gap-1 text-sm font-bold text-magenta"
-          >
+          <button onClick={limpiar} className="inline-flex items-center gap-1 text-sm font-bold text-magenta">
             <X size={14} /> Quitar filtros
           </button>
         </div>
       )}
 
-      {abierto && (
+      {panel === "cuando" && (
         <div className="mb-4 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-magenta-100">
-          <p className="mb-1.5 text-sm font-black text-tinta/60">Zona</p>
           <div className="flex flex-wrap gap-2">
-            {zonasDisponibles.map((z) => (
-              <Chip key={z} activo={f.zona === z} onClick={() => set("zona", z)}>{z}</Chip>
+            {CUANDOS.map((c) => (
+              <Chip key={c.k} activo={cuando === c.k} onClick={() => setCuando((p) => (p === c.k ? null : c.k))}>
+                {c.label}
+              </Chip>
             ))}
           </div>
+        </div>
+      )}
 
+      {panel === "musica" && (
+        <div className="mb-4 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-magenta-100">
           {/* Música en dos pasos. Las 86 etiquetas de golpe convierten esto en un
               muro: primero la familia y, dentro, sus estilos. */}
-          <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Música</p>
           <div className="flex flex-wrap gap-2">
             {FAMILIAS.map((fam) => (
               <Chip key={fam.id} activo={f.familia === fam.id} onClick={() => elegirFamilia(fam.id)}>
@@ -254,20 +374,45 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
                   <div className="flex flex-wrap gap-2">
                     {g.estilos.map((e) => {
                       const id = idEstilo(f.familia!, e);
-                      return (
-                        <Chip key={id} activo={f.estilo === id} onClick={() => set("estilo", id)}>{e}</Chip>
-                      );
+                      return <Chip key={id} activo={f.estilo === id} onClick={() => set("estilo", id)}>{e}</Chip>;
                     })}
                   </div>
                 </div>
               ))}
             </div>
           )}
+        </div>
+      )}
 
-          <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Entrada</p>
+      {panel === "mas" && (
+        <div className="mb-4 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-magenta-100">
+          <p className="mb-1.5 text-sm font-black text-tinta/60">Zona</p>
           <div className="flex flex-wrap gap-2">
-            {TIPOS.map((t) => (
-              <Chip key={t.k} activo={f.tipo === t.k} onClick={() => set("tipo", t.k)}>{t.label}</Chip>
+            {zonasDisponibles.length === 0 ? (
+              <p className="text-sm font-bold text-tinta/40">No hay zonas que enseñar todavía.</p>
+            ) : (
+              zonasDisponibles.map((z) => (
+                <Chip key={z} activo={f.zona === z} onClick={() => set("zona", z)}>{z}</Chip>
+              ))
+            )}
+          </div>
+
+          <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Precio</p>
+          <div className="flex flex-wrap gap-2">
+            {PRECIOS.map((p) => (
+              <Chip key={p.k} activo={f.precio === p.k} onClick={() => set("precio", p.k)}>
+                {p.label}
+                {p.pie && <span className={f.precio === p.k ? "text-white/70" : "text-tinta/40"}> {p.pie}</span>}
+              </Chip>
+            ))}
+          </div>
+
+          <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Hora</p>
+          <div className="flex flex-wrap gap-2">
+            {HORAS.map((h) => (
+              <Chip key={h.k} activo={f.hora === h.k} onClick={() => set("hora", h.k)}>
+                {h.label} <span className={f.hora === h.k ? "text-white/70" : "text-tinta/40"}>{h.pie}</span>
+              </Chip>
             ))}
           </div>
         </div>
@@ -275,28 +420,19 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-bold text-tinta/60">
-          {lista.length} tardeos{coords && " · los más cercanos primero"}
+          {lista.length} tardeos{porCercania && " · los más cercanos primero"}
         </p>
-        {/* El permiso se pide con un gesto, no al entrar: el navegador solo
-            enseña el diálogo si lo dispara el usuario. */}
-        {!coords && estadoUbi !== "no-soportada" && (
-          <button
-            onClick={pedirUbicacion}
-            disabled={estadoUbi === "pidiendo"}
-            className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-black text-magenta shadow-tarjeta ring-1 ring-magenta-100 disabled:opacity-50"
-          >
-            {estadoUbi === "pidiendo"
-              ? <Loader2 size={14} className="animate-spin" />
-              : <Navigation size={14} />}
-            Ver los más cercanos
-          </button>
+        {estadoUbi === "denegada" && cerca && (
+          <p className="text-sm font-bold text-tinta/50">Sin permiso de ubicación no podemos ordenar por cercanía.</p>
         )}
       </div>
+
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
         {lista.map((t) => (
           <TardeoCard key={t.id} tardeo={t} distanciaKm={distanciaDe(t)} />
         ))}
       </div>
+
       {lista.length === 0 && (
         <p className="rounded-2xl bg-white p-6 text-center font-bold text-tinta/60 ring-1 ring-magenta-100">
           {todos.length === 0 ? "Aún no hay tardeos publicados. ¡Vuelve pronto! 🎉" : "No hay tardeos con esos filtros 😅"}
