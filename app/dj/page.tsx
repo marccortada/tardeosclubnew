@@ -7,7 +7,7 @@ import PanelHeader from "@/components/PanelHeader";
 import ServiciosExternos from "@/components/ServiciosExternos";
 import { useAuth } from "@/lib/useAuth";
 import { getMiDj, updateMiDj, subirAvatarDj } from "@/lib/tardeos";
-import { ESTILOS } from "@/lib/mockData";
+import SelectorEstilos from "@/components/SelectorEstilos";
 import { Disc3, BadgeCheck, Star, Music, Loader2, Pencil, Camera, Check, X, Instagram, Youtube, Music2, Phone } from "lucide-react";
 
 type Redes = { instagram?: string; soundcloud?: string; youtube?: string; whatsapp?: string };
@@ -184,17 +184,7 @@ export default function PanelDj() {
           <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-tinta/60"><Music size={16} className="text-magenta" /> Estilos</h3>
           {editando ? (
             <div className="flex flex-wrap gap-2">
-              {ESTILOS.map((e) => (
-                <button
-                  key={e}
-                  onClick={() => toggleEstilo(e)}
-                  className={`min-h-[44px] rounded-full px-4 py-2 text-sm font-extrabold transition ${
-                    estilos.includes(e) ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100"
-                  }`}
-                >
-                  {e}
-                </button>
-              ))}
+              <SelectorEstilos valor={estilos} onChange={setEstilos} />
             </div>
           ) : estilosActuales.length > 0 ? (
             <div className="flex flex-wrap gap-2">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import TardeoCard from "@/components/TardeoCard";
-import { ESTILOS } from "@/lib/mockData";
+import { FAMILIAS, familiasDe, normalizarEstilo, etiquetaDe, idEstilo } from "@/lib/musica";
 import { zonaGrande, zonasDe } from "@/lib/zonas";
 import { useUbicacion } from "@/lib/ubicacion";
 import { distanciaKm } from "@/lib/geo";
@@ -15,7 +15,19 @@ const CUANDOS = [
   { k: "semana", label: "Esta semana" },
 ];
 
-type Filtro = { zona: string | null; estilo: string | null; tipo: string | null };
+/**
+ * `familia` y `estilo` son los dos niveles del filtro musical: se puede pedir
+ * "Electrónica" entera o bajar a "Afro House". El estilo guarda el id de la
+ * taxonomía (`electronica:afro house`), no la etiqueta, porque hay etiquetas
+ * repetidas en dos familias —House está en Remember y en Electrónica— y con el
+ * texto suelto no se distinguirían.
+ */
+type Filtro = {
+  zona: string | null;
+  familia: string | null;
+  estilo: string | null;
+  tipo: string | null;
+};
 
 const TIPOS = [
   { k: "gratis", label: "Gratis" },
@@ -51,7 +63,7 @@ function Chip({ activo, children, onClick }: { activo: boolean; children: React.
  * al montar, que es cuando se llega desde "Explora por zona".
  */
 export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
-  const [f, setF] = useState<Filtro>({ zona: null, estilo: null, tipo: null });
+  const [f, setF] = useState<Filtro>({ zona: null, familia: null, estilo: null, tipo: null });
   const [abierto, setAbierto] = useState(false);
   const [q, setQ] = useState("");
   const [cuando, setCuando] = useState<string | null>(null);
@@ -67,6 +79,12 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
   }, []);
 
   const set = (k: keyof Filtro, v: string) => setF((p) => ({ ...p, [k]: p[k] === v ? null : v }));
+
+  /** Al cambiar de familia se suelta el estilo: un "Afro House" no pinta nada
+   *  dentro de Latina, y si se quedara pegado el listado saldría vacío sin que
+   *  se vea por qué. */
+  const elegirFamilia = (id: string) =>
+    setF((p) => (p.familia === id ? { ...p, familia: null, estilo: null } : { ...p, familia: id, estilo: null }));
 
   // Agrupadas (Barcelona, Maresme, Costa Brava…) en vez de una por municipio.
   const zonasDisponibles = zonasDe(todos).map((z) => z.zona);
@@ -99,10 +117,22 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
     return true;
   };
 
+  /**
+   * El estilo del tardeo se traduce al vocabulario común antes de comparar. Los
+   * 662 migrados vienen escritos a mano ("Tecno", "Techouse", "80s",
+   * "Latino + Salsa + Bachata"): comparando el texto a pelo, filtrar por Techno
+   * dejaba fuera a los que pusieron "Tecno".
+   */
+  const encajaMusica = (t: Tardeo) => {
+    if (f.estilo) return normalizarEstilo(t.estilo).includes(f.estilo);
+    if (f.familia) return familiasDe(t.estilo).includes(f.familia);
+    return true;
+  };
+
   const filtrados = todos.filter(
     (t) =>
       (!f.zona || zonaGrande(t.zona) === f.zona) &&
-      (!f.estilo || t.estilo === f.estilo) &&
+      encajaMusica(t) &&
       (!f.tipo || t.tipoEntrada === f.tipo) &&
       coincideTexto(t) &&
       enRango(t)
@@ -119,7 +149,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
     ? [...filtrados].sort((a, b) => (distanciaDe(a) ?? Infinity) - (distanciaDe(b) ?? Infinity))
     : filtrados;
 
-  const nFiltros = [f.zona, f.estilo, f.tipo].filter(Boolean).length;
+  const nFiltros = [f.zona, f.familia, f.tipo].filter(Boolean).length;
 
   return (
     <main className="mx-auto max-w-6xl px-4 pt-5 md:px-8 md:pt-8">
@@ -173,13 +203,19 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
       {/* Filtros activos visibles */}
       {nFiltros > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          {[f.zona, f.estilo, f.tipo].filter(Boolean).map((v) => (
-            <span key={v} className="inline-flex items-center gap-1 rounded-full bg-magenta-50 px-3 py-1.5 text-sm font-extrabold text-magenta-700">
+          {/* Etiquetas legibles: el estilo se guarda como "electronica:afro house"
+              y eso no se le puede enseñar a nadie. */}
+          {[
+            f.zona,
+            f.estilo ? etiquetaDe(f.estilo) : f.familia ? etiquetaDe(f.familia) : null,
+            f.tipo ? TIPOS.find((t) => t.k === f.tipo)?.label : null,
+          ].filter(Boolean).map((v) => (
+            <span key={v as string} className="inline-flex items-center gap-1 rounded-full bg-magenta-50 px-3 py-1.5 text-sm font-extrabold text-magenta-700">
               {v}
             </span>
           ))}
           <button
-            onClick={() => setF({ zona: null, estilo: null, tipo: null })}
+            onClick={() => setF({ zona: null, familia: null, estilo: null, tipo: null })}
             className="inline-flex items-center gap-1 text-sm font-bold text-magenta"
           >
             <X size={14} /> Quitar filtros
@@ -196,12 +232,37 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
             ))}
           </div>
 
-          <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Estilo</p>
+          {/* Música en dos pasos. Las 86 etiquetas de golpe convierten esto en un
+              muro: primero la familia y, dentro, sus estilos. */}
+          <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Música</p>
           <div className="flex flex-wrap gap-2">
-            {ESTILOS.map((e) => (
-              <Chip key={e} activo={f.estilo === e} onClick={() => set("estilo", e)}>{e}</Chip>
+            {FAMILIAS.map((fam) => (
+              <Chip key={fam.id} activo={f.familia === fam.id} onClick={() => elegirFamilia(fam.id)}>
+                {fam.nombre}
+              </Chip>
             ))}
           </div>
+
+          {f.familia && (
+            <div className="mt-2 rounded-2xl bg-magenta-50/60 p-3">
+              {FAMILIAS.find((x) => x.id === f.familia)!.grupos.map((g, i) => (
+                <div key={g.nombre ?? i} className={i ? "mt-3" : ""}>
+                  {/* El nombre del subgrupo solo lo tiene Electrónica. */}
+                  {g.nombre && (
+                    <p className="mb-1.5 text-xs font-black uppercase tracking-wide text-tinta/45">{g.nombre}</p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {g.estilos.map((e) => {
+                      const id = idEstilo(f.familia!, e);
+                      return (
+                        <Chip key={id} activo={f.estilo === id} onClick={() => set("estilo", id)}>{e}</Chip>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Entrada</p>
           <div className="flex flex-wrap gap-2">

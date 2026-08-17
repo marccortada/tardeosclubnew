@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
-import { ESTILOS } from "@/lib/mockData";
+import SelectorEstilos from "@/components/SelectorEstilos";
 import AddressSearch, { Direccion } from "@/components/AddressSearch";
 import PanelHeader from "@/components/PanelHeader";
 import {
@@ -256,15 +256,7 @@ function UnirseContent() {
 
             <label className="text-sm font-black text-tinta/70">Estilos (tus filtros e intereses)</label>
             <div className="flex flex-wrap gap-2">
-              {ESTILOS.map((e) => {
-                const on = estilos.includes(e);
-                return (
-                  <button key={e} onClick={() => setEstilos((p) => on ? p.filter((x) => x !== e) : [...p, e])}
-                    className={`min-h-[44px] rounded-full px-4 py-2 text-sm font-extrabold transition ${on ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100"}`}>
-                    {e}
-                  </button>
-                );
-              })}
+              <SelectorEstilos valor={estilos} onChange={setEstilos} />
             </div>
 
             <label className="mt-1 text-sm font-black text-tinta/70">Biografía (opcional)</label>

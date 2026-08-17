@@ -3,7 +3,10 @@ import { Tardeo, Dj, Local } from "./types";
 export type { Tardeo, Dj, Local, TipoEntrada } from "./types";
 
 export const ZONAS = ["Barcelona", "Maresme", "Costa Brava", "Baix Llobregat"];
-export const ESTILOS = ["Remember", "Latino", "Comercial", "House", "Rumba", "Años 80-90"];
+// La lista de estilos vivía aquí con seis etiquetas ("Años 80-90" entre ellas,
+// que ni existe en la taxonomía nueva). Ahora está en lib/musica.ts, con las
+// seis familias y sus 86 estilos, y la comparten los tardeos, los DJs y los
+// filtros. Se deja el aviso para que nadie la reviva desde aquí.
 
 const djs: Dj[] = [
   { id: "dj1", nombre: "DJ Nando", estilos: ["Remember", "House"], verificado: true, reputacion: 4.8 },

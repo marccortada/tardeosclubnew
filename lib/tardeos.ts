@@ -101,6 +101,12 @@ export async function getTardeosPublicados(): Promise<Tardeo[]> {
       return datos;
     } catch (e) {
       console.error("[tardeos] Error cargando tardeos:", e);
+      // En build hay que reventar. Devolver [] aquí hornea la portada, /tardeos
+      // y /mapa vacías y `next build` termina en verde: se despliega una web sin
+      // contenido y nadie se entera hasta que un usuario la abre. Pasó de verdad.
+      // En ejecución es lo contrario: una lista vacía se recupera al revalidar,
+      // y es mejor que enseñarle un 500 a quien está mirando.
+      if (process.env.NEXT_PHASE === "phase-production-build") throw e;
       return [];
     } finally {
       enVuelo = null;
