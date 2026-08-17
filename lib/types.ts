@@ -36,6 +36,13 @@ export interface Tardeo {
   estilo: string;
   tipoEntrada: TipoEntrada;
   precio?: number;
+  /** A qué va la gente: chill, afterwork, fiestero… Varios a la vez. */
+  ambiente?: string[];
+  /** Franjas de edad a las que apunta el tardeo. Varias a la vez. Opcional
+   *  porque la inmensa mayoría de los migrados no lo trae. */
+  publico?: string[];
+  /** Cómo se va vestido. Texto libre: la lista de lib/adn es una sugerencia. */
+  dressCode?: string;
   destacado: boolean;
   estado?: string; // publicado | borrador | finalizado | cancelado
   lat: number;

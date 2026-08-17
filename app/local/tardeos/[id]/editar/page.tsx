@@ -7,6 +7,7 @@ import Link from "next/link";
 import PanelHeader from "@/components/PanelHeader";
 import { useAuth } from "@/lib/useAuth";
 import { getTardeoById, updateTardeo, setDjsDeTardeo, borrarTardeo, setEstadoTardeo } from "@/lib/tardeos";
+import SelectorAdn from "@/components/SelectorAdn";
 import { flyerSrc } from "@/lib/mockData";
 import { Tardeo } from "@/lib/types";
 import { Music, Calendar, Clock, Disc3, MapPin, Ticket, Check, Loader2, Trash2, EyeOff, Eye } from "lucide-react";
@@ -26,6 +27,9 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
   const [horaInicio, setHoraInicio] = useState("");
   const [horaFin, setHoraFin] = useState("");
   const [estilo, setEstilo] = useState("");
+  const [ambiente, setAmbiente] = useState<string[]>([]);
+  const [publico, setPublico] = useState<string[]>([]);
+  const [dressCode, setDressCode] = useState("");
   const [dj, setDj] = useState("");
   const [direccion, setDireccion] = useState("");
   const [tipo, setTipo] = useState("gratis");
@@ -40,6 +44,9 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
         setHoraInicio(t.horaInicio);
         setHoraFin(t.horaFin);
         setEstilo(t.estilo);
+        setAmbiente(t.ambiente ?? []);
+        setPublico(t.publico ?? []);
+        setDressCode(t.dressCode ?? "");
         setDj(t.djs.map((d) => d.nombre).join(" · "));
         setDireccion(t.local.direccion);
         setTipo(t.tipoEntrada);
@@ -63,6 +70,11 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
       hora_inicio: horaInicio,
       hora_fin: horaFin || null,
       estilo,
+      // null y no [] cuando está vacío: así "sin indicar" no se confunde con
+      // "lo revisó y lo dejó a cero".
+      ambiente: ambiente.length ? ambiente : null,
+      publico: publico.length ? publico : null,
+      dress_code: dressCode || null,
       direccion,
       es_de_pago: tipo === "pago",
       tiene_lista: tipo === "lista",
@@ -160,6 +172,13 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
             <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70"><MapPin size={16} className="text-magenta" /> Dirección</span>
             <input value={direccion} onChange={(e) => setDireccion(e.target.value)} className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 text-base font-semibold outline-none focus:border-magenta" />
           </label>
+
+          {/* Ambiente, público y outfit. Es también la vía para rellenar los
+              662 migrados, que llegaron sin ninguno de los tres. */}
+          <SelectorAdn
+            ambiente={ambiente} publico={publico} dressCode={dressCode}
+            onAmbiente={setAmbiente} onPublico={setPublico} onDressCode={setDressCode}
+          />
 
           <div>
             <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70"><Ticket size={16} className="text-magenta" /> Entrada</span>

@@ -6,6 +6,7 @@ import PanelHeader from "@/components/PanelHeader";
 import { useAuth } from "@/lib/useAuth";
 import { getMiLocal, vincularDjsPorNombre, invalidarCacheTardeos } from "@/lib/tardeos";
 import { supabase } from "@/lib/supabase";
+import SelectorAdn from "@/components/SelectorAdn";
 import AddressSearch, { Direccion } from "@/components/AddressSearch";
 import {
   Upload, Wand2, Sparkles, Loader2, Check, AlertTriangle,
@@ -62,6 +63,11 @@ export default function CrearTardeo() {
   const [modo, setModo] = useState<Modo>("elegir");
   const [estado, setEstado] = useState<Estado>("inicio");
   const [form, setForm] = useState(EXTRAIDO);
+  // Fuera de `form` porque no son texto: dos son listas y el formulario base
+  // solo maneja cadenas.
+  const [ambiente, setAmbiente] = useState<string[]>([]);
+  const [publico, setPublico] = useState<string[]>([]);
+  const [dressCode, setDressCode] = useState("");
   const [prompt, setPrompt] = useState("");
   // El admin puede publicar en cualquier local; el resto, solo en el suyo.
   const [esAdmin, setEsAdmin] = useState(false);

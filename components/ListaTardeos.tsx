@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import TardeoCard from "@/components/TardeoCard";
 import { FAMILIAS, familiasDe, normalizarEstilo, etiquetaDe, idEstilo } from "@/lib/musica";
+import { AMBIENTES, PUBLICOS, DRESS_CODES, contiene, mismoValor } from "@/lib/adn";
 import { zonaGrande, zonasDe } from "@/lib/zonas";
 import { useUbicacion } from "@/lib/ubicacion";
 import { distanciaKm } from "@/lib/geo";
 import { Tardeo } from "@/lib/types";
 import {
-  SlidersHorizontal, X, Loader2, Search, Navigation, CalendarDays, Music, ChevronDown,
+  SlidersHorizontal, X, Loader2, Search, Navigation, CalendarDays, Music, ChevronDown, Sparkles,
 } from "lucide-react";
 
 const CUANDOS = [
@@ -65,13 +66,19 @@ type Filtro = {
   estilo: string | null;
   precio: string | null;
   hora: string | null;
+  publico: string | null;
+  dressCode: string | null;
+  ambiente: string | null;
 };
 
-const VACIO: Filtro = { zona: null, familia: null, estilo: null, precio: null, hora: null };
+const VACIO: Filtro = {
+  zona: null, familia: null, estilo: null, precio: null, hora: null,
+  publico: null, dressCode: null, ambiente: null,
+};
 
 /** Qué panel está desplegado. Solo uno a la vez: en un móvil, dos abiertos
  *  empujan la cartelera fuera de la pantalla. */
-type Panel = null | "cuando" | "musica" | "mas";
+type Panel = null | "cuando" | "musica" | "ambiente" | "mas";
 
 function Chip({ activo, children, onClick }: { activo: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
@@ -224,6 +231,21 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
     return t.precio > 20;
   };
 
+  /**
+   * Público y dress code se comparan sin mayúsculas ni acentos: los dos campos
+   * llevan un "Otro…" de escritura libre, y si un local escribe "casual
+   * elegante" en minúsculas tiene que seguir saliendo al filtrar por "Casual
+   * Elegante". Es la misma lección que dejaron los 58 valores de estilo escritos
+   * a mano en la app antigua.
+   *
+   * Los tardeos que no lo tienen puesto quedan fuera cuando el filtro está
+   * activo: son la mayoría de los migrados, así que conviene que el filtro se
+   * vea y se pueda quitar de un toque.
+   */
+  const encajaPublico = (t: Tardeo) => !f.publico || contiene(t.publico, f.publico);
+  const encajaAmbiente = (t: Tardeo) => !f.ambiente || contiene(t.ambiente, f.ambiente);
+  const encajaDressCode = (t: Tardeo) => !f.dressCode || mismoValor(t.dressCode, f.dressCode);
+
   const encajaHora = (t: Tardeo) => {
     if (!f.hora) return true;
     const h = Number((t.horaInicio || "").slice(0, 2));
@@ -239,6 +261,9 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
       encajaMusica(t) &&
       encajaPrecio(t) &&
       encajaHora(t) &&
+      encajaPublico(t) &&
+      encajaAmbiente(t) &&
+      encajaDressCode(t) &&
       coincideTexto(t) &&
       enRango(t)
   );
@@ -254,16 +279,19 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
     : filtrados;
 
   const etiquetaMusica = f.estilo ? etiquetaDe(f.estilo) : f.familia ? etiquetaDe(f.familia) : null;
-  const nMas = [f.zona, f.precio, f.hora].filter(Boolean).length;
-  const nTotal = nMas + (etiquetaMusica ? 1 : 0) + (cuando ? 1 : 0) + (porCercania ? 1 : 0);
+  const nMas = [f.zona, f.precio, f.hora, f.publico, f.dressCode].filter(Boolean).length;
+  const nTotal = nMas + (etiquetaMusica ? 1 : 0) + (cuando ? 1 : 0) + (porCercania ? 1 : 0) + (f.ambiente ? 1 : 0);
 
   const activas: string[] = [
     cuando ? CUANDOS.find((c) => c.k === cuando)!.label : null,
     porCercania ? "Cerca de mí" : null,
     etiquetaMusica,
+    f.ambiente,
     f.zona,
     f.precio ? PRECIOS.find((p) => p.k === f.precio)!.label : null,
     f.hora ? HORAS.find((h) => h.k === f.hora)!.label : null,
+    f.publico,
+    f.dressCode,
   ].filter(Boolean) as string[];
 
   const limpiar = () => { setF(VACIO); setCuando(null); setCerca(false); };
@@ -316,6 +344,13 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
           valor={etiquetaMusica}
           activo={panel === "musica"}
           onClick={() => abrir("musica")}
+        />
+        <Principal
+          icono={Sparkles}
+          texto="Ambiente"
+          valor={f.ambiente}
+          activo={panel === "ambiente"}
+          onClick={() => abrir("ambiente")}
         />
         <Principal
           icono={SlidersHorizontal}
@@ -384,6 +419,16 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
         </div>
       )}
 
+      {panel === "ambiente" && (
+        <div className="mb-4 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-magenta-100">
+          <div className="flex flex-wrap gap-2">
+            {AMBIENTES.map((v) => (
+              <Chip key={v} activo={f.ambiente === v} onClick={() => set("ambiente", v)}>{v}</Chip>
+            ))}
+          </div>
+        </div>
+      )}
+
       {panel === "mas" && (
         <div className="mb-4 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-magenta-100">
           <p className="mb-1.5 text-sm font-black text-tinta/60">Zona</p>
@@ -413,6 +458,20 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
               <Chip key={h.k} activo={f.hora === h.k} onClick={() => set("hora", h.k)}>
                 {h.label} <span className={f.hora === h.k ? "text-white/70" : "text-tinta/40"}>{h.pie}</span>
               </Chip>
+            ))}
+          </div>
+
+          <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Público</p>
+          <div className="flex flex-wrap gap-2">
+            {PUBLICOS.map((v) => (
+              <Chip key={v} activo={f.publico === v} onClick={() => set("publico", v)}>{v}</Chip>
+            ))}
+          </div>
+
+          <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Outfit / Dress code</p>
+          <div className="flex flex-wrap gap-2">
+            {DRESS_CODES.map((v) => (
+              <Chip key={v} activo={f.dressCode === v} onClick={() => set("dressCode", v)}>{v}</Chip>
             ))}
           </div>
         </div>
