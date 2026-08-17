@@ -36,6 +36,8 @@ export interface Tardeo {
   estilo: string;
   tipoEntrada: TipoEntrada;
   precio?: number;
+  /** Tardeo, mañaneo, brunch, nocheo… Uno solo. */
+  tipoEvento?: string;
   /** A qué va la gente: chill, afterwork, fiestero… Varios a la vez. */
   ambiente?: string[];
   /** Franjas de edad a las que apunta el tardeo. Varias a la vez. Opcional

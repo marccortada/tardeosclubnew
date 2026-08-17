@@ -12,7 +12,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import { jsonLdEvento, urlAbsoluta } from "@/lib/seo";
-import { ArrowLeft, MapPin, Clock, Music, BadgeCheck, Star, CalendarPlus, Sparkles, Users, Shirt } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Music, BadgeCheck, Star, CalendarPlus, Sparkles, Users, Shirt, PartyPopper } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -129,8 +129,13 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
         {/* Ambiente, público y outfit. Solo se pinta lo que esté puesto: los 662
             tardeos migrados llegaron sin nada de esto, y una fila de etiquetas
             vacías haría parecer que a la ficha le falta algo. */}
-        {(tardeo.ambiente?.length || tardeo.publico?.length || tardeo.dressCode) && (
+        {(tardeo.tipoEvento || tardeo.ambiente?.length || tardeo.publico?.length || tardeo.dressCode) && (
           <div className="mt-3 flex flex-wrap gap-1.5">
+            {tardeo.tipoEvento && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-marca px-3 py-1.5 text-sm font-extrabold text-white">
+                <PartyPopper size={13} /> {tardeo.tipoEvento}
+              </span>
+            )}
             {tardeo.ambiente?.map((a) => (
               <span key={a} className="inline-flex items-center gap-1 rounded-full bg-magenta-50 px-3 py-1.5 text-sm font-extrabold text-magenta-700">
                 <Sparkles size={13} /> {a}

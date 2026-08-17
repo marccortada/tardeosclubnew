@@ -65,6 +65,7 @@ export default function CrearTardeo() {
   const [form, setForm] = useState(EXTRAIDO);
   // Fuera de `form` porque no son texto: dos son listas y el formulario base
   // solo maneja cadenas.
+  const [tipoEvento, setTipoEvento] = useState("");
   const [ambiente, setAmbiente] = useState<string[]>([]);
   const [publico, setPublico] = useState<string[]>([]);
   const [dressCode, setDressCode] = useState("");

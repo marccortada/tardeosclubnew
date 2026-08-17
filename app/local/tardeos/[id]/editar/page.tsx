@@ -27,6 +27,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
   const [horaInicio, setHoraInicio] = useState("");
   const [horaFin, setHoraFin] = useState("");
   const [estilo, setEstilo] = useState("");
+  const [tipoEvento, setTipoEvento] = useState("");
   const [ambiente, setAmbiente] = useState<string[]>([]);
   const [publico, setPublico] = useState<string[]>([]);
   const [dressCode, setDressCode] = useState("");
@@ -44,6 +45,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
         setHoraInicio(t.horaInicio);
         setHoraFin(t.horaFin);
         setEstilo(t.estilo);
+        setTipoEvento(t.tipoEvento ?? "");
         setAmbiente(t.ambiente ?? []);
         setPublico(t.publico ?? []);
         setDressCode(t.dressCode ?? "");
@@ -72,6 +74,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
       estilo,
       // null y no [] cuando está vacío: así "sin indicar" no se confunde con
       // "lo revisó y lo dejó a cero".
+      tipo_evento: tipoEvento || null,
       ambiente: ambiente.length ? ambiente : null,
       publico: publico.length ? publico : null,
       dress_code: dressCode || null,
@@ -176,8 +179,9 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
           {/* Ambiente, público y outfit. Es también la vía para rellenar los
               662 migrados, que llegaron sin ninguno de los tres. */}
           <SelectorAdn
-            ambiente={ambiente} publico={publico} dressCode={dressCode}
-            onAmbiente={setAmbiente} onPublico={setPublico} onDressCode={setDressCode}
+            tipoEvento={tipoEvento} ambiente={ambiente} publico={publico} dressCode={dressCode}
+            onTipoEvento={setTipoEvento} onAmbiente={setAmbiente}
+            onPublico={setPublico} onDressCode={setDressCode}
           />
 
           <div>

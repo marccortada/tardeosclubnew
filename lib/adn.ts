@@ -33,6 +33,24 @@ export const AMBIENTES = [
   "Festivalero",
 ];
 
+/**
+ * Qué clase de evento es. Uno solo: un brunch no es a la vez un nocheo.
+ *
+ * Se solapa a medias con la franja horaria, pero no se deduce de la hora a
+ * propósito: un Coffee Rave y un Vermuteo pueden empezar a la misma y no son lo
+ * mismo.
+ */
+export const TIPOS_EVENTO = [
+  "Tardeo",
+  "Mañaneo",
+  "Coffee Rave",
+  "Vermuteo",
+  "Brunch",
+  "After Work",
+  "Nocheo",
+  "Festival",
+];
+
 /** Franjas de edad. Un tardeo puede apuntar a varias. */
 export const PUBLICOS = ["+21", "25-35", "35-55", "+55"];
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import TardeoCard from "@/components/TardeoCard";
 import { FAMILIAS, familiasDe, normalizarEstilo, etiquetaDe, idEstilo } from "@/lib/musica";
-import { AMBIENTES, PUBLICOS, DRESS_CODES, contiene, mismoValor } from "@/lib/adn";
+import { AMBIENTES, TIPOS_EVENTO, PUBLICOS, DRESS_CODES, contiene, mismoValor } from "@/lib/adn";
 import { zonaGrande, zonasDe } from "@/lib/zonas";
 import { useUbicacion } from "@/lib/ubicacion";
 import { distanciaKm } from "@/lib/geo";
@@ -69,11 +69,12 @@ type Filtro = {
   publico: string | null;
   dressCode: string | null;
   ambiente: string | null;
+  tipoEvento: string | null;
 };
 
 const VACIO: Filtro = {
   zona: null, familia: null, estilo: null, precio: null, hora: null,
-  publico: null, dressCode: null, ambiente: null,
+  publico: null, dressCode: null, ambiente: null, tipoEvento: null,
 };
 
 /** Qué panel está desplegado. Solo uno a la vez: en un móvil, dos abiertos
@@ -244,6 +245,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
    */
   const encajaPublico = (t: Tardeo) => !f.publico || contiene(t.publico, f.publico);
   const encajaAmbiente = (t: Tardeo) => !f.ambiente || contiene(t.ambiente, f.ambiente);
+  const encajaTipoEvento = (t: Tardeo) => !f.tipoEvento || mismoValor(t.tipoEvento, f.tipoEvento);
   const encajaDressCode = (t: Tardeo) => !f.dressCode || mismoValor(t.dressCode, f.dressCode);
 
   const encajaHora = (t: Tardeo) => {
@@ -263,6 +265,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
       encajaHora(t) &&
       encajaPublico(t) &&
       encajaAmbiente(t) &&
+      encajaTipoEvento(t) &&
       encajaDressCode(t) &&
       coincideTexto(t) &&
       enRango(t)
@@ -279,7 +282,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
     : filtrados;
 
   const etiquetaMusica = f.estilo ? etiquetaDe(f.estilo) : f.familia ? etiquetaDe(f.familia) : null;
-  const nMas = [f.zona, f.precio, f.hora, f.publico, f.dressCode].filter(Boolean).length;
+  const nMas = [f.zona, f.precio, f.hora, f.publico, f.dressCode, f.tipoEvento].filter(Boolean).length;
   const nTotal = nMas + (etiquetaMusica ? 1 : 0) + (cuando ? 1 : 0) + (porCercania ? 1 : 0) + (f.ambiente ? 1 : 0);
 
   const activas: string[] = [
@@ -287,6 +290,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
     porCercania ? "Cerca de mí" : null,
     etiquetaMusica,
     f.ambiente,
+    f.tipoEvento,
     f.zona,
     f.precio ? PRECIOS.find((p) => p.k === f.precio)!.label : null,
     f.hora ? HORAS.find((h) => h.k === f.hora)!.label : null,
@@ -431,7 +435,14 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
 
       {panel === "mas" && (
         <div className="mb-4 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-magenta-100">
-          <p className="mb-1.5 text-sm font-black text-tinta/60">Zona</p>
+          <p className="mb-1.5 text-sm font-black text-tinta/60">Tipo de evento</p>
+          <div className="flex flex-wrap gap-2">
+            {TIPOS_EVENTO.map((v) => (
+              <Chip key={v} activo={f.tipoEvento === v} onClick={() => set("tipoEvento", v)}>{v}</Chip>
+            ))}
+          </div>
+
+          <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Zona</p>
           <div className="flex flex-wrap gap-2">
             {zonasDisponibles.length === 0 ? (
               <p className="text-sm font-bold text-tinta/40">No hay zonas que enseñar todavía.</p>
