@@ -11,6 +11,13 @@
 --   · publico  -> UNO. Es su edad, no una preferencia.
 --   · precio_max -> UNO. Es un tope.
 --
+-- OJO: el alta solo pregunta CUATRO (música, tipo de plan, edad y outfit). Cada
+-- apartado extra recién registrado es gente que cierra la pestaña. Las columnas
+-- de ambiente, zonas y precio se crean igual porque hay de dónde sacarlas sin
+-- preguntar: la zona de la ubicación cuando la concede, y el ambiente y el
+-- precio de los tardeos a los que se apunta. Y si algún día se decide
+-- preguntarlas, no hace falta volver a migrar.
+--
 -- Texto y no enum, igual que en el tardeo: los valores viven en lib/adn.ts y
 -- lib/musica.ts, y así se pueden añadir sin migrar la base.
 -- =========================================================
