@@ -101,11 +101,6 @@ export default function PanelLocal() {
               <Link href="/local/crear" className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-white px-6 py-4 text-lg font-extrabold text-magenta shadow-lg transition hover:brightness-105 active:scale-[0.98]">
                 <Plus size={22} /> Crear tardeo
               </Link>
-              {/* Al lado de crear tardeo: es la otra cosa que un local viene a
-                  hacer aquí, y hasta ahora había que pedirla por WhatsApp. */}
-              <Link href="/local/campanas" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white/15 px-6 py-4 text-lg font-extrabold text-white ring-1 ring-white/30 transition hover:bg-white/25 active:scale-[0.98]">
-                <Megaphone size={22} /> Campañas
-              </Link>
             </div>
           </div>
         </section>

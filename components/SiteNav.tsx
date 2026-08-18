@@ -3,6 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/useAuth";
+import { User } from "lucide-react";
 
 const links = [
   { href: "/", label: "Inicio" },
@@ -14,6 +16,7 @@ const links = [
 
 export default function SiteNav() {
   const pathname = usePathname();
+  const { user, loading } = useAuth();
 
   return (
     <header className="sticky top-0 z-[900] hidden border-b border-black/5 bg-white/85 backdrop-blur-md md:block">

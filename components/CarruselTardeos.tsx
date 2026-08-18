@@ -21,9 +21,12 @@ export default function CarruselTardeos({
           Ver todos
         </Link>
       </div>
+      {/* 62% del ancho y no 80%: a pantalla completa una tarjeta con flyer
+          4:5 se come casi todo el móvil, y encima no se ve que haya más
+          detrás. Así asoma la siguiente, que es lo que invita a deslizar. */}
       <div className="no-scrollbar carousel-bleed flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
         {tardeos.map((t) => (
-          <div key={t.id} className="w-[80%] shrink-0 snap-start sm:w-72 md:w-80">
+          <div key={t.id} className="w-[62%] shrink-0 snap-start sm:w-64 md:w-72">
             <TardeoCard tardeo={t} />
           </div>
         ))}

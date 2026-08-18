@@ -57,7 +57,7 @@ export default function Favoritos() {
             Aún no te has apuntado a ningún tardeo gratis.
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
             {inscr.map((t) => <TardeoCard key={t.id} tardeo={t} />)}
           </div>
         )}
@@ -73,7 +73,7 @@ export default function Favoritos() {
             Toca el corazón en un tardeo para guardarlo aquí.
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
             {favs.map((t) => <TardeoCard key={t.id} tardeo={t} />)}
           </div>
         )}

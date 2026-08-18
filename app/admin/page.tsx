@@ -11,20 +11,11 @@ import {
   Plus, CreditCard, ShieldCheck, Sparkles, Mail,
 } from "lucide-react";
 
-const AGENTES_INICIAL = [
-  { id: "a1", tipo: "Crear ficha de local", detalle: "Chill Terrace · Sitges (datos públicos)" },
-  { id: "a2", tipo: "Importar tardeo", detalle: "Remember Fest · Sala Blau · 09 ago" },
-  { id: "a3", tipo: "Invitar", detalle: "DJ Rules → reclamar su perfil" },
-];
-
 const GESTION = [
   { icon: Plus, label: "Crear / invitar", sub: "Local, tardeo o invitación", href: "/admin/crear" },
   { icon: Megaphone, label: "Promociones y precios", sub: "Destacados · packs · combos", href: "/admin/promociones" },
   { icon: Mail, label: "Ofertas a locales", sub: "Enviar ofertas por email", href: "/admin/ofertas" },
   { icon: Bell, label: "Popups", sub: "Ofertas y noticias", href: "/admin/popups" },
-  // Justo debajo de Popups: es lo mismo pero pedido por un local, y así se ven
-  // juntas las dos formas de que salte un aviso.
-  { icon: Megaphone, label: "Campañas", sub: "Las que piden los locales", href: "/admin/campanas" },
   { icon: BellRing, label: "Notificaciones push", sub: "Aviso al móvil de los suscritos", href: "/admin/notificaciones" },
   { icon: Star, label: "Destacados", sub: "Quién sale primero en la home", href: "/admin/destacados" },
   { icon: ShieldCheck, label: "Moderación", sub: "Reseñas y flyers", href: "/admin/moderacion" },
@@ -38,7 +29,6 @@ export default function PanelAdmin() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [metricas, setMetricas] = useState({ tardeos: 0, locales: 0, djs: 0 });
   const [verif, setVerif] = useState<any[]>([]);
-  const [agentes, setAgentes] = useState(AGENTES_INICIAL);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -115,7 +105,6 @@ export default function PanelAdmin() {
         <section className="mt-5 flex items-center gap-3 rounded-2xl bg-tinta p-4 text-white">
           <Bot size={26} className="shrink-0 text-oro" />
           <p className="flex-1 text-sm font-semibold md:text-base">
-            <span className="font-black">Agentes IA.</span> Prepararon {agentes.length} borradores. Nada se publica sin tu OK.
           </p>
         </section>
 
@@ -152,41 +141,6 @@ export default function PanelAdmin() {
           </div>
         </div>
 
-        {/* Borradores de agentes (demo) */}
-        <div>
-          <p className="mb-2 flex items-center gap-2 text-sm font-black text-tinta/60">
-            <Bot size={16} className="text-magenta" /> Borradores de agentes ({agentes.length})
-          </p>
-          <div className="flex flex-col gap-3">
-            {agentes.map((a) => (
-              <div key={a.id} className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-oro/15 text-oro-600"><Sparkles size={18} /></span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-black leading-tight">{a.tipo}</p>
-                  <p className="truncate text-sm font-semibold text-tinta/60">{a.detalle}</p>
-                </div>
-                <button onClick={() => setAgentes((p) => p.filter((x) => x.id !== a.id))} className="shrink-0 rounded-xl bg-magenta px-4 py-2.5 text-sm font-extrabold text-white active:scale-[0.98]">Publicar</button>
-                <button onClick={() => setAgentes((p) => p.filter((x) => x.id !== a.id))} aria-label="Descartar" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-tinta/50 ring-1 ring-black/10 active:scale-95"><X size={18} /></button>
-              </div>
-            ))}
-            {agentes.length === 0 && <p className="rounded-2xl bg-white p-4 text-center text-sm font-bold text-tinta/50 ring-1 ring-black/5">Sin borradores pendientes ✅</p>}
-          </div>
-        </div>
-
-        {/* Gestión */}
-        <h2 className="mb-3 mt-7 font-display text-xl font-black md:text-2xl">Gestión</h2>
-        <section className="grid gap-3 sm:grid-cols-2">
-          {GESTION.map(({ icon: Icon, label, sub, href }) => (
-            <Link key={label} href={href} className="flex items-center gap-4 rounded-2xl bg-white p-5 text-left shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta"><Icon size={24} /></span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-lg font-black leading-tight">{label}</span>
-                <span className="text-sm font-semibold text-tinta/60">{sub}</span>
-              </span>
-              <ChevronRight size={20} className="text-tinta/30" />
-            </Link>
-          ))}
-        </section>
       </div>
     </main>
   );
