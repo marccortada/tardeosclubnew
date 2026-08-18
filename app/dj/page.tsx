@@ -7,6 +7,7 @@ import PanelHeader from "@/components/PanelHeader";
 import ServiciosExternos from "@/components/ServiciosExternos";
 import { useAuth } from "@/lib/useAuth";
 import { getMiDj, updateMiDj, subirAvatarDj } from "@/lib/tardeos";
+import ContenidoDj from "@/components/ContenidoDj";
 import SelectorEstilos from "@/components/SelectorEstilos";
 import { Disc3, BadgeCheck, Star, Music, Loader2, Pencil, Camera, Check, X, Instagram, Youtube, Music2, Phone } from "lucide-react";
 
@@ -259,6 +260,10 @@ export default function PanelDj() {
 
         {!editando && <ServiciosExternos tipo="dj" />}
       </div>
+      {/* Sesiones, vídeos, flyers y fotos: §5.2 del documento. Es lo
+          que convierte la ficha de un DJ en algo que merezca
+          visitarse, más allá de su nombre y sus estilos. */}
+      <ContenidoDj djId={dj.id} />
     </main>
   );
 }

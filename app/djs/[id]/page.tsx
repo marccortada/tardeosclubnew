@@ -2,6 +2,7 @@ import Image from "next/image";
 import { getDjById, getTardeosPublicadosDeDj } from "@/lib/tardeos";
 import TardeoCard from "@/components/TardeoCard";
 import Resenas from "@/components/Resenas";
+import ContenidoPublicoDj from "@/components/ContenidoPublicoDj";
 import CompartirBtn from "@/components/CompartirBtn";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -153,6 +154,10 @@ export default async function PaginaDj({ params }: { params: Promise<{ id: strin
         </section>
 
         {/* Reseñas del DJ */}
+        {/* Sus sesiones, vídeos y fotos, antes de las reseñas: es lo que
+            se viene a ver de un DJ. */}
+        <ContenidoPublicoDj djId={dj.id} />
+
         <Resenas tipo="dj" objetivoId={dj.id} nombre={dj.nombre_artistico} />
       </div>
     </main>

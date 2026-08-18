@@ -97,8 +97,29 @@ export function hoyISO(): string {
 }
 
 /**
- * Tardeos publicados y NO expirados (fecha de hoy en adelante).
- * Un tardeo cuya fecha ya pasó no se muestra (ni en mapa, ni home, ni listado).
+ * Hasta dónde mira la app: un mes desde hoy.
+ *
+ * Un tardeo a cuatro meses vista no ayuda a decidir el plan de este finde y
+ * ensucia el listado, el mapa y las recomendaciones. El local puede publicarlo
+ * igual —sale en su panel y en su calendario—, simplemente no asoma en la parte
+ * pública hasta que entra en el mes.
+ *
+ * La ventana se mueve sola cada día, así que un tardeo del mes que viene va
+ * apareciendo según se acerca. No hace falta ningún proceso que lo despierte.
+ */
+export const DIAS_DE_VISTA = 30;
+
+export function horizonteISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + DIAS_DE_VISTA);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(d);
+}
+
+/**
+ * Los tardeos que se enseñan: de hoy hasta un mes vista.
+ *
+ * Fuera los pasados (no ayudan a nadie) y fuera los de dentro de tres meses,
+ * que ensucian el listado sin ayudar a decidir el plan del finde.
  * Cachea un minuto y comparte la petición en vuelo, para que dos componentes
  * que la piden a la vez no hagan dos viajes.
  */
@@ -115,6 +136,7 @@ export async function getTardeosPublicados(): Promise<Tardeo[]> {
         .select(SELECT)
         .or(A_LA_VISTA())
         .gte("fecha", hoy)
+        .lte("fecha", horizonteISO())
         .order("fecha", { ascending: true });
       if (error) throw error;
       const datos = (data ?? []).map(mapRow);
@@ -183,6 +205,7 @@ export async function getLocalesDestacados(limite = 10): Promise<{ locales: any[
     .select("locales(id,nombre,zona,logo_url,tipo,verificado)")
     .or(A_LA_VISTA())
     .gte("fecha", hoy)
+    .lte("fecha", horizonteISO())
     .order("fecha", { ascending: true })
     .limit(60);
 
@@ -223,6 +246,7 @@ export async function getTardeosPublicadosDeLocal(localId: string): Promise<Tard
     .eq("local_id", localId)
     .or(A_LA_VISTA())
     .gte("fecha", hoy)
+    .lte("fecha", horizonteISO())
     .order("fecha", { ascending: true });
   return (data ?? []).map(mapRow);
 }
