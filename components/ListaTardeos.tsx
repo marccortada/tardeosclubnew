@@ -49,19 +49,6 @@ const PRECIOS = [
 ];
 
 /**
- * Franjas horarias. Los cortes salen de cómo se reparten de verdad: 18h y 20h
- * concentran la mitad de la cartelera.
- *
- * Las que empiezan de madrugada (39 tardeos entre las 00h y las 06h) cuentan
- * como noche y no como mediodía: son los que se alargan, no los que madrugan.
- */
-const HORAS = [
-  { k: "mediodia", label: "Mediodía", pie: "antes de 17 h" },
-  { k: "tarde", label: "Tarde", pie: "17–20 h" },
-  { k: "noche", label: "Noche", pie: "desde 20 h" },
-];
-
-/**
  * `familia` y `estilo` son los dos niveles del filtro musical: se puede pedir
  * "Electrónica" entera o bajar a "Afro House". El estilo guarda el id de la
  * taxonomía (`electronica:afro house`), no la etiqueta, porque hay etiquetas
@@ -73,7 +60,6 @@ type Filtro = {
   familia: string | null;
   estilo: string | null;
   precio: string | null;
-  hora: string | null;
   publico: string | null;
   dressCode: string | null;
   ambiente: string | null;
@@ -81,7 +67,7 @@ type Filtro = {
 };
 
 const VACIO: Filtro = {
-  zona: null, familia: null, estilo: null, precio: null, hora: null,
+  zona: null, familia: null, estilo: null, precio: null,
   publico: null, dressCode: null, ambiente: null, tipoEvento: null,
 };
 
@@ -276,21 +262,11 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
   const encajaTipoEvento = (t: Tardeo) => !f.tipoEvento || mismoValor(t.tipoEvento, f.tipoEvento);
   const encajaDressCode = (t: Tardeo) => !f.dressCode || mismoValor(t.dressCode, f.dressCode);
 
-  const encajaHora = (t: Tardeo) => {
-    if (!f.hora) return true;
-    const h = Number((t.horaInicio || "").slice(0, 2));
-    if (!Number.isFinite(h)) return false;
-    if (f.hora === "mediodia") return h >= 7 && h < 17;
-    if (f.hora === "tarde") return h >= 17 && h < 20;
-    return h >= 20 || h < 7;
-  };
-
   const filtrados = todos.filter(
     (t) =>
       (!f.zona || zonaGrande(t.zona) === f.zona) &&
       encajaMusica(t) &&
       encajaPrecio(t) &&
-      encajaHora(t) &&
       encajaPublico(t) &&
       encajaAmbiente(t) &&
       encajaTipoEvento(t) &&
@@ -318,7 +294,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
       : filtrados;
 
   const etiquetaMusica = f.estilo ? etiquetaDe(f.estilo) : f.familia ? etiquetaDe(f.familia) : null;
-  const nMas = [f.zona, f.precio, f.hora, f.publico, f.dressCode, f.tipoEvento].filter(Boolean).length;
+  const nMas = [f.zona, f.precio, f.publico, f.dressCode, f.tipoEvento].filter(Boolean).length;
   /** "sáb, 30 ago" en vez de "2026-08-30", que no lo lee nadie de un vistazo. */
   const etiquetaFecha = fechaExacta
     ? new Date(fechaExacta + "T12:00:00").toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" })
@@ -336,7 +312,6 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
     f.tipoEvento,
     f.zona,
     f.precio ? PRECIOS.find((p) => p.k === f.precio)!.label : null,
-    f.hora ? HORAS.find((h) => h.k === f.hora)!.label : null,
     f.publico,
     f.dressCode,
   ].filter(Boolean) as string[];
@@ -546,14 +521,6 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
             ))}
           </div>
 
-          <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Hora</p>
-          <div className="flex flex-wrap gap-2">
-            {HORAS.map((h) => (
-              <Chip key={h.k} activo={f.hora === h.k} onClick={() => set("hora", h.k)}>
-                {h.label} <span className={f.hora === h.k ? "text-white/70" : "text-tinta/40"}>{h.pie}</span>
-              </Chip>
-            ))}
-          </div>
 
           <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Público</p>
           <div className="flex flex-wrap gap-2">
