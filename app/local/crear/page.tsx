@@ -10,6 +10,8 @@ import SelectorAdn from "@/components/SelectorAdn";
 import AddressSearch, { Direccion } from "@/components/AddressSearch";
 import SelectorLocal from "@/components/SelectorLocal";
 import ProgramarPublicacion, { type Cuando } from "@/components/ProgramarPublicacion";
+import PrecioTardeo, { PRECIO_VACIO, aColumnas, type Precio } from "@/components/PrecioTardeo";
+import SubirFlyer from "@/components/SubirFlyer";
 import {
   Upload, Wand2, Sparkles, Loader2, Check, AlertTriangle,
   Calendar, Clock, Music, MapPin, Disc3, Ticket, ArrowRight, Store, Megaphone,
@@ -68,6 +70,9 @@ export default function CrearTardeo() {
   // Fuera de `form` porque no son texto: dos son listas y el formulario base
   // solo maneja cadenas.
   const [cuando, setCuando] = useState<Cuando>({ estado: "publicado", publicarEn: "" });
+  const [precio, setPrecio] = useState<Precio>(PRECIO_VACIO);
+  // Ya se eligió qué hacer con el flyer subido (IA o tal cual).
+  const [flyerDecidido, setFlyerDecidido] = useState(false);
   const [tipoEvento, setTipoEvento] = useState("");
   const [ambiente, setAmbiente] = useState<string[]>([]);
   const [publico, setPublico] = useState<string[]>([]);
@@ -211,8 +216,7 @@ export default function CrearTardeo() {
         horaFin: d.horaFin || f.horaFin,
         dj: d.dj || "",
         estilo: d.estilo || "",
-        tipo: d.tipoEntrada || "gratis",
-        precio: d.precio || "",
+
         ubicacion: local?.direccion ?? f.ubicacion,
         zona: local?.zona ?? f.zona,
       }));
@@ -279,9 +283,8 @@ export default function CrearTardeo() {
       lng: dirTardeo?.lng ?? local.lng,
       zona: dirTardeo?.zona ?? local.zona,
       estilo: form.estilo,
-      es_de_pago: form.tipo === "pago",
-      tiene_lista: form.tipo === "lista",
-      precio: form.tipo === "pago" ? Number(form.precio) || null : null,
+      // Las tres columnas de precio más los dos enlaces salen del componente.
+      ...aColumnas(precio),
       flyer_url,
       flyer_origen: flyerGen ? "ia" : modo === "subir" ? "subido" : "ia",
       estado: "publicado",
@@ -426,20 +429,24 @@ export default function CrearTardeo() {
           </section>
         )}
 
-        {/* Paso 2a: subir flyer (IA real lo lee) */}
-        {modo === "subir" && estado === "inicio" && (
-          <section>
-            <button onClick={() => setModo("elegir")} className="mb-3 text-sm font-bold text-magenta">← Cambiar método</button>
-            <label className="flex cursor-pointer flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-magenta-200 bg-white p-8 text-center transition hover:bg-magenta-50">
-              <Upload size={44} className="text-magenta" />
-              <p className="font-black">Sube tu flyer</p>
-              <p className="text-sm font-semibold text-tinta/60">JPG o PNG · la IA sacará fecha, DJ, hora…</p>
-              <span className="mt-1 rounded-2xl bg-magenta px-6 py-3 text-base font-extrabold text-white">Elegir imagen</span>
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) leerFlyer(f); }} />
-            </label>
-            {error && <p className="mt-3 text-sm font-bold text-magenta">{error}</p>}
-          </section>
-        )}
+          {/* Subir flyer: se arrastra o se pega, y DESPUÉS se elige qué hacer
+              con él. Antes había que decidir si lo leía la IA antes siquiera de
+              haber visto la imagen, y el explorador de archivos era el único
+              camino: un paso de más cada vez que alguien acaba de descargarse
+              un flyer y lo tiene ahí mismo. */}
+          {modo === "subir" && estado === "inicio" && (
+            <section>
+              <button onClick={() => setModo("elegir")} className="mb-3 text-sm font-bold text-magenta">← Cambiar método</button>
+              <SubirFlyer
+                archivo={archivoSubido}
+                onArchivo={(f) => { setArchivoSubido(f); setFlyerDecidido(false); }}
+                onAnalizar={() => archivoSubido && leerFlyer(archivoSubido)}
+                onSoloSubir={() => { setFlyerDecidido(true); setEstado("revisar"); }}
+                decidido={flyerDecidido}
+              />
+              {error && <p className="mt-3 text-sm font-bold text-magenta">{error}</p>}
+            </section>
+          )}
 
         {/* Paso 2b: crear flyer con IA */}
         {modo === "crear" && estado === "inicio" && (
@@ -506,33 +513,10 @@ export default function CrearTardeo() {
               <MapPin size={13} /> Por defecto la de tu local. Si es una zona nueva, aparecerá sola en los filtros.
             </p>
 
-            <div>
-              <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
-                <Ticket size={16} className="text-magenta" /> Entrada
-              </span>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { k: "gratis", label: "Gratis" },
-                  { k: "pago", label: "Entrada" },
-                  { k: "lista", label: "Por lista" },
-                ].map((o) => (
-                  <button
-                    key={o.k}
-                    onClick={() => set("tipo", o.k)}
-                    className={`min-h-[44px] rounded-xl py-3 text-sm font-extrabold transition ${
-                      form.tipo === o.k ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100"
-                    }`}
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-              {form.tipo !== "gratis" && (
-                <p className="mt-2 flex items-center gap-1.5 rounded-xl bg-magenta-50 p-3 text-xs font-semibold text-magenta-700">
-                  <Ticket size={14} /> La venta se gestiona en Fourvenues (redirección con tu código RRPP).
-                </p>
-              )}
-            </div>
+              {/* Cuatro opciones, no tres: falta "Sin precio" —de pago pero
+                  sin importe—, que es el caso más común de la cartelera real.
+                  Sin ella el local tenía que mentir o inventarse una cifra. */}
+              <PrecioTardeo valor={precio} onCambio={setPrecio} />
 
             {error && <p className="text-sm font-bold text-magenta">{error}</p>}
             <button
