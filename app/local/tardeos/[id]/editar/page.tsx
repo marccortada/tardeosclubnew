@@ -8,6 +8,7 @@ import PanelHeader from "@/components/PanelHeader";
 import { useAuth } from "@/lib/useAuth";
 import { getTardeoById, updateTardeo, setDjsDeTardeo, borrarTardeo, setEstadoTardeo } from "@/lib/tardeos";
 import SelectorAdn from "@/components/SelectorAdn";
+import ProgramarPublicacion, { paraInput, type Cuando } from "@/components/ProgramarPublicacion";
 import { flyerSrc } from "@/lib/mockData";
 import { Tardeo } from "@/lib/types";
 import { Music, Calendar, Clock, Disc3, MapPin, Ticket, Check, Loader2, Trash2, EyeOff, Eye } from "lucide-react";
@@ -27,6 +28,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
   const [horaInicio, setHoraInicio] = useState("");
   const [horaFin, setHoraFin] = useState("");
   const [estilo, setEstilo] = useState("");
+  const [cuando, setCuando] = useState<Cuando>({ estado: "publicado", publicarEn: "" });
   const [tipoEvento, setTipoEvento] = useState("");
   const [ambiente, setAmbiente] = useState<string[]>([]);
   const [publico, setPublico] = useState<string[]>([]);
@@ -45,6 +47,12 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
         setHoraInicio(t.horaInicio);
         setHoraFin(t.horaFin);
         setEstilo(t.estilo);
+        // Un finalizado o cancelado no se toca desde aquí: el selector solo
+        // maneja los tres estados que decide el local.
+        setCuando({
+          estado: t.estado === "programado" ? "programado" : t.estado === "borrador" ? "borrador" : "publicado",
+          publicarEn: t.publicarEn ? paraInput(new Date(t.publicarEn)) : "",
+        });
         setTipoEvento(t.tipoEvento ?? "");
         setAmbiente(t.ambiente ?? []);
         setPublico(t.publico ?? []);
@@ -72,6 +80,10 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
       hora_inicio: horaInicio,
       hora_fin: horaFin || null,
       estilo,
+      estado: cuando.estado,
+      publicar_en: cuando.estado === "programado" && cuando.publicarEn
+        ? new Date(cuando.publicarEn).toISOString()
+        : null,
       // null y no [] cuando está vacío: así "sin indicar" no se confunde con
       // "lo revisó y lo dejó a cero".
       tipo_evento: tipoEvento || null,
@@ -175,6 +187,8 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
             <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70"><MapPin size={16} className="text-magenta" /> Dirección</span>
             <input value={direccion} onChange={(e) => setDireccion(e.target.value)} className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 text-base font-semibold outline-none focus:border-magenta" />
           </label>
+
+          <ProgramarPublicacion valor={cuando} onCambio={setCuando} />
 
           {/* Ambiente, público y outfit. Es también la vía para rellenar los
               662 migrados, que llegaron sin ninguno de los tres. */}

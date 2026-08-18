@@ -8,6 +8,21 @@ const SELECT =
   "tardeo_djs(djs(id,nombre_artistico,estilos,verificado,reputacion_score,avatar_url))";
 
 /**
+ * Qué cuenta como "está a la vista" (lote 25).
+ *
+ * Un `programado` sale solo cuando le llega la hora. Se repite en las tres
+ * consultas públicas, así que vive aquí: la primera vez que una se quede sin
+ * actualizar, un local verá su tardeo en el mapa pero no en el listado y nadie
+ * entenderá por qué.
+ *
+ * OJO: esto es solo para no traerse filas de más. Quien de verdad decide es la
+ * política de la base, que usa el reloj del SERVIDOR. Con la hora del navegador
+ * cambiada no se adelanta nada.
+ */
+const A_LA_VISTA = () =>
+  `estado.eq.publicado,and(estado.eq.programado,publicar_en.lte.${new Date().toISOString()})`;
+
+/**
  * Caché en memoria de la lista pública de tardeos.
  *
  * Home, /tardeos y /mapa piden exactamente lo mismo, y antes cada navegación
@@ -67,6 +82,7 @@ function mapRow(r: any): Tardeo {
     dressCode: r.dress_code ?? undefined,
     destacado: r.destacado_hasta ? new Date(r.destacado_hasta) > new Date() : false,
     estado: r.estado,
+    publicarEn: r.publicar_en ?? undefined,
     lat: r.lat ?? 0,
     lng: r.lng ?? 0,
     flyer: r.flyer_url ?? undefined,
@@ -97,7 +113,7 @@ export async function getTardeosPublicados(): Promise<Tardeo[]> {
       const { data, error } = await supabase
         .from("tardeos")
         .select(SELECT)
-        .eq("estado", "publicado")
+        .or(A_LA_VISTA())
         .gte("fecha", hoy)
         .order("fecha", { ascending: true });
       if (error) throw error;
@@ -165,7 +181,7 @@ export async function getLocalesDestacados(limite = 10): Promise<{ locales: any[
   const { data: conTardeos } = await supabase
     .from("tardeos")
     .select("locales(id,nombre,zona,logo_url,tipo,verificado)")
-    .eq("estado", "publicado")
+    .or(A_LA_VISTA())
     .gte("fecha", hoy)
     .order("fecha", { ascending: true })
     .limit(60);
@@ -205,7 +221,7 @@ export async function getTardeosPublicadosDeLocal(localId: string): Promise<Tard
     .from("tardeos")
     .select(SELECT)
     .eq("local_id", localId)
-    .eq("estado", "publicado")
+    .or(A_LA_VISTA())
     .gte("fecha", hoy)
     .order("fecha", { ascending: true });
   return (data ?? []).map(mapRow);

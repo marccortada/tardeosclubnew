@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import SelectorAdn from "@/components/SelectorAdn";
 import AddressSearch, { Direccion } from "@/components/AddressSearch";
 import SelectorLocal from "@/components/SelectorLocal";
+import ProgramarPublicacion, { type Cuando } from "@/components/ProgramarPublicacion";
 import {
   Upload, Wand2, Sparkles, Loader2, Check, AlertTriangle,
   Calendar, Clock, Music, MapPin, Disc3, Ticket, ArrowRight, Store, Megaphone,
@@ -66,6 +67,7 @@ export default function CrearTardeo() {
   const [form, setForm] = useState(EXTRAIDO);
   // Fuera de `form` porque no son texto: dos son listas y el formulario base
   // solo maneja cadenas.
+  const [cuando, setCuando] = useState<Cuando>({ estado: "publicado", publicarEn: "" });
   const [tipoEvento, setTipoEvento] = useState("");
   const [ambiente, setAmbiente] = useState<string[]>([]);
   const [publico, setPublico] = useState<string[]>([]);
@@ -122,6 +124,16 @@ export default function CrearTardeo() {
     setDirTardeo(null);
     setForm((f) => ({ ...f, ubicacion: local.direccion ?? "", zona: local.zona ?? "" }));
   }, [localId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * Fecha que llega del calendario (?fecha=2026-08-30). Se lee al montar y no
+   * con useSearchParams, que obligaría a envolver la página en un Suspense y
+   * ya nos tiró un despliegue una vez.
+   */
+  useEffect(() => {
+    const f = new URLSearchParams(window.location.search).get("fecha");
+    if (f && /^\d{4}-\d{2}-\d{2}$/.test(f)) setForm((p) => ({ ...p, fecha: f }));
+  }, []);
 
   const set = (k: keyof typeof form, v: string) => setForm((p) => ({ ...p, [k]: v }));
 

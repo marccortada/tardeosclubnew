@@ -9,6 +9,7 @@ import PromocionModal from "@/components/PromocionModal";
 import GestionFotosLocal from "@/components/GestionFotosLocal";
 import { useAuth } from "@/lib/useAuth";
 import { getMiLocal, getTardeosDeLocal, getMetricasLocal, getInscritosLocal } from "@/lib/tardeos";
+import CalendarioLocal from "@/components/CalendarioLocal";
 import { formatFecha, flyerSrc } from "@/lib/mockData";
 import { Tardeo } from "@/lib/types";
 import { Plus, Users, Eye, TrendingUp, CreditCard, Pencil, BadgeCheck, ChevronRight, Sparkles, Store, Loader2, Megaphone } from "lucide-react";
@@ -119,6 +120,17 @@ export default function PanelLocal() {
           ))}
         </section>
 
+        {/* El calendario va ANTES de la lista: con quince tardeos al mes, la
+            lista no deja ver qué findes están cubiertos y cuáles no, que es lo
+            que hace falta para decidir qué programar. */}
+        <section className="mt-7">
+          <div className="mb-3 flex items-end justify-between">
+            <h2 className="font-display text-xl font-black md:text-2xl">Mi mes</h2>
+            <Link href="/local/crear" className="text-sm font-extrabold text-magenta">+ Nuevo</Link>
+          </div>
+          <CalendarioLocal tardeos={misTardeos} />
+        </section>
+
         <section className="mt-7">
           <div className="mb-3 flex items-end justify-between">
             <h2 className="font-display text-xl font-black md:text-2xl">Mis tardeos</h2>
@@ -130,6 +142,12 @@ export default function PanelLocal() {
             <div className="flex flex-col gap-3">
               {misTardeos.map((t) => {
                 const pub = t.estado === "publicado";
+                /**
+                 * Un programado enseña CUÁNDO sale, no solo que no está
+                 * publicado. Sin la hora, el local ve "no publicado" en algo
+                 * que sí va a salir y le entra la duda de si lo hizo bien.
+                 */
+                const programado = t.estado === "programado";
                 return (
                   <div key={t.id} className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-tarjeta ring-1 ring-black/5">
                     <Link href={`/tardeos/${t.id}`} className="flex min-w-0 flex-1 items-center gap-3">
@@ -138,8 +156,12 @@ export default function PanelLocal() {
                       <div className="min-w-0">
                         <p className="font-script text-base capitalize leading-none text-magenta-600">{formatFecha(t.fecha)}</p>
                         <h3 className="truncate font-display text-lg font-black leading-tight">{t.titulo}</h3>
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-black ${pub ? "bg-oro/15 text-oro-600" : "bg-black/5 text-tinta/50"}`}>
-                          {pub ? "Publicado" : (t.estado === "borrador" ? "Oculto" : t.estado)}
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-black ${
+                          pub ? "bg-oro/15 text-oro-600" : programado ? "bg-magenta-50 text-magenta-700" : "bg-black/5 text-tinta/50"
+                        }`}>
+                          {pub ? "Publicado"
+                            : programado ? `Sale ${t.publicarEn ? new Date(t.publicarEn).toLocaleString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "pronto"}`
+                            : t.estado === "borrador" ? "Oculto" : t.estado}
                         </span>
                       </div>
                     </Link>
