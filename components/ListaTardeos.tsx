@@ -15,6 +15,11 @@ import {
   SlidersHorizontal, X, Loader2, Search, Navigation, CalendarDays, Music, ChevronDown, Sparkles, Wand2,
 } from "lucide-react";
 
+/** Hoy en horario de España: el `min` del calendario y el corte de "Hoy" tienen
+ *  que ser el mismo día que ve el usuario, no el del reloj del navegador. */
+const hoyEnEspana = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+
 const CUANDOS = [
   { k: "hoy", label: "Hoy" },
   { k: "finde", label: "Este finde" },
@@ -154,6 +159,12 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
   const [panel, setPanel] = useState<Panel>(null);
   const [q, setQ] = useState("");
   const [cuando, setCuando] = useState<string | null>(null);
+  /**
+   * Un día concreto (YYYY-MM-DD). Excluyente con los tres chips: una fecha ya
+   * es un "cuándo", y tenerlos a la vez daría listas vacías sin que se entienda
+   * por qué ("Hoy" + 30 de agosto no existe).
+   */
+  const [fechaExacta, setFechaExacta] = useState("");
   const [cerca, setCerca] = useState(false);
   const { coords, estado: estadoUbi, pedir: pedirUbicacion } = useUbicacion();
 
@@ -212,6 +223,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
 
   // --- ¿CUÁNDO? (Hoy / Este finde / Esta semana) ---
   const enRango = (t: Tardeo) => {
+    if (fechaExacta) return t.fecha === fechaExacta;
     if (!cuando) return true;
     const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
     const d = new Date(t.fecha + "T00:00:00");
@@ -307,10 +319,16 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
 
   const etiquetaMusica = f.estilo ? etiquetaDe(f.estilo) : f.familia ? etiquetaDe(f.familia) : null;
   const nMas = [f.zona, f.precio, f.hora, f.publico, f.dressCode, f.tipoEvento].filter(Boolean).length;
-  const nTotal = nMas + (etiquetaMusica ? 1 : 0) + (cuando ? 1 : 0) + (porCercania ? 1 : 0) + (f.ambiente ? 1 : 0) + (porEncaje && hayGustos && !porCercania ? 1 : 0);
+  /** "sáb, 30 ago" en vez de "2026-08-30", que no lo lee nadie de un vistazo. */
+  const etiquetaFecha = fechaExacta
+    ? new Date(fechaExacta + "T12:00:00").toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" })
+    : null;
+  const etiquetaCuando = etiquetaFecha ?? (cuando ? CUANDOS.find((c) => c.k === cuando)!.label : null);
+
+  const nTotal = nMas + (etiquetaMusica ? 1 : 0) + (etiquetaCuando ? 1 : 0) + (porCercania ? 1 : 0) + (f.ambiente ? 1 : 0) + (porEncaje && hayGustos && !porCercania ? 1 : 0);
 
   const activas: string[] = [
-    cuando ? CUANDOS.find((c) => c.k === cuando)!.label : null,
+    etiquetaCuando,
     porCercania ? "Cerca de mí" : null,
     porEncaje && hayGustos && !porCercania ? "Para ti" : null,
     etiquetaMusica,
@@ -323,7 +341,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
     f.dressCode,
   ].filter(Boolean) as string[];
 
-  const limpiar = () => { setF(VACIO); setCuando(null); setCerca(false); setPorEncaje(false); };
+  const limpiar = () => { setF(VACIO); setCuando(null); setFechaExacta(""); setCerca(false); setPorEncaje(false); };
 
   return (
     <main className="mx-auto max-w-6xl px-4 pt-5 md:px-8 md:pt-8">
@@ -356,7 +374,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
         <Principal
           icono={CalendarDays}
           texto="Cuándo"
-          valor={cuando ? CUANDOS.find((c) => c.k === cuando)!.label : null}
+          valor={etiquetaCuando}
           activo={panel === "cuando"}
           onClick={() => abrir("cuando")}
         />
@@ -418,10 +436,39 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
         <div className="mb-4 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-magenta-100">
           <div className="flex flex-wrap gap-2">
             {CUANDOS.map((c) => (
-              <Chip key={c.k} activo={cuando === c.k} onClick={() => setCuando((p) => (p === c.k ? null : c.k))}>
+              <Chip
+                key={c.k}
+                activo={cuando === c.k}
+                onClick={() => { setFechaExacta(""); setCuando((p) => (p === c.k ? null : c.k)); }}
+              >
                 {c.label}
               </Chip>
             ))}
+
+            {/* En el móvil esto abre el calendario del sistema, que es lo que la
+                gente ya sabe usar. `min` en hoy porque los tardeos pasados no
+                se enseñan: dejar elegir ayer solo lleva a una lista vacía. */}
+            <label className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-extrabold text-tinta/80 ring-1 ring-magenta-100 transition focus-within:ring-magenta hover:ring-magenta">
+              <CalendarDays size={16} className="text-magenta" />
+              <span className={fechaExacta ? "sr-only" : ""}>Otra fecha</span>
+              <input
+                type="date"
+                value={fechaExacta}
+                min={hoyEnEspana()}
+                onChange={(e) => { setCuando(null); setFechaExacta(e.target.value); }}
+                className={`bg-transparent font-extrabold outline-none ${fechaExacta ? "" : "w-0 opacity-0"}`}
+              />
+              {fechaExacta && (
+                <button
+                  type="button"
+                  onClick={() => setFechaExacta("")}
+                  aria-label="Quitar la fecha"
+                  className="grid h-6 w-6 place-items-center rounded-full text-tinta/40 hover:bg-black/5"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </label>
           </div>
         </div>
       )}
