@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/useAuth";
+import { getAdn, tieneAdn, type AdnTardicola } from "@/lib/tardicola";
+import { ordenarPorEncaje } from "@/lib/recomendar";
 import TardeoCard from "@/components/TardeoCard";
 import { FAMILIAS, familiasDe, normalizarEstilo, etiquetaDe, idEstilo } from "@/lib/musica";
 import { AMBIENTES, TIPOS_EVENTO, PUBLICOS, DRESS_CODES, contiene, mismoValor } from "@/lib/adn";
@@ -9,7 +12,7 @@ import { useUbicacion } from "@/lib/ubicacion";
 import { distanciaKm } from "@/lib/geo";
 import { Tardeo } from "@/lib/types";
 import {
-  SlidersHorizontal, X, Loader2, Search, Navigation, CalendarDays, Music, ChevronDown, Sparkles,
+  SlidersHorizontal, X, Loader2, Search, Navigation, CalendarDays, Music, ChevronDown, Sparkles, Wand2,
 } from "lucide-react";
 
 const CUANDOS = [
@@ -135,8 +138,10 @@ function Principal({
  * y el resto detrás de "Más filtros". La idea es encontrar un plan en diez
  * segundos, no rellenar un formulario.
  *
- * Falta "Ambiente", que es el cuarto principal: no existe en la base todavía y
- * un botón que no filtra nada es peor que no tenerlo.
+ * Hay tres órdenes y se pisan en este orden: cercanía > encaje > fecha. La
+ * cercanía gana porque es la más concreta —quien la pide quiere lo que tiene al
+ * lado, y un encaje perfecto a 80 km no le sirve—, y "Para ti" solo aparece si
+ * hay gustos que aplicar.
  *
  * Los tardeos llegan ya cargados del servidor (`todos`) en vez de pedirlos al
  * montar: así el HTML sale con las fichas dentro y Google no ve una página
@@ -151,6 +156,17 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
   const [cuando, setCuando] = useState<string | null>(null);
   const [cerca, setCerca] = useState(false);
   const { coords, estado: estadoUbi, pedir: pedirUbicacion } = useUbicacion();
+
+  // Gustos de quien mira, para poder ordenar por encaje. Sin sesión o sin
+  // gustos, `adn` se queda a null y todo funciona igual que antes.
+  const { user } = useAuth();
+  const [adn, setAdn] = useState<AdnTardicola | null>(null);
+  const [porEncaje, setPorEncaje] = useState(false);
+  useEffect(() => {
+    if (!user) { setAdn(null); return; }
+    getAdn(user.id).then(setAdn);
+  }, [user]);
+  const hayGustos = tieneAdn(adn);
 
   /** Distancia del tardeo a donde estás, o null si le faltan coordenadas. */
   const distanciaDe = (t: Tardeo) =>
@@ -276,18 +292,27 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
    * que quieres ver es lo que tienes al lado, no lo que pasa antes en el
    * calendario. Los que no tienen coordenadas se van al final.
    */
+  /**
+   * Tres órdenes posibles y uno manda sobre otro: cercanía > encaje > fecha.
+   *
+   * La cercanía gana porque es la más concreta: quien la pide está diciendo
+   * "enséñame lo que tengo al lado", y un encaje perfecto a 80 km no le sirve.
+   */
   const porCercania = cerca && coords;
   const lista = porCercania
     ? [...filtrados].sort((a, b) => (distanciaDe(a) ?? Infinity) - (distanciaDe(b) ?? Infinity))
-    : filtrados;
+    : porEncaje && hayGustos
+      ? ordenarPorEncaje(filtrados, adn)
+      : filtrados;
 
   const etiquetaMusica = f.estilo ? etiquetaDe(f.estilo) : f.familia ? etiquetaDe(f.familia) : null;
   const nMas = [f.zona, f.precio, f.hora, f.publico, f.dressCode, f.tipoEvento].filter(Boolean).length;
-  const nTotal = nMas + (etiquetaMusica ? 1 : 0) + (cuando ? 1 : 0) + (porCercania ? 1 : 0) + (f.ambiente ? 1 : 0);
+  const nTotal = nMas + (etiquetaMusica ? 1 : 0) + (cuando ? 1 : 0) + (porCercania ? 1 : 0) + (f.ambiente ? 1 : 0) + (porEncaje && hayGustos && !porCercania ? 1 : 0);
 
   const activas: string[] = [
     cuando ? CUANDOS.find((c) => c.k === cuando)!.label : null,
     porCercania ? "Cerca de mí" : null,
+    porEncaje && hayGustos && !porCercania ? "Para ti" : null,
     etiquetaMusica,
     f.ambiente,
     f.tipoEvento,
@@ -298,7 +323,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
     f.dressCode,
   ].filter(Boolean) as string[];
 
-  const limpiar = () => { setF(VACIO); setCuando(null); setCerca(false); };
+  const limpiar = () => { setF(VACIO); setCuando(null); setCerca(false); setPorEncaje(false); };
 
   return (
     <main className="mx-auto max-w-6xl px-4 pt-5 md:px-8 md:pt-8">
@@ -342,6 +367,17 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
           desplegable={false}
           onClick={alternarCerca}
         />
+        {/* Solo si hay gustos que aplicar: un botón que no hace nada es peor
+            que no tenerlo. Quien no los tenga no lo ve. */}
+        {hayGustos && (
+          <Principal
+            icono={Wand2}
+            texto="Para ti"
+            activo={porEncaje}
+            desplegable={false}
+            onClick={() => setPorEncaje((v) => !v)}
+          />
+        )}
         <Principal
           icono={Music}
           texto="Música"
@@ -490,7 +526,12 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-bold text-tinta/60">
-          {lista.length} tardeos{porCercania && " · los más cercanos primero"}
+          {lista.length} tardeos
+          {porCercania
+            ? " · los más cercanos primero"
+            : porEncaje && hayGustos
+              ? " · los que más encajan primero"
+              : ""}
         </p>
         {estadoUbi === "denegada" && cerca && (
           <p className="text-sm font-bold text-tinta/50">Sin permiso de ubicación no podemos ordenar por cercanía.</p>

@@ -9,6 +9,7 @@ import CtaLocalDj from "@/components/CtaLocalDj";
 import Footer from "@/components/Footer";
 import PopupCliente from "@/components/PopupCliente";
 import { getTardeosPublicados, getDjsPublicos, getLocalesDestacados } from "@/lib/tardeos";
+import ParaTi from "@/components/ParaTi";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import { jsonLdSitio, urlAbsoluta } from "@/lib/seo";
 import { zonasDe } from "@/lib/zonas";
@@ -149,6 +150,11 @@ export default async function Inicio() {
           : <>Próximos tardeos <CalendarDays size={22} className="text-oro" /></>}
         tardeos={destacados}
       />
+      {/* Solo se pinta si has dicho qué te gusta y hay planes que encajen.
+          Va aquí y no arriba del todo porque el hero y los destacados son lo
+          que ve todo el mundo, con sesión o sin ella. */}
+      <ParaTi tardeos={tardeos} />
+
       <CarruselTardeos titulo={<>Este finde <Sun size={22} className="text-oro" /></>} tardeos={esteFinde} />
 
       {/* Locales antes que DJs: el local es quien paga y quien pone el sitio;
