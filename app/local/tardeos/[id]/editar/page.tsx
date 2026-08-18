@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/useAuth";
 import { getTardeoById, updateTardeo, setDjsDeTardeo, borrarTardeo, setEstadoTardeo } from "@/lib/tardeos";
 import SelectorAdn from "@/components/SelectorAdn";
 import ProgramarPublicacion, { paraInput, type Cuando } from "@/components/ProgramarPublicacion";
+import PromoTardeo, { PROMO_VACIA, type Promo } from "@/components/PromoTardeo";
 import { flyerSrc } from "@/lib/mockData";
 import { Tardeo } from "@/lib/types";
 import { Music, Calendar, Clock, Disc3, MapPin, Ticket, Check, Loader2, Trash2, EyeOff, Eye } from "lucide-react";
@@ -29,6 +30,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
   const [horaFin, setHoraFin] = useState("");
   const [estilo, setEstilo] = useState("");
   const [cuando, setCuando] = useState<Cuando>({ estado: "publicado", publicarEn: "" });
+  const [promo, setPromo] = useState<Promo>(PROMO_VACIA);
   const [tipoEvento, setTipoEvento] = useState("");
   const [ambiente, setAmbiente] = useState<string[]>([]);
   const [publico, setPublico] = useState<string[]>([]);
@@ -52,6 +54,11 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
         setCuando({
           estado: t.estado === "programado" ? "programado" : t.estado === "borrador" ? "borrador" : "publicado",
           publicarEn: t.publicarEn ? paraInput(new Date(t.publicarEn)) : "",
+        });
+        setPromo({
+          titulo: t.promoTitulo ?? "",
+          texto: t.promoTexto ?? "",
+          etiquetas: t.etiquetas ?? [],
         });
         setTipoEvento(t.tipoEvento ?? "");
         setAmbiente(t.ambiente ?? []);
@@ -86,6 +93,9 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
         : null,
       // null y no [] cuando está vacío: así "sin indicar" no se confunde con
       // "lo revisó y lo dejó a cero".
+      promo_titulo: promo.titulo.trim() || null,
+      promo_texto: promo.texto.trim() || null,
+      etiquetas: promo.etiquetas.length ? promo.etiquetas : null,
       tipo_evento: tipoEvento || null,
       ambiente: ambiente.length ? ambiente : null,
       publico: publico.length ? publico : null,
@@ -187,6 +197,8 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
             <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70"><MapPin size={16} className="text-magenta" /> Dirección</span>
             <input value={direccion} onChange={(e) => setDireccion(e.target.value)} className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 text-base font-semibold outline-none focus:border-magenta" />
           </label>
+
+          <PromoTardeo valor={promo} onCambio={setPromo} />
 
           <ProgramarPublicacion valor={cuando} onCambio={setCuando} />
 

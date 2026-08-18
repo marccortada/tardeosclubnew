@@ -12,7 +12,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import { jsonLdEvento, urlAbsoluta } from "@/lib/seo";
-import { ArrowLeft, MapPin, Clock, Music, BadgeCheck, Star, CalendarPlus, Sparkles, Users, Shirt, PartyPopper } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Music, BadgeCheck, Star, CalendarPlus, Sparkles, Users, Shirt, PartyPopper, Tag } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -151,6 +151,26 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
                 <Shirt size={13} className="text-magenta" /> {tardeo.dressCode}
               </span>
             )}
+          </div>
+        )}
+
+        {/* La promoción del local. Aquí y no en la portada: la ve quien ya ha
+            entrado a mirar este tardeo, así que no interrumpe a nadie. */}
+        {(tardeo.promoTitulo || tardeo.etiquetas?.length) && (
+          <div className="mt-4 rounded-2xl bg-oro/15 p-4 ring-1 ring-oro/40">
+            {tardeo.promoTitulo && (
+              <p className="flex items-center gap-2 font-display text-lg font-black leading-tight">
+                <Tag size={19} className="shrink-0 text-oro-600" /> {tardeo.promoTitulo}
+              </p>
+            )}
+            {tardeo.promoTexto && <p className="mt-1 font-semibold text-tinta/75">{tardeo.promoTexto}</p>}
+            {tardeo.etiquetas?.length ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {tardeo.etiquetas.map((e) => (
+                  <span key={e} className="rounded-full bg-oro px-3 py-1 text-sm font-black text-tinta">{e}</span>
+                ))}
+              </div>
+            ) : null}
           </div>
         )}
 

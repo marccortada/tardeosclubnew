@@ -36,6 +36,11 @@ export interface Tardeo {
   estilo: string;
   tipoEntrada: TipoEntrada;
   precio?: number;
+  /** Promoción que pone el local, visible SOLO dentro de esta ficha. */
+  promoTitulo?: string;
+  promoTexto?: string;
+  /** Etiquetas cortas: 2x1, chicas gratis… */
+  etiquetas?: string[];
   /** Tardeo, mañaneo, brunch, nocheo… Uno solo. */
   tipoEvento?: string;
   /** A qué va la gente: chill, afterwork, fiestero… Varios a la vez. */

@@ -11,6 +11,7 @@ import AddressSearch, { Direccion } from "@/components/AddressSearch";
 import SelectorLocal from "@/components/SelectorLocal";
 import ProgramarPublicacion, { type Cuando } from "@/components/ProgramarPublicacion";
 import PrecioTardeo, { PRECIO_VACIO, aColumnas, type Precio } from "@/components/PrecioTardeo";
+import PromoTardeo, { PROMO_VACIA, type Promo } from "@/components/PromoTardeo";
 import SubirFlyer from "@/components/SubirFlyer";
 import {
   Upload, Wand2, Sparkles, Loader2, Check, AlertTriangle,
@@ -74,6 +75,7 @@ export default function CrearTardeo() {
   // solo maneja cadenas.
   const [cuando, setCuando] = useState<Cuando>({ estado: "publicado", publicarEn: "" });
   const [precio, setPrecio] = useState<Precio>(PRECIO_VACIO);
+  const [promo, setPromo] = useState<Promo>(PROMO_VACIA);
   // Ya se eligió qué hacer con el flyer subido (IA o tal cual).
   const [flyerDecidido, setFlyerDecidido] = useState(false);
   const [paso, setPaso] = useState(0);
@@ -289,6 +291,9 @@ export default function CrearTardeo() {
       estilo: form.estilo,
       // Las tres columnas de precio más los dos enlaces salen del componente.
       ...aColumnas(precio),
+      promo_titulo: promo.titulo.trim() || null,
+      promo_texto: promo.texto.trim() || null,
+      etiquetas: promo.etiquetas.length ? promo.etiquetas : null,
       flyer_url,
       flyer_origen: flyerGen ? "ia" : modo === "subir" ? "subido" : "ia",
       estado: "publicado",
@@ -587,6 +592,8 @@ export default function CrearTardeo() {
                   )}
 
                   <PrecioTardeo valor={precio} onCambio={setPrecio} />
+
+                  <PromoTardeo valor={promo} onCambio={setPromo} />
                 </>
               )}
 

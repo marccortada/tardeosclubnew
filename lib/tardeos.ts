@@ -76,6 +76,9 @@ function mapRow(r: any): Tardeo {
     precio: r.precio != null ? Number(r.precio) : undefined,
     // Columnas del lote 20. Mientras el SQL no esté pegado llegan vacías y se
     // comportan como "sin indicar", sin romper nada.
+    promoTitulo: r.promo_titulo ?? undefined,
+    promoTexto: r.promo_texto ?? undefined,
+    etiquetas: Array.isArray(r.etiquetas) ? r.etiquetas : [],
     tipoEvento: r.tipo_evento ?? undefined,
     ambiente: Array.isArray(r.ambiente) ? r.ambiente : [],
     publico: Array.isArray(r.publico) ? r.publico : [],
