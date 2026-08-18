@@ -22,6 +22,9 @@ const GESTION = [
   { icon: Megaphone, label: "Promociones y precios", sub: "Destacados · packs · combos", href: "/admin/promociones" },
   { icon: Mail, label: "Ofertas a locales", sub: "Enviar ofertas por email", href: "/admin/ofertas" },
   { icon: Bell, label: "Popups", sub: "Ofertas y noticias", href: "/admin/popups" },
+  // Justo debajo de Popups: es lo mismo pero pedido por un local, y así se ven
+  // juntas las dos formas de que salte un aviso.
+  { icon: Megaphone, label: "Campañas", sub: "Las que piden los locales", href: "/admin/campanas" },
   { icon: BellRing, label: "Notificaciones push", sub: "Aviso al móvil de los suscritos", href: "/admin/notificaciones" },
   { icon: Star, label: "Destacados", sub: "Quién sale primero en la home", href: "/admin/destacados" },
   { icon: ShieldCheck, label: "Moderación", sub: "Reseñas y flyers", href: "/admin/moderacion" },
