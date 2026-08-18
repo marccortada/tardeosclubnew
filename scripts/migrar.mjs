@@ -334,6 +334,15 @@ async function main() {
       zona: ev.location_city || null,
       telefono: null,
       email: null,
+      logo_url: null,
+      // Un sitio partido de un paraguas ES un local: tiene dirección propia
+      // y fija, que es lo que lo distingue del promotor que lo usa.
+      //
+      // Va explícito aunque la columna tenga default: el upsert se manda en
+      // bloque y PostgREST rellena con NULL —no con el default— las claves
+      // que unas filas traen y otras no. `tipo` es NOT NULL, así que esto
+      // reventaba la sincronización entera, y con ella los tardeos.
+      tipo: "local",
       redes: {},
       estado: ESTADO_LOCAL[padre?.status] ?? ESTADO_LOCAL_POR_DEFECTO,
     });
