@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import SegmentadorPopup, { SIN_SEGMENTAR, type Segmentacion } from "@/components/SegmentadorPopup";
 import PanelHeader from "@/components/PanelHeader";
 import { supabase } from "@/lib/supabase";
 import { Bell, Send, Trash2, Sparkles, Loader2 } from "lucide-react";
@@ -39,6 +40,7 @@ export default function AdminPopups() {
   const [tipo, setTipo] = useState("Oferta");
   const [repetir, setRepetir] = useState<number | null>(null);
   const [publico, setPublico] = useState("todos");
+  const [seg, setSeg] = useState<Segmentacion>(SIN_SEGMENTAR);
   const [popups, setPopups] = useState<Popup[]>([]);
   const [cargando, setCargando] = useState(true);
   const [enviando, setEnviando] = useState(false);
@@ -58,11 +60,19 @@ export default function AdminPopups() {
       .insert({
         titulo: titulo.trim(), mensaje: mensaje.trim(), tipo, activo: true,
         repetir_horas: repetir, publico,
+        // Vacío se guarda como null: así "sin acotar" no se confunde con "lo
+        // miró y no eligió", y la consulta del cliente lo trata igual.
+        seg_musica: seg.musica.length ? seg.musica : null,
+        seg_tipos_evento: seg.tiposEvento.length ? seg.tiposEvento : null,
+        seg_edades: seg.edades.length ? seg.edades : null,
+        seg_zonas: seg.zonas.length ? seg.zonas : null,
       })
       .select()
       .single();
     setEnviando(false);
-    if (data) { setPopups((p) => [data as Popup, ...p]); setTitulo(""); setMensaje(""); }
+    // La segmentación también se limpia: si no, la siguiente campaña se
+    // lanza con el público de la anterior sin que nadie lo note.
+    if (data) { setPopups((p) => [data as Popup, ...p]); setTitulo(""); setMensaje(""); setSeg(SIN_SEGMENTAR); }
   };
 
   const toggle = async (u: Popup) => {

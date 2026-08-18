@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
+import { getAdn, type AdnTardicola } from "@/lib/tardicola";
+import { encajaSegmento, impactosHoy, apuntarImpacto } from "@/lib/segmentacion";
 import { X, Sparkles, ArrowRight } from "lucide-react";
 
 type Popup = {
@@ -16,7 +18,15 @@ type Popup = {
   publico: "todos" | "anonimos" | "registrados" | "locales" | "djs";
   desde: string | null;
   hasta: string | null;
+  /** Segmentación por gustos (lote 23). Vacío = sin restricción. */
+  seg_musica: string[] | null;
+  seg_tipos_evento: string[] | null;
+  seg_edades: string[] | null;
+  seg_zonas: string[] | null;
 };
+
+/** Tope de impactos al día si la tabla de ajustes no responde. */
+const TOPE_POR_DEFECTO = 3;
 
 const CLAVE = (id: string) => `popup-visto-${id}`;
 
