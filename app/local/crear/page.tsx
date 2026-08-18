@@ -8,6 +8,7 @@ import { getMiLocal, vincularDjsPorNombre, invalidarCacheTardeos } from "@/lib/t
 import { supabase } from "@/lib/supabase";
 import SelectorAdn from "@/components/SelectorAdn";
 import AddressSearch, { Direccion } from "@/components/AddressSearch";
+import SelectorLocal from "@/components/SelectorLocal";
 import {
   Upload, Wand2, Sparkles, Loader2, Check, AlertTriangle,
   Calendar, Clock, Music, MapPin, Disc3, Ticket, ArrowRight, Store, Megaphone,
