@@ -68,5 +68,18 @@ export function urlIncrustada(url: string): string | null {
   if (/mixcloud\.com\//.test(u)) {
     return `https://player-widget.mixcloud.com/widget/iframe/?feed=${encodeURIComponent(u)}&hide_cover=1`;
   }
+  // Spotify: playlist, álbum, canción o artista. El id va justo después del
+  // tipo, y a veces arrastra un ?si=... de compartir que hay que soltar.
+  const sp = u.match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(playlist|album|track|artist)\/([A-Za-z0-9]+)/);
+  if (sp) return `https://open.spotify.com/embed/${sp[1]}/${sp[2]}`;
   return null;
+}
+
+/** Alto del reproductor según de dónde sea: un vídeo pide 16:9 y una playlist
+ *  de audio se queda en una tira. */
+export function altoDelReproductor(url: string): string {
+  const u = url.trim();
+  if (/youtube\.com|youtu\.be/.test(u)) return "aspect-video";
+  if (/open\.spotify\.com\/(?:intl-[a-z]+\/)?(playlist|album|artist)/.test(u)) return "h-[380px]";
+  return "h-[166px]";
 }

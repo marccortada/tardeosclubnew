@@ -231,7 +231,7 @@ export async function getLocalesDestacados(limite = 10): Promise<{ locales: any[
 export async function getLocalById(id: string): Promise<any | null> {
   const { data } = await supabase
     .from("locales")
-    .select("id,nombre,descripcion,direccion,lat,lng,zona,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo")
+    .select("id,nombre,descripcion,direccion,lat,lng,zona,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,playlist_url")
     .eq("id", id)
     .maybeSingle();
   return data ?? null;
@@ -321,7 +321,7 @@ export async function getInscritosLocal(localId: string): Promise<any[]> {
 export async function getMiDj(profileId: string): Promise<any | null> {
   const { data, error } = await supabase
     .from("djs")
-    .select("id,profile_id,nombre_artistico,bio,estilos,galeria,redes,verificado,reputacion_score,oculto,avatar_url")
+    .select("id,profile_id,nombre_artistico,bio,estilos,galeria,redes,verificado,reputacion_score,oculto,avatar_url,playlist_url,zonas,contacto")
     .eq("profile_id", profileId)
     .order("created_at", { ascending: true }).limit(1).maybeSingle();
   if (error) console.error("[djs] no se pudo cargar tu perfil DJ:", error.message);
@@ -353,7 +353,7 @@ export async function getDjsPublicos(): Promise<any[]> {
 export async function getDjById(id: string): Promise<any | null> {
   const { data } = await supabase
     .from("djs")
-    .select("id,nombre_artistico,bio,estilos,galeria,redes,verificado,reputacion_score,avatar_url")
+    .select("id,nombre_artistico,bio,estilos,galeria,redes,verificado,reputacion_score,avatar_url,playlist_url,zonas,contacto")
     .eq("id", id)
     .maybeSingle();
   return data ?? null;

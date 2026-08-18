@@ -6,15 +6,13 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
 import SelectorEstilos from "@/components/SelectorEstilos";
-import SelectorAdnTardicola from "@/components/SelectorAdnTardicola";
-import { getAdn, guardarAdn, ADN_VACIO, type AdnTardicola } from "@/lib/tardicola";
 import AddressSearch, { Direccion } from "@/components/AddressSearch";
 import PanelHeader from "@/components/PanelHeader";
 import {
   PartyPopper, Store, Disc3, ArrowRight, Check, Loader2, Store as StoreIcon, Megaphone,
 } from "lucide-react";
 
-type Paso = "rol" | "gustos" | "local" | "promotor" | "dj" | "fin";
+type Paso = "rol" | "local" | "promotor" | "dj" | "fin";
 
 function UnirseContent() {
   const { user, loading } = useAuth();
@@ -23,13 +21,9 @@ function UnirseContent() {
     rolParam === "local" ? "local"
       : rolParam === "promotor" ? "promotor"
       : rolParam === "dj" ? "dj"
-      : rolParam === "tardicola" ? "gustos"
       : "rol"
   );
   const [finRol, setFinRol] = useState("");
-  // Gustos del tardícola. Se cargan si ya los dio: entrar aquí otra vez tiene
-  // que enseñar lo que eligió, no una hoja en blanco.
-  const [adn, setAdn] = useState<AdnTardicola>(ADN_VACIO);
 
   // Local
   const [nombreLocal, setNombreLocal] = useState("");
@@ -60,27 +54,7 @@ function UnirseContent() {
     })();
   }, [user]);
 
-  // Los gustos que ya tenga, para no enseñarle una hoja en blanco si vuelve.
-  useEffect(() => {
-    if (!user) return;
-    getAdn(user.id).then((a) => { if (a) setAdn(a); });
-  }, [user]);
 
-  /**
-   * Guarda los gustos y a la calle.
-   *
-   * Si falla, se dice y NO se sigue: perder lo que acaba de marcar y aterrizar
-   * en el listado como si nada es la forma de que no vuelva a rellenarlo.
-   */
-  const guardarGustos = async () => {
-    if (!user) return;
-    setGuardando(true); setError("");
-    const { error: e } = await guardarAdn(user.id, adn);
-    setGuardando(false);
-    if (e) { setError("No se pudieron guardar tus gustos: " + e.message); return; }
-    setFinRol("tardicola");
-    setPaso("fin");
-  };
 
   if (!loading && !user) {
     return (
@@ -164,22 +138,19 @@ function UnirseContent() {
     const conPanel = finRol === "local" || finRol === "promotor";
     const titulo = finRol === "local" ? "¡Local creado!"
       : finRol === "promotor" ? "¡Ya eres promotor!"
-      : finRol === "tardicola" ? "¡Listo, tardícola!"
       : "¡Perfil DJ creado!";
     const texto = finRol === "local"
       ? "Queda pendiente de verificación por el admin. Mientras, ya puedes preparar tus tardeos."
       : finRol === "promotor"
         ? "Queda pendiente de verificación. Al crear cada tardeo te pediremos dónde se hace, que es lo que te diferencia de un local fijo."
-        : finRol === "tardicola"
-          ? "Ya sabemos qué te gusta. Puedes cambiarlo cuando quieras desde tu cuenta."
-          : "Ya apareces como DJ. Los locales podrán añadirte a sus tardeos.";
+        : "Ya apareces como DJ. Los locales podrán añadirte a sus tardeos.";
     return (
       <main className="mx-auto flex max-w-lg flex-col items-center gap-4 px-4 pt-16 text-center">
         <span className="grid h-20 w-20 place-items-center rounded-full bg-oro text-tinta"><Check size={44} /></span>
         <h2 className="font-display text-3xl font-black">{titulo}</h2>
         <p className="font-semibold text-tinta/70">{texto}</p>
-        <Link href={conPanel ? "/local" : finRol === "tardicola" ? "/tardeos" : "/"} className="mt-2 rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">
-          {conPanel ? "Ir a mi panel" : finRol === "tardicola" ? "Ver tardeos" : "Ir a la app"}
+        <Link href={conPanel ? "/local" : "/perfil"} className="mt-2 rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">
+          {conPanel ? "Ir a mi panel" : "Ir a mi perfil"}
         </Link>
       </main>
     );
@@ -194,13 +165,15 @@ function UnirseContent() {
           <div className="flex flex-col gap-4">
             <p className="text-center font-semibold text-tinta/70">¿Cómo quieres unirte?</p>
 
-            {/* Antes esto era un enlace a la portada: al tardícola no se le
-                preguntaba nada, y sin sus gustos no hay nada que cruzar. */}
-            <button onClick={() => { setPaso("gustos"); setError(""); }} className="group flex items-center gap-4 rounded-3xl bg-white p-5 text-left shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-xl">
+            {/* Va a su cuenta, NO al formulario de gustos. Soltarle siete
+                apartados nada más entrar es la forma más rápida de que se vaya:
+                primero ve para qué sirve la app, y desde su perfil elige cuándo
+                decir qué le gusta. */}
+            <Link href="/perfil" className="group flex items-center gap-4 rounded-3xl bg-white p-5 text-left shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-xl">
               <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-marca text-white"><PartyPopper size={28} /></span>
               <span className="flex-1"><span className="block font-display text-xl font-black">Tardícola</span><span className="text-sm font-semibold text-tinta/60">Quiero descubrir tardeos que vayan conmigo</span></span>
               <ArrowRight className="text-magenta transition group-hover:translate-x-1" />
-            </button>
+            </Link>
 
             <button onClick={() => { setPaso("local"); setError(""); }} className="group flex items-center gap-4 rounded-3xl bg-white p-5 text-left shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-xl">
               <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-oro text-tinta"><Store size={28} /></span>
@@ -222,40 +195,6 @@ function UnirseContent() {
           </div>
         )}
 
-        {/* Paso 2 (tardícola): sus gustos, con los mismos criterios con los que
-            se describe un tardeo. Sin esto no hay nada que cruzar y las
-            recomendaciones no pasan de "los próximos por fecha". */}
-        {paso === "gustos" && (
-          <div className="flex flex-col gap-4">
-            <button onClick={() => setPaso("rol")} className="self-start text-sm font-bold text-magenta">← Cambiar rol</button>
-            <div>
-              <h2 className="font-display text-2xl font-black">¿Qué tardeo va contigo?</h2>
-              <p className="mt-1 font-semibold text-tinta/60">
-                Marca lo que te suene. Con esto te proponemos planes que encajan, en vez de una lista sin más.
-              </p>
-            </div>
-
-            <SelectorAdnTardicola adn={adn} onCambio={setAdn} />
-
-            {error && <p className="rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
-
-            <div className="flex flex-col gap-2 pb-6 sm:flex-row">
-              <button
-                onClick={guardarGustos}
-                disabled={guardando}
-                className="flex-1 rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white transition hover:brightness-105 disabled:opacity-60"
-              >
-                {guardando ? "Guardando…" : "Guardar y empezar"}
-              </button>
-              {/* Saltárselo tiene que ser fácil y visible: si la única salida es
-                  rellenar siete apartados recién registrado, el que tiene prisa
-                  cierra la pestaña y no vuelve. Se puede completar luego. */}
-              <Link href="/tardeos" className="rounded-2xl bg-white px-6 py-4 text-center text-lg font-extrabold text-tinta/60 ring-1 ring-magenta-100">
-                Ahora no
-              </Link>
-            </div>
-          </div>
-        )}
 
         {/* Paso 2: LOCAL */}
         {paso === "local" && (

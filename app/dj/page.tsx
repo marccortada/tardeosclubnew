@@ -8,6 +8,7 @@ import ServiciosExternos from "@/components/ServiciosExternos";
 import { useAuth } from "@/lib/useAuth";
 import { getMiDj, updateMiDj, subirAvatarDj } from "@/lib/tardeos";
 import ContenidoDj from "@/components/ContenidoDj";
+import CampoPlaylist from "@/components/CampoPlaylist";
 import SelectorEstilos from "@/components/SelectorEstilos";
 import { Disc3, BadgeCheck, Star, Music, Loader2, Pencil, Camera, Check, X, Instagram, Youtube, Music2, Phone } from "lucide-react";
 
@@ -24,6 +25,7 @@ export default function PanelDj() {
   const [bio, setBio] = useState("");
   const [estilos, setEstilos] = useState<string[]>([]);
   const [redes, setRedes] = useState<Redes>({});
+  const [playlist, setPlaylist] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [subiendo, setSubiendo] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -39,6 +41,7 @@ export default function PanelDj() {
     setBio(dj.bio || "");
     setEstilos(Array.isArray(dj.estilos) ? dj.estilos : []);
     setRedes(dj.redes && typeof dj.redes === "object" ? dj.redes : {});
+    setPlaylist(dj.playlist_url || "");
     setAvatar(dj.avatar_url || null);
     setEditando(true);
   };
@@ -63,6 +66,7 @@ export default function PanelDj() {
       if (v) redesLimpias[k] = v;
     });
     const fields: Record<string, unknown> = {
+      playlist_url: playlist.trim() || null,
       nombre_artistico: nombre.trim() || dj.nombre_artistico,
       bio: bio.trim() || null,
       estilos,
@@ -212,6 +216,10 @@ export default function PanelDj() {
           ) : (
             <p className="font-semibold text-tinta/80">{dj.bio || "Aún no has escrito tu biografía."}</p>
           )}
+
+          {/* La playlist va con la bio: es parte de presentarse, no un dato de
+              contacto. Solo en modo edición, como el resto. */}
+          {editando && <div className="mt-3"><CampoPlaylist valor={playlist} onCambio={setPlaylist} /></div>}
         </section>
 
         {/* Redes y contacto (solo en edición) */}

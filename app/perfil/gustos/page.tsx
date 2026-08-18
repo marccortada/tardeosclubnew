@@ -1,28 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PanelHeader from "@/components/PanelHeader";
 import SelectorAdnTardicola from "@/components/SelectorAdnTardicola";
 import { useAuth } from "@/lib/useAuth";
 import { getAdn, guardarAdn, tieneAdn, ADN_VACIO, type AdnTardicola } from "@/lib/tardicola";
-import { Loader2, Check } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 /**
  * Editar los gustos cuando quieras.
  *
- * Existe por dos motivos. Uno, /unirse solo los pide al registrarse, y a nadie
- * le gusta lo mismo en marzo que en agosto. Y dos, quien ya tiene ficha de local
- * o de DJ no puede volver a pasar por /unirse —le corta antes para que no cree
- * duplicados—, y también es un tardícola que sale por ahí.
+ * Es el ÚNICO sitio donde se piden. Antes salían nada más registrarse, y
+ * soltarle siete apartados a alguien que acaba de llegar es la forma más rápida
+ * de que se vaya: ahora entra, ve para qué sirve la app, y decide él cuándo
+ * decir qué le gusta.
  */
 export default function MisGustos() {
   const { user, loading } = useAuth();
+  const router = useRouter();
   const [adn, setAdn] = useState<AdnTardicola>(ADN_VACIO);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
-  const [guardado, setGuardado] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -38,11 +39,14 @@ export default function MisGustos() {
 
   const guardar = async () => {
     if (!user) return;
-    setGuardando(true); setError(""); setGuardado(false);
+    setGuardando(true); setError("");
     const { error: e } = await guardarAdn(user.id, adn);
     setGuardando(false);
     if (e) { setError("No se pudo guardar: " + e.message); return; }
-    setGuardado(true);
+    // De vuelta a la cuenta. El botón está al final de siete apartados: dejarle
+    // ahí obliga a subir hasta la flecha de salir, que es justo el momento en el
+    // que uno cree que no ha guardado.
+    router.push("/perfil");
   };
 
   if (loading || cargando) {
@@ -68,7 +72,7 @@ export default function MisGustos() {
             : "Marca lo que te suene y te propondremos planes que encajan, en vez de una lista sin más."}
         </p>
 
-        <SelectorAdnTardicola adn={adn} onCambio={(a) => { setAdn(a); setGuardado(false); }} />
+        <SelectorAdnTardicola adn={adn} onCambio={setAdn} />
 
         {error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
 
@@ -77,14 +81,9 @@ export default function MisGustos() {
           disabled={guardando}
           className="mt-5 w-full rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white transition hover:brightness-105 disabled:opacity-60"
         >
-          {guardando ? "Guardando…" : guardado ? "Guardado ✓" : "Guardar"}
+          {guardando ? "Guardando…" : "Guardar y volver"}
         </button>
 
-        {guardado && (
-          <p className="mt-3 flex items-center justify-center gap-1.5 font-bold text-oro-600">
-            <Check size={18} /> Listo, lo tenemos en cuenta.
-          </p>
-        )}
       </div>
     </main>
   );

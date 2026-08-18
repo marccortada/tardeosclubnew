@@ -7,6 +7,7 @@ import PanelHeader from "@/components/PanelHeader";
 import AddressSearch, { Direccion } from "@/components/AddressSearch";
 import { useAuth } from "@/lib/useAuth";
 import { getMiLocal, updateMiLocal, subirLogoLocal } from "@/lib/tardeos";
+import CampoPlaylist from "@/components/CampoPlaylist";
 import { Store, Phone, MapPin, FileText, Check, Loader2, ImagePlus, Megaphone } from "lucide-react";
 
 export default function EditarLocal() {
@@ -25,6 +26,7 @@ export default function EditarLocal() {
   const [zona, setZona] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [cambiarDir, setCambiarDir] = useState(false);
+  const [playlist, setPlaylist] = useState("");
   const [logo, setLogo] = useState<string | null>(null);
   const [subiendoLogo, setSubiendoLogo] = useState(false);
 
@@ -38,6 +40,7 @@ export default function EditarLocal() {
         setNombre(l.nombre || "");
         setTelefono(l.telefono || "");
         setDescripcion(l.descripcion || "");
+        setPlaylist(l.playlist_url || "");
         setDireccion(l.direccion || "");
         setZona(l.zona || "");
         setLogo(l.logo_url || null);
@@ -76,6 +79,7 @@ export default function EditarLocal() {
       nombre: nombre.trim(),
       telefono: telefono.trim() || null,
       descripcion: descripcion.trim() || null,
+      playlist_url: playlist.trim() || null,
     };
     // Al promotor no se le tocan dirección ni coordenadas: no tiene ninguna, y
     // guardarle cadenas vacías le sobreescribiría lo que ya hubiera.
@@ -156,6 +160,8 @@ export default function EditarLocal() {
             <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70"><FileText size={16} className="text-magenta" /> Descripción</span>
             <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={3} placeholder="Cuenta qué ofrece tu local…" className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 text-base font-semibold outline-none focus:border-magenta" />
           </label>
+
+          <CampoPlaylist valor={playlist} onCambio={setPlaylist} />
 
           {/* El promotor no tiene dirección fija: la pone en cada tardeo. */}
           {esPromotor ? (

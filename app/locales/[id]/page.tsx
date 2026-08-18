@@ -2,6 +2,7 @@ import Image from "next/image";
 import { getLocalById, getTardeosPublicadosDeLocal } from "@/lib/tardeos";
 import TardeoCard from "@/components/TardeoCard";
 import Resenas from "@/components/Resenas";
+import Playlist from "@/components/Playlist";
 import CompartirBtn from "@/components/CompartirBtn";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -126,6 +127,10 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
             </div>
           )}
         </section>
+
+        {/* Lo que suena en el sitio. Vale igual para promotores: comparten
+            ficha con los locales. */}
+        <Playlist url={local.playlist_url} titulo="Lo que suena aquí" />
 
         {/* Reseñas */}
         <Resenas tipo="local" objetivoId={local.id} nombre={local.nombre} />
