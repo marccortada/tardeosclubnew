@@ -11,8 +11,26 @@ export type Direccion = {
   zona: string;
 };
 
-export default function AddressSearch({ onSelect }: { onSelect: (d: Direccion) => void }) {
-  const [q, setQ] = useState("");
+/**
+ * Busca una dirección o un sitio por su nombre.
+ *
+ * Usa Nominatim (OpenStreetMap), que además de calles tiene negocios fichados:
+ * escribir "Miracle Mataró" encuentra el local, no solo la calle. Tiene menos
+ * bares que Google Maps, así que cuando no aparezca hay que buscar por la calle
+ * — de ahí que el texto de ayuda mencione las dos formas.
+ */
+export default function AddressSearch({
+  onSelect,
+  inicial = "",
+  placeholder = "Busca el sitio por su nombre o por la calle…",
+}: {
+  onSelect: (d: Direccion) => void;
+  /** Texto de arranque: el nombre del local, para que salga su ficha sin
+   *  que tenga que escribirlo. */
+  inicial?: string;
+  placeholder?: string;
+}) {
+  const [q, setQ] = useState(inicial);
   const [res, setRes] = useState<Direccion[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -86,11 +104,22 @@ export default function AddressSearch({ onSelect }: { onSelect: (d: Direccion) =
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Busca calle y número…"
+          placeholder={placeholder}
           className="w-full bg-transparent py-3 text-base font-semibold outline-none"
         />
         {loading && <Loader2 size={18} className="animate-spin text-magenta" />}
       </div>
+      {/* Sin resultados hay que decirlo Y decir qué hacer. OpenStreetMap tiene
+          las calles completas pero pocos bares fichados —de cuatro locales
+          reales solo encuentra uno por su nombre—, así que quedarse en blanco
+          hace pensar que el buscador está roto cuando lo que pasa es que ese
+          sitio no está en el mapa con ese nombre. */}
+      {open && !loading && q.trim().length >= 3 && res.length === 0 && !sel && (
+        <p className="mt-1.5 rounded-xl bg-magenta-50 p-3 text-xs font-semibold text-tinta/70">
+          No encontramos ese sitio por el nombre. Prueba con la calle y el número.
+        </p>
+      )}
+
       {open && res.length > 0 && (
         <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-black/10 bg-white shadow-tarjeta">
           {res.map((d, i) => (

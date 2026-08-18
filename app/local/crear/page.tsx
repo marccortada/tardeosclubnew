@@ -18,6 +18,9 @@ import {
 } from "lucide-react";
 
 type Modo = "elegir" | "subir" | "crear";
+
+/** Los mismos tres del admin antiguo, para que nadie tenga que reaprender. */
+const PASOS = ["Básico", "Ubicación y precio", "Categorías"];
 type Estado = "inicio" | "procesando" | "revisar" | "publicado";
 
 const EXTRAIDO = {
@@ -73,6 +76,7 @@ export default function CrearTardeo() {
   const [precio, setPrecio] = useState<Precio>(PRECIO_VACIO);
   // Ya se eligió qué hacer con el flyer subido (IA o tal cual).
   const [flyerDecidido, setFlyerDecidido] = useState(false);
+  const [paso, setPaso] = useState(0);
   const [tipoEvento, setTipoEvento] = useState("");
   const [ambiente, setAmbiente] = useState<string[]>([]);
   const [publico, setPublico] = useState<string[]>([]);
@@ -482,55 +486,154 @@ export default function CrearTardeo() {
         )}
 
         {/* Revisar */}
-        {estado === "revisar" && (
-          <section className="flex flex-col gap-4">
-            {flyerGen && (
-              <div className="overflow-hidden rounded-2xl bg-tinta ring-1 ring-magenta-100">
-                {/* eslint-disable-next-line @next/next/no-img-element -- llega en base64 desde la IA y vive solo en memoria: next/image no optimiza data URLs */}
-                <img src={`data:image/jpeg;base64,${flyerGen}`} alt="Flyer generado por IA" className="mx-auto max-h-[420px] w-auto" />
+          {estado === "revisar" && (
+            <section className="flex flex-col gap-4">
+              {flyerGen && (
+                <div className="overflow-hidden rounded-2xl bg-tinta ring-1 ring-magenta-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- llega en base64 desde la IA y vive solo en memoria: next/image no optimiza data URLs */}
+                  <img src={`data:image/jpeg;base64,${flyerGen}`} alt="Flyer generado por IA" className="mx-auto max-h-[420px] w-auto" />
+                </div>
+              )}
+
+              {/* Tres pasos en vez de un formulario de veinte campos: el que
+                  publica un tardeo lo hace desde el móvil y con prisa, y una
+                  pantalla que hay que recorrer entera antes de ver el botón se
+                  abandona a la mitad. */}
+              <ol className="flex items-center gap-2 text-sm font-black">
+                {PASOS.map((p, i) => (
+                  <li key={p} className="flex flex-1 items-center gap-2">
+                    <button
+                      type="button"
+                      // Se puede volver atrás tocando el número, pero no saltar
+                      // hacia delante: el paso 2 necesita el local del paso 1.
+                      onClick={() => i < paso && setPaso(i)}
+                      className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs ${
+                        i === paso ? "bg-magenta text-white" : i < paso ? "bg-oro text-tinta" : "bg-black/5 text-tinta/40"
+                      }`}
+                    >
+                      {i < paso ? <Check size={14} /> : i + 1}
+                    </button>
+                    <span className={`hidden sm:block ${i === paso ? "text-tinta" : "text-tinta/40"}`}>{p}</span>
+                    {i < PASOS.length - 1 && <span className="h-px flex-1 bg-black/10" />}
+                  </li>
+                ))}
+              </ol>
+
+              {paso === 0 && (
+                <>
+                  {(flyerGen || archivoSubido) && (
+                    <div className="flex items-center gap-2 rounded-2xl bg-oro/10 p-3 text-sm font-bold text-tinta/80">
+                      <Sparkles size={18} className="shrink-0 text-oro-600" />
+                      {flyerGen
+                        ? "¡Tu flyer está listo con el sello! Completa los datos y publica."
+                        : flyerDecidido
+                          ? "Flyer subido. Rellena los datos a mano."
+                          : "La IA rellenó los datos. Revisa lo marcado en amarillo."}
+                    </div>
+                  )}
+
+                  <Campo label="Título" icon={Music} valor={form.titulo} onChange={(v) => set("titulo", v)} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Campo label="Fecha" icon={Calendar} type="date" valor={form.fecha} onChange={(v) => set("fecha", v)} revisar={revisar.has("fecha")} />
+                    <Campo label="Estilo" icon={Music} valor={form.estilo} onChange={(v) => set("estilo", v)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Campo label="Empieza" icon={Clock} type="time" valor={form.horaInicio} onChange={(v) => set("horaInicio", v)} />
+                    <Campo label="Acaba" icon={Clock} type="time" valor={form.horaFin} onChange={(v) => set("horaFin", v)} revisar={revisar.has("horaFin")} />
+                  </div>
+                  <Campo label="DJ" icon={Disc3} valor={form.dj} onChange={(v) => set("dj", v)} />
+                </>
+              )}
+
+              {paso === 1 && (
+                <>
+                  <Campo label="Ubicación" icon={MapPin} valor={form.ubicacion} onChange={(v) => set("ubicacion", v)} />
+                  {/* Un local ya tiene dirección fija; un promotor cambia de
+                      sitio cada finde, así que a él se le pide siempre buscarla
+                      en el mapa y con coordenadas de verdad. */}
+                  {esPromotor ? (
+                    <div className="rounded-2xl bg-magenta-50 p-3">
+                      <p className="mb-1.5 flex items-center gap-1.5 text-sm font-black text-magenta-700">
+                        <MapPin size={15} /> ¿Dónde se hace este tardeo?
+                      </p>
+                      <AddressSearch onSelect={setDirTardeo} />
+                      <p className="mt-1 text-xs font-semibold text-tinta/55">
+                        {dirTardeo
+                          ? `Elegido: ${dirTardeo.display}`
+                          : "Busca por el nombre del sitio o por la calle. Sin esto el tardeo no sale en el mapa."}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl bg-magenta-50/60 p-3">
+                      <p className="mb-1.5 flex items-center gap-1.5 text-sm font-black text-tinta/70">
+                        <MapPin size={15} className="text-magenta" /> Sitio del tardeo
+                      </p>
+                      <p className="mb-2 text-xs font-semibold text-tinta/55">
+                        Por defecto la dirección de tu local. Si este tardeo es en otro sitio, búscalo aquí.
+                      </p>
+                      {/* Arranca con el nombre del local escrito: así al abrirlo
+                          ya salen sus resultados y no hay que teclearlo. Es lo
+                          que hace que un bar encuentre su propia ficha con la
+                          calle y el número, en vez de escribirlos a mano. */}
+                      <AddressSearch
+                        inicial={local?.nombre ?? ""}
+                        onSelect={setDirTardeo}
+                        placeholder="Busca tu local por su nombre…"
+                      />
+                      {dirTardeo && (
+                        <p className="mt-1 text-xs font-bold text-magenta">Elegido: {dirTardeo.display}</p>
+                      )}
+                    </div>
+                  )}
+
+                  <PrecioTardeo valor={precio} onCambio={setPrecio} />
+                </>
+              )}
+
+              {paso === 2 && (
+                <>
+                  {/* Aquí se decidía nada de esto hasta ahora: los cuatro
+                      criterios del ADN no llegaron nunca a este formulario, así
+                      que un tardeo creado aquí nacía sin tipo, sin ambiente, sin
+                      público y sin outfit — invisible para los filtros nuevos. */}
+                  <SelectorAdn
+                    tipoEvento={tipoEvento} ambiente={ambiente} publico={publico} dressCode={dressCode}
+                    onTipoEvento={setTipoEvento} onAmbiente={setAmbiente}
+                    onPublico={setPublico} onDressCode={setDressCode}
+                  />
+                  <ProgramarPublicacion valor={cuando} onCambio={setCuando} />
+                </>
+              )}
+
+              {error && <p className="text-sm font-bold text-magenta">{error}</p>}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => (paso === 0 ? (setModo("elegir"), setEstado("inicio")) : setPaso(paso - 1))}
+                  className="rounded-2xl bg-white px-5 py-4 text-base font-extrabold text-tinta/60 ring-1 ring-magenta-100"
+                >
+                  {paso === 0 ? "Cancelar" : "Atrás"}
+                </button>
+                {paso < PASOS.length - 1 ? (
+                  <button
+                    onClick={() => setPaso(paso + 1)}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white shadow-tarjeta active:scale-[0.98]"
+                  >
+                    Siguiente <ArrowRight size={20} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={publicar}
+                    disabled={publicando}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white shadow-tarjeta active:scale-[0.98] disabled:opacity-40"
+                  >
+                    {publicando ? <Loader2 size={22} className="animate-spin" /> : <Check size={22} />}
+                    {cuando.estado === "programado" ? "Programar" : cuando.estado === "borrador" ? "Guardar" : "Publicar"}
+                  </button>
+                )}
               </div>
-            )}
-            <div className="flex items-center gap-2 rounded-2xl bg-oro/10 p-3 text-sm font-bold text-tinta/80">
-              <Sparkles size={18} className="shrink-0 text-oro-600" />
-              {flyerGen
-                ? "¡Tu flyer está listo con el sello! Completa los datos y publica."
-                : "La IA rellenó los datos. Revisa lo marcado en amarillo y publica."}
-            </div>
-
-            <Campo label="Título" icon={Music} valor={form.titulo} onChange={(v) => set("titulo", v)} />
-            <div className="grid grid-cols-2 gap-3">
-              <Campo label="Fecha" icon={Calendar} type="date" valor={form.fecha} onChange={(v) => set("fecha", v)} revisar={revisar.has("fecha")} />
-              <Campo label="Estilo" icon={Music} valor={form.estilo} onChange={(v) => set("estilo", v)} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Campo label="Empieza" icon={Clock} type="time" valor={form.horaInicio} onChange={(v) => set("horaInicio", v)} />
-              <Campo label="Acaba" icon={Clock} type="time" valor={form.horaFin} onChange={(v) => set("horaFin", v)} revisar={revisar.has("horaFin")} />
-            </div>
-            <Campo label="DJ" icon={Disc3} valor={form.dj} onChange={(v) => set("dj", v)} />
-
-            <Campo label="Ubicación" icon={MapPin} valor={form.ubicacion} onChange={(v) => set("ubicacion", v)} />
-            <p className="-mt-2 flex items-center gap-1.5 text-xs font-semibold text-tinta/50">
-              <MapPin size={13} /> Por defecto la de tu local. Si es una zona nueva, aparecerá sola en los filtros.
-            </p>
-
-              {/* Cuatro opciones, no tres: falta "Sin precio" —de pago pero
-                  sin importe—, que es el caso más común de la cartelera real.
-                  Sin ella el local tenía que mentir o inventarse una cifra. */}
-              <PrecioTardeo valor={precio} onCambio={setPrecio} />
-
-            {error && <p className="text-sm font-bold text-magenta">{error}</p>}
-            <button
-              onClick={publicar}
-              disabled={publicando}
-              className="mt-2 flex items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white shadow-tarjeta active:scale-[0.98] disabled:opacity-40"
-            >
-              {publicando ? <Loader2 size={22} className="animate-spin" /> : <Check size={22} />} Publicar tardeo
-            </button>
-            <button onClick={() => { setModo("elegir"); setEstado("inicio"); }} className="pb-2 text-center text-sm font-bold text-tinta/50">
-              Cancelar
-            </button>
-          </section>
-        )}
+            </section>
+          )}
       </div>
     </main>
   );
