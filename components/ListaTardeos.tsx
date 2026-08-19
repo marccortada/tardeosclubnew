@@ -108,16 +108,23 @@ function Principal({
   onClick: () => void;
 }) {
   const puesto = Boolean(valor) || activo;
+  // Dos recortes solo en móvil, para que los cinco chips quepan en DOS líneas
+  // en una pantalla de 375 en vez de tres: px-3 en lugar de px-4, y sin el
+  // chevron, que son otros 21 px por chip y no dice nada que no diga ya el
+  // propio chip. La altura mínima de 44 no se toca: es lo que los hace
+  // pulsables con el dedo.
   return (
     <button
       onClick={onClick}
-      className={`inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold transition ${
+      className={`inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full px-3 py-2.5 text-sm font-extrabold transition md:px-4 ${
         puesto ? "bg-magenta text-white" : "bg-white text-tinta/80 ring-1 ring-magenta-100 hover:ring-magenta"
       }`}
     >
       <Icono size={17} />
       {valor || texto}
-      {desplegable && <ChevronDown size={15} className={`transition ${activo ? "rotate-180" : ""}`} />}
+      {desplegable && (
+        <ChevronDown size={15} className={`hidden transition md:block ${activo ? "rotate-180" : ""}`} />
+      )}
     </button>
   );
 }
@@ -344,8 +351,17 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
         )}
       </div>
 
-      {/* Filtros principales: cuándo + dónde + qué música, y el resto detrás. */}
-      <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
+      {/* Filtros principales: cuándo + dónde + qué música, y el resto detrás.
+
+          Se PARTE en dos líneas, no es un carrusel. Era un carrusel y en un
+          móvil de 375 px "Ambiente" empezaba en el píxel 420 y "Más filtros"
+          en el 569: los dos fuera de pantalla, sin nada que delatara que
+          estaban ahí, y con la mitad de los filtros —precio, tipo de evento,
+          público, outfit— detrás de un gesto que hay que adivinar.
+          Cinco chips no caben en una línea de móvil por mucho que se
+          estrechen, así que la alternativa era esconder unos u otros. Dos
+          líneas cuestan medio centímetro de alto y no esconden nada. */}
+      <div className="mb-2 flex flex-wrap gap-2">
         <Principal
           icono={CalendarDays}
           texto="Cuándo"

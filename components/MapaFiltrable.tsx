@@ -62,27 +62,32 @@ export default function MapaFiltrable({ todos }: { todos: Tardeo[] }) {
         <span className="ml-auto text-sm font-bold text-tinta/50">{lista.length} {lista.length === 1 ? "tardeo" : "tardeos"}</span>
       </div>
 
-      {/* Filtros */}
-      <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
-        {CUANDOS.map((c) => (
-          <Chip key={c.k} activo={cuando === c.k} onClick={() => setCuando((p) => (p === c.k ? null : c.k))}>
-            {c.label}
-          </Chip>
-        ))}
-        <span className="mx-1 w-px shrink-0 bg-magenta-100" />
-        {zonas.map((z) => (
-          <Chip key={z} activo={zona === z} onClick={() => setZona((p) => (p === z ? null : z))}>
-            {z}
-          </Chip>
-        ))}
-        {nFiltros > 0 && (
-          <button
-            onClick={() => { setZona(null); setCuando(null); }}
-            className="inline-flex shrink-0 items-center gap-1 px-2 text-sm font-bold text-magenta"
-          >
-            <X size={14} /> Quitar
-          </button>
-        )}
+      {/* Filtros. Aquí el carrusel sí toca: son todas las zonas y no caben de
+          ninguna manera. Lo que faltaba era el degradado del borde, que es lo
+          único que delata que la fila sigue más allá del canto de la pantalla. */}
+      <div className="relative mb-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {CUANDOS.map((c) => (
+            <Chip key={c.k} activo={cuando === c.k} onClick={() => setCuando((p) => (p === c.k ? null : c.k))}>
+              {c.label}
+            </Chip>
+          ))}
+          <span className="mx-1 w-px shrink-0 bg-magenta-100" />
+          {zonas.map((z) => (
+            <Chip key={z} activo={zona === z} onClick={() => setZona((p) => (p === z ? null : z))}>
+              {z}
+            </Chip>
+          ))}
+          {nFiltros > 0 && (
+            <button
+              onClick={() => { setZona(null); setCuando(null); }}
+              className="inline-flex shrink-0 items-center gap-1 px-2 text-sm font-bold text-magenta"
+            >
+              <X size={14} /> Quitar
+            </button>
+          )}
+        </div>
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#f5f3f4] to-transparent" />
       </div>
 
       <div className="flex-1 overflow-hidden rounded-2xl ring-1 ring-magenta-100">
