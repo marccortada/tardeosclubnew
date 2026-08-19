@@ -39,6 +39,33 @@ export async function autorizarLocalOAdmin(accessToken?: string): Promise<NextRe
 }
 
 /**
+ * Solo comprueba que hay sesión iniciada. No exige tener local.
+ *
+ * Para lo que hace falta ANTES de tener ficha: el alta de un local pide la
+ * dirección, y con `autorizarLocalOAdmin` se daría 403 justo en el momento de
+ * darse de alta. Sigue habiendo puerta —hay que tener cuenta— y el tope por
+ * hora se cuenta igual, que es lo que protege la cuota de Google.
+ */
+export async function autorizarUsuario(accessToken?: string): Promise<NextResponse | Autorizado> {
+  const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!URL || !SERVICE_ROLE) {
+    return NextResponse.json({ error: "Falta SUPABASE_SERVICE_ROLE_KEY en el servidor." }, { status: 500 });
+  }
+  if (!accessToken) {
+    return NextResponse.json({ error: "Inicia sesión para hacer esto." }, { status: 401 });
+  }
+
+  const admin = createClient(URL, SERVICE_ROLE);
+  const { data: userData } = await admin.auth.getUser(accessToken);
+  const uid = userData?.user?.id;
+  if (!uid) return NextResponse.json({ error: "Sesión no válida." }, { status: 401 });
+
+  const { data: prof } = await admin.from("profiles").select("is_admin").eq("id", uid).maybeSingle();
+  return { uid, esAdmin: !!prof?.is_admin };
+}
+
+/**
  * Como autorizarLocalOAdmin, pero SOLO admin. Para rutas que actúan sobre toda
  * la base de usuarios, como mandar una notificación push a todo el mundo: eso
  * no es algo que deba poder hacer un local.

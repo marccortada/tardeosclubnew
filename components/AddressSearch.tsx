@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { MapPin, Loader2, Check } from "lucide-react";
+import { useRef, useState } from "react";
+import { MapPin, Loader2, Check, Search } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 export type Direccion = {
   display: string;
@@ -14,10 +15,14 @@ export type Direccion = {
 /**
  * Busca una dirección o un sitio por su nombre.
  *
- * Usa Nominatim (OpenStreetMap), que además de calles tiene negocios fichados:
- * escribir "Miracle Mataró" encuentra el local, no solo la calle. Tiene menos
- * bares que Google Maps, así que cuando no aparezca hay que buscar por la calle
- * — de ahí que el texto de ayuda mencione las dos formas.
+ * Pregunta a `/api/buscar-sitio`, que por detrás usa Google Places —el mismo
+ * buscador de Google Maps, así que un bar sale escribiendo su nombre— y cae a
+ * OpenStreetMap si Google no está disponible. La clave de Google no baja al
+ * navegador: vive en el servidor.
+ *
+ * Busca al pulsar Buscar o Enter, NO mientras escribes. Google cobra por
+ * petición: buscar según teclea son veinte llamadas para encontrar un local,
+ * y una sola hace el mismo trabajo.
  */
 export default function AddressSearch({
   onSelect,
@@ -32,46 +37,41 @@ export default function AddressSearch({
 }) {
   const [q, setQ] = useState(inicial);
   const [res, setRes] = useState<Direccion[]>([]);
-  const [open, setOpen] = useState(false);
+  const [buscado, setBuscado] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [sel, setSel] = useState<Direccion | null>(null);
   const box = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (q.trim().length < 3 || sel) { setRes([]); return; }
-    const id = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const r = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=es&q=${encodeURIComponent(q)}`,
-          { headers: { "Accept-Language": "es" } }
-        );
-        const j = await r.json();
-        setRes(
-          (j ?? []).map((x: any) => ({
-            display: x.display_name,
-            lat: +x.lat,
-            lng: +x.lon,
-            cp: x.address?.postcode ?? "",
-            zona:
-              x.address?.city || x.address?.town || x.address?.village ||
-              x.address?.municipality || x.address?.county || x.address?.state || "",
-          }))
-        );
-        setOpen(true);
-      } catch {
-        /* silencio */
-      } finally {
-        setLoading(false);
-      }
-    }, 450);
-    return () => clearTimeout(id);
-  }, [q, sel]);
+  const buscar = async () => {
+    const texto = q.trim();
+    if (texto.length < 3 || loading) return;
+    setLoading(true);
+    setError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const r = await fetch("/api/buscar-sitio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ q: texto, accessToken: session?.access_token }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "No se pudo buscar.");
+      setRes(j.resultados ?? []);
+      setBuscado(texto);
+    } catch (e: any) {
+      setRes([]);
+      setBuscado(texto);
+      setError(e?.message || "No se pudo buscar.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const elegir = (d: Direccion) => {
     setSel(d);
     setQ(d.display);
-    setOpen(false);
+    setRes([]);
     onSelect(d);
   };
 
@@ -88,7 +88,7 @@ export default function AddressSearch({
           </div>
         </div>
         <button
-          onClick={() => { setSel(null); setQ(""); }}
+          onClick={() => { setSel(null); setQ(""); setRes([]); setBuscado(""); setError(""); }}
           className="mt-2 text-sm font-bold text-magenta"
         >
           Cambiar dirección
@@ -99,32 +99,45 @@ export default function AddressSearch({
 
   return (
     <div ref={box} className="relative">
-      <div className="flex items-center gap-2 rounded-xl border-2 border-magenta-100 bg-white px-3 focus-within:border-magenta">
-        <MapPin size={18} className="text-magenta" />
+      <div className="flex items-center gap-2 rounded-xl border-2 border-magenta-100 bg-white pl-3 focus-within:border-magenta">
+        <MapPin size={18} className="shrink-0 text-magenta" />
         <input
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => { setQ(e.target.value); setError(""); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); buscar(); } }}
           placeholder={placeholder}
           className="w-full bg-transparent py-3 text-base font-semibold outline-none"
         />
-        {loading && <Loader2 size={18} className="animate-spin text-magenta" />}
+        <button
+          type="button"
+          onClick={buscar}
+          disabled={q.trim().length < 3 || loading}
+          className="my-1.5 mr-1.5 flex shrink-0 items-center gap-1.5 rounded-lg bg-magenta px-3 py-2 text-sm font-extrabold text-white transition hover:brightness-105 disabled:opacity-40"
+        >
+          {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+          Buscar
+        </button>
       </div>
-      {/* Sin resultados hay que decirlo Y decir qué hacer. OpenStreetMap tiene
-          las calles completas pero pocos bares fichados —de cuatro locales
-          reales solo encuentra uno por su nombre—, así que quedarse en blanco
-          hace pensar que el buscador está roto cuando lo que pasa es que ese
-          sitio no está en el mapa con ese nombre. */}
-      {open && !loading && q.trim().length >= 3 && res.length === 0 && !sel && (
+
+      {error && (
+        <p className="mt-1.5 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700">{error}</p>
+      )}
+
+      {/* Sin resultados hay que decirlo Y decir qué hacer, para que no parezca
+          que el buscador está roto cuando lo que pasa es que ese sitio no está
+          fichado con ese nombre. */}
+      {!loading && !error && buscado && res.length === 0 && (
         <p className="mt-1.5 rounded-xl bg-magenta-50 p-3 text-xs font-semibold text-tinta/70">
-          No encontramos ese sitio por el nombre. Prueba con la calle y el número.
+          No encontramos «{buscado}». Prueba con la calle y el número, o añade la ciudad.
         </p>
       )}
 
-      {open && res.length > 0 && (
+      {res.length > 0 && (
         <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-black/10 bg-white shadow-tarjeta">
           {res.map((d, i) => (
             <li key={i}>
               <button
+                type="button"
                 onClick={() => elegir(d)}
                 className="flex w-full items-start gap-2 border-b border-black/5 p-3 text-left text-sm font-semibold text-tinta/80 hover:bg-magenta-50"
               >
