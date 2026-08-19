@@ -149,7 +149,7 @@ export default function PanelLocal() {
                       {/* Miniatura de 56 px: antes se bajaba el flyer entero. */}
                       <Image src={flyerSrc(t)} alt="" width={56} height={70} className="h-[70px] w-14 shrink-0 rounded-xl object-cover" />
                       <div className="min-w-0">
-                        <p className="font-script text-base capitalize leading-none text-magenta-600">{formatFecha(t.fecha)}</p>
+                        <p className="font-script text-base leading-none text-magenta-600">{formatFecha(t.fecha)}</p>
                         <h3 className="truncate font-display text-lg font-black leading-tight">{t.titulo}</h3>
                         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-black ${
                           pub ? "bg-oro/15 text-oro-600" : programado ? "bg-magenta-50 text-magenta-700" : "bg-black/5 text-tinta/50"

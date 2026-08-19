@@ -113,7 +113,7 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
         <h1 className="mt-4 text-3xl font-black leading-tight">{tardeo.titulo}</h1>
 
         <div className="mt-3 flex flex-col gap-2 text-base font-semibold text-tinta/80">
-          <span className="inline-flex items-center gap-2 capitalize">
+          <span className="inline-flex items-center gap-2">
             <Clock size={20} className="text-magenta" /> {formatFecha(tardeo.fecha)} · {tardeo.horaInicio}–{tardeo.horaFin}
           </span>
           <Link href={`/locales/${tardeo.local.id}`} className="inline-flex items-center gap-2 transition hover:text-magenta">
@@ -129,7 +129,7 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
         {/* Ambiente, público y outfit. Solo se pinta lo que esté puesto: los 662
             tardeos migrados llegaron sin nada de esto, y una fila de etiquetas
             vacías haría parecer que a la ficha le falta algo. */}
-        {(tardeo.tipoEvento || tardeo.ambiente?.length || tardeo.publico?.length || tardeo.dressCode) && (
+        {(tardeo.tipoEvento || (tardeo.ambiente?.length ?? 0) > 0 || (tardeo.publico?.length ?? 0) > 0 || tardeo.dressCode) && (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {tardeo.tipoEvento && (
               <span className="inline-flex items-center gap-1 rounded-full bg-marca px-3 py-1.5 text-sm font-extrabold text-white">
@@ -156,7 +156,10 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
 
         {/* La promoción del local. Aquí y no en la portada: la ve quien ya ha
             entrado a mirar este tardeo, así que no interrumpe a nadie. */}
-        {(tardeo.promoTitulo || tardeo.etiquetas?.length) && (
+        {/* El `> 0` no sobra: `etiquetas` se mapea a [] cuando viene vacía, y
+            `[] .length` es 0, que en JSX React PINTA como un cero suelto en
+            medio de la ficha en vez de no pintar nada. */}
+        {(tardeo.promoTitulo || (tardeo.etiquetas?.length ?? 0) > 0) && (
           <div className="mt-4 rounded-2xl bg-oro/15 p-4 ring-1 ring-oro/40">
             {tardeo.promoTitulo && (
               <p className="flex items-center gap-2 font-display text-lg font-black leading-tight">

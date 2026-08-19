@@ -59,7 +59,7 @@ export default function MapaFiltrable({ todos }: { todos: Tardeo[] }) {
       <div className="mb-2 flex items-center gap-2">
         <MapPin className="text-magenta" />
         <h1 className="font-display text-2xl font-black md:text-4xl">Mapa de tardeos</h1>
-        <span className="ml-auto text-sm font-bold text-tinta/50">{lista.length} tardeos</span>
+        <span className="ml-auto text-sm font-bold text-tinta/50">{lista.length} {lista.length === 1 ? "tardeo" : "tardeos"}</span>
       </div>
 
       {/* Filtros */}

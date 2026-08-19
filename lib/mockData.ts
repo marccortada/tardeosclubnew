@@ -111,5 +111,9 @@ export function tardeosDeLocal(localId: string): Tardeo[] {
 
 export function formatFecha(iso: string): string {
   const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  const f = d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  // Solo la primera letra. Se hacía con la clase `capitalize` de CSS, que sube
+  // TODAS las palabras y escribía "Domingo, 23 De Agosto": en castellano los
+  // días y los meses van en minúscula.
+  return f.charAt(0).toUpperCase() + f.slice(1);
 }

@@ -540,7 +540,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-bold text-tinta/60">
-          {lista.length} tardeos
+          {lista.length} {lista.length === 1 ? "tardeo" : "tardeos"}
           {porCercania
             ? " · los más cercanos primero"
             : porEncaje && hayGustos

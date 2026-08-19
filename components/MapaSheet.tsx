@@ -58,7 +58,7 @@ export default function MapaSheet({ tardeo, onClose }: { tardeo: Tardeo; onClose
 
         {/* Detalles */}
         <div className="p-5">
-          <p className="font-script text-lg capitalize leading-none text-magenta-600">{formatFecha(tardeo.fecha)}</p>
+          <p className="font-script text-lg leading-none text-magenta-600">{formatFecha(tardeo.fecha)}</p>
           <h3 className="font-display text-2xl font-black leading-tight">{tardeo.titulo}</h3>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-bold text-tinta/60">
             <span className="inline-flex items-center gap-1">

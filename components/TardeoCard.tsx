@@ -66,7 +66,7 @@ export default function TardeoCard({
       {/* Info práctica debajo */}
       <div className="flex items-center justify-between gap-2 p-4">
         <div className="min-w-0">
-          <p className="font-script text-lg capitalize leading-none text-magenta-600">
+          <p className="font-script text-lg leading-none text-magenta-600">
             {formatFecha(tardeo.fecha)}
           </p>
           <h3 className="truncate font-display text-lg font-black leading-tight">{tardeo.titulo}</h3>
