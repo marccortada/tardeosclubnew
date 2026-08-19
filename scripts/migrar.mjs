@@ -96,7 +96,7 @@ function env() {
 
 const norm = (s) =>
   (s ?? "").toString().toLowerCase().normalize("NFD")
-    .replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+    .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 

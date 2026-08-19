@@ -8,6 +8,7 @@ import TardeoCard from "@/components/TardeoCard";
 import { FAMILIAS, familiasDe, normalizarEstilo, etiquetaDe, idEstilo } from "@/lib/musica";
 import { AMBIENTES, TIPOS_EVENTO, PUBLICOS, DRESS_CODES, contiene, mismoValor } from "@/lib/adn";
 import { mismaZona, zonasDe } from "@/lib/zonas";
+import { plegar, contieneTexto } from "@/lib/texto";
 import { useUbicacion } from "@/lib/ubicacion";
 import { distanciaKm } from "@/lib/geo";
 import { Tardeo } from "@/lib/types";
@@ -202,15 +203,17 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
   const zonasDisponibles = zonasDe(todos).map((z) => z.zona);
 
   // --- Búsqueda por texto (título, local, zona, estilo, DJ) ---
+  // Sin tildes: "mataro" tiene que encontrar Mataró y "guixols" Sant Feliu de
+  // Guíxols. Nadie escribe los acentos en una caja de búsqueda.
   const coincideTexto = (t: Tardeo) => {
-    const s = q.trim().toLowerCase();
+    const s = plegar(q.trim());
     if (!s) return true;
     return (
-      t.titulo.toLowerCase().includes(s) ||
-      t.local.nombre.toLowerCase().includes(s) ||
-      t.zona.toLowerCase().includes(s) ||
-      (t.estilo || "").toLowerCase().includes(s) ||
-      t.djs.some((d) => (d.nombre || "").toLowerCase().includes(s))
+      contieneTexto(t.titulo, s) ||
+      contieneTexto(t.local.nombre, s) ||
+      contieneTexto(t.zona, s) ||
+      contieneTexto(t.estilo, s) ||
+      t.djs.some((d) => contieneTexto(d.nombre, s))
     );
   };
 

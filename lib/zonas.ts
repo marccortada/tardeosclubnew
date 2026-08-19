@@ -23,7 +23,7 @@ export const ZONAS = [
 // El artículo se quita AL FINAL, cuando el apóstrofo ya es un espacio: si no,
 // "L'Estartit" no coincidiría con "Estartit".
 const norm = (s: string) =>
-  (s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+  (s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, " ").trim()
     .replace(/^(l|el|la|les|els) /, "");
 

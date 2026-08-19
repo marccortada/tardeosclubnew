@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import PanelHeader from "@/components/PanelHeader";
 import { supabase } from "@/lib/supabase";
 import { Store, Disc3, Megaphone, ArrowUp, ArrowDown, Star, X, Plus, Loader2 } from "lucide-react";
+import { plegar, contieneTexto } from "@/lib/texto";
 
 type Ficha = {
   id: string;
@@ -93,7 +94,9 @@ export default function AdminDestacados() {
       : f.tipo === "promotor" ? <Megaphone size={20} className="text-magenta" />
       : <Store size={20} className="text-magenta" />;
 
-  const filtrado = resto.filter((f) => f.nombre.toLowerCase().includes(busca.trim().toLowerCase()));
+  // Sin tildes, igual que el buscador público: aquí se busca "Barbera" y el
+  // local está fichado como "Barberà".
+  const filtrado = resto.filter((f) => contieneTexto(f.nombre, plegar(busca.trim())));
 
   return (
     <main className="pb-10">
