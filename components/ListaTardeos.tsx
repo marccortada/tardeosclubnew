@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/useAuth";
 import { getAdn, tieneAdn, type AdnTardicola } from "@/lib/tardicola";
 import { ordenarPorEncaje } from "@/lib/recomendar";
@@ -48,6 +48,24 @@ const PRECIOS = [
   { k: "sinprecio", label: "Con entrada", pie: "precio sin indicar" },
   { k: "lista", label: "Por lista" },
 ];
+
+/**
+ * ¿Cae este tardeo en ese tramo de precio?
+ *
+ * A nivel de módulo y recibiendo el tramo, no leyéndolo del estado del filtro:
+ * hace falta poder preguntar por un tramo suelto para saber cuáles enseñar, y
+ * si viviera dentro del componente el cálculo de arriba lo llamaría antes de
+ * que estuviera inicializado.
+ */
+function enTramo(t: Tardeo, tramo: string): boolean {
+  if (tramo === "gratis") return t.tipoEntrada === "gratis";
+  if (tramo === "lista") return t.tipoEntrada === "lista";
+  if (tramo === "sinprecio") return t.tipoEntrada === "pago" && t.precio == null;
+  if (t.precio == null) return false; // de pago pero sin importe: no adivinamos
+  if (tramo === "hasta10") return t.precio <= 10;
+  if (tramo === "de10a20") return t.precio > 10 && t.precio <= 20;
+  return t.precio > 20;
+}
 
 /**
  * `familia` y `estilo` son los dos niveles del filtro musical: se puede pedir
@@ -202,6 +220,33 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
   // Agrupadas (Barcelona, Maresme, Costa Brava…) en vez de una por municipio.
   const zonasDisponibles = zonasDe(todos).map((z) => z.zona);
 
+  /**
+   * De cada lista fija de opciones, las que algún tardeo tiene de verdad.
+   *
+   * Los tardeos que vienen de la app vieja no traen ambiente, público ni
+   * outfit: esos campos no existen allí. Con las listas fijas, los tres
+   * paneles enseñaban doce, cuatro y siete opciones y las veintitrés
+   * devolvían cero. Un filtro que nunca encuentra nada no se lee como "aún no
+   * hay datos", se lee como "está roto". Las zonas ya se derivaban así.
+   *
+   * Se calcula sobre `todos` y no sobre lo ya filtrado: si no, el panel
+   * cambiaría de contenido según lo que lleves puesto.
+   */
+  const conDatos = useMemo(() => {
+    const hay = (opciones: readonly string[], tiene: (t: Tardeo, v: string) => boolean) =>
+      opciones.filter((v) => todos.some((t) => tiene(t, v)));
+    return {
+      ambiente: hay(AMBIENTES, (t, v) => contiene(t.ambiente, v)),
+      tipoEvento: hay(TIPOS_EVENTO, (t, v) => mismoValor(t.tipoEvento, v)),
+      publico: hay(PUBLICOS, (t, v) => contiene(t.publico, v)),
+      dressCode: hay(DRESS_CODES, (t, v) => mismoValor(t.dressCode, v)),
+      // Los tramos también: hoy no hay nada por encima de 20 € ni nada por
+      // lista, y enseñar esos tres tramos es prometer un filtro que devuelve
+      // la lista vacía.
+      precio: PRECIOS.filter((p) => todos.some((t) => enTramo(t, p.k))),
+    };
+  }, [todos]);
+
   // --- Búsqueda por texto (título, local, zona, estilo, DJ) ---
   // Sin tildes: "mataro" tiene que encontrar Mataró y "guixols" Sant Feliu de
   // Guíxols. Nadie escribe los acentos en una caja de búsqueda.
@@ -245,16 +290,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
     return true;
   };
 
-  const encajaPrecio = (t: Tardeo) => {
-    if (!f.precio) return true;
-    if (f.precio === "gratis") return t.tipoEntrada === "gratis";
-    if (f.precio === "lista") return t.tipoEntrada === "lista";
-    if (f.precio === "sinprecio") return t.tipoEntrada === "pago" && t.precio == null;
-    if (t.precio == null) return false; // de pago pero sin importe: no adivinamos
-    if (f.precio === "hasta10") return t.precio <= 10;
-    if (f.precio === "de10a20") return t.precio > 10 && t.precio <= 20;
-    return t.precio > 20;
-  };
+  const encajaPrecio = (t: Tardeo) => !f.precio || enTramo(t, f.precio);
 
   /**
    * Público y dress code se comparan sin mayúsculas ni acentos: los dos campos
@@ -397,13 +433,17 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
           activo={panel === "musica"}
           onClick={() => abrir("musica")}
         />
-        <Principal
-          icono={Sparkles}
-          texto="Ambiente"
-          valor={f.ambiente}
-          activo={panel === "ambiente"}
-          onClick={() => abrir("ambiente")}
-        />
+        {/* Mismo criterio que "Para ti": si no hay ni un tardeo con ambiente
+            puesto, el botón solo lleva a un panel vacío. */}
+        {conDatos.ambiente.length > 0 && (
+          <Principal
+            icono={Sparkles}
+            texto="Ambiente"
+            valor={f.ambiente}
+            activo={panel === "ambiente"}
+            onClick={() => abrir("ambiente")}
+          />
+        )}
         <Principal
           icono={SlidersHorizontal}
           texto={nMas > 0 ? `Más filtros (${nMas})` : "Más filtros"}
@@ -503,7 +543,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
       {panel === "ambiente" && (
         <div className="mb-4 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-magenta-100">
           <div className="flex flex-wrap gap-2">
-            {AMBIENTES.map((v) => (
+            {conDatos.ambiente.map((v) => (
               <Chip key={v} activo={f.ambiente === v} onClick={() => set("ambiente", v)}>{v}</Chip>
             ))}
           </div>
@@ -512,12 +552,16 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
 
       {panel === "mas" && (
         <div className="mb-4 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-magenta-100">
-          <p className="mb-1.5 text-sm font-black text-tinta/60">Tipo de evento</p>
-          <div className="flex flex-wrap gap-2">
-            {TIPOS_EVENTO.map((v) => (
-              <Chip key={v} activo={f.tipoEvento === v} onClick={() => set("tipoEvento", v)}>{v}</Chip>
-            ))}
-          </div>
+          {conDatos.tipoEvento.length > 0 && (
+            <>
+              <p className="mb-1.5 text-sm font-black text-tinta/60">Tipo de evento</p>
+              <div className="flex flex-wrap gap-2">
+                {conDatos.tipoEvento.map((v) => (
+                  <Chip key={v} activo={f.tipoEvento === v} onClick={() => set("tipoEvento", v)}>{v}</Chip>
+                ))}
+              </div>
+            </>
+          )}
 
           <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Zona</p>
           <div className="flex flex-wrap gap-2">
@@ -532,7 +576,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
 
           <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Precio</p>
           <div className="flex flex-wrap gap-2">
-            {PRECIOS.map((p) => (
+            {conDatos.precio.map((p) => (
               <Chip key={p.k} activo={f.precio === p.k} onClick={() => set("precio", p.k)}>
                 {p.label}
                 {p.pie && <span className={f.precio === p.k ? "text-white/70" : "text-tinta/40"}> {p.pie}</span>}
@@ -541,19 +585,27 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
           </div>
 
 
-          <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Público</p>
-          <div className="flex flex-wrap gap-2">
-            {PUBLICOS.map((v) => (
-              <Chip key={v} activo={f.publico === v} onClick={() => set("publico", v)}>{v}</Chip>
-            ))}
-          </div>
+          {conDatos.publico.length > 0 && (
+            <>
+              <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Público</p>
+              <div className="flex flex-wrap gap-2">
+                {conDatos.publico.map((v) => (
+                  <Chip key={v} activo={f.publico === v} onClick={() => set("publico", v)}>{v}</Chip>
+                ))}
+              </div>
+            </>
+          )}
 
-          <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Outfit / Dress code</p>
-          <div className="flex flex-wrap gap-2">
-            {DRESS_CODES.map((v) => (
-              <Chip key={v} activo={f.dressCode === v} onClick={() => set("dressCode", v)}>{v}</Chip>
-            ))}
-          </div>
+          {conDatos.dressCode.length > 0 && (
+            <>
+              <p className="mb-1.5 mt-3 text-sm font-black text-tinta/60">Outfit / Dress code</p>
+              <div className="flex flex-wrap gap-2">
+                {conDatos.dressCode.map((v) => (
+                  <Chip key={v} activo={f.dressCode === v} onClick={() => set("dressCode", v)}>{v}</Chip>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
