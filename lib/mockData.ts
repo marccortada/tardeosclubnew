@@ -98,9 +98,26 @@ export function getTardeo(id: string): Tardeo | undefined {
   return TARDEOS.find((t) => t.id === id);
 }
 
-// Fuente del flyer: la URL real (Supabase) o, si falta, la del mock por id
+/**
+ * Fuente del flyer: la de Supabase o, si falta, una genérica.
+ *
+ * Antes devolvía `/flyers/${t.id}.jpg?v=3`, que estaba mal por partida doble
+ * en cuanto el tardeo era de verdad y no uno de los mocks t1…t8:
+ *
+ *  - ese fichero NO existe: en public/flyers solo hay t1…t8 y placeholder;
+ *  - y el `?v=3` hace que Next 16 lance al pintar, porque una imagen local
+ *    con cadena de consulta necesita `images.localPatterns` declarado.
+ *
+ * Lo segundo es lo grave. No rompe solo esa tarjeta: revienta el render de
+ * TODA la página, la regeneración se queda a medias y /tardeos se congela en
+ * el contenido anterior. Sin error visible: la web sigue respondiendo 200 y
+ * simplemente deja de enterarse de los tardeos nuevos.
+ *
+ * Hoy los 665 tardeos traen flyer, así que no salta. Saltaría el día que
+ * alguien publique uno sin él.
+ */
 export function flyerSrc(t: Tardeo): string {
-  return t.flyer ?? `/flyers/${t.id}.jpg?v=3`;
+  return t.flyer ?? "/flyers/placeholder.jpg";
 }
 
 // Local de demo (el que ha iniciado sesión) y sus tardeos
