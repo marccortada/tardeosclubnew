@@ -74,3 +74,18 @@ jobs:
           NUEVO_URL: ${{ secrets.NUEVO_URL }}
           NUEVO_SERVICE_KEY: ${{ secrets.NUEVO_SERVICE_KEY }}
         run: node scripts/traer-imagenes.mjs --escribir
+
+      # La app vieja no tiene el campo `tipo_evento`, así que todo lo que llega
+      # por la sincronización llega sin él. Sin este paso el filtro de tipo de
+      # evento se queda vacío para siempre: se rellenó a mano una vez con los
+      # 662 migrados y al día siguiente los nuevos ya volvían sin tipo.
+      #
+      # Va DESPUÉS de sincronizar porque lee lo que acaba de llegar, y es
+      # seguro repetirlo: solo escribe donde está vacío, nunca pisa lo que haya
+      # puesto un local a mano, y el upsert de migrar.mjs no incluye la columna,
+      # así que lo que escriba aquí sobrevive a la pasada de mañana.
+      - name: Deducir el tipo de evento de los que acaban de llegar
+        env:
+          NUEVO_URL: ${{ secrets.NUEVO_URL }}
+          NUEVO_SERVICE_KEY: ${{ secrets.NUEVO_SERVICE_KEY }}
+        run: node scripts/clasificar-tipos.mjs --escribir

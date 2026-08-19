@@ -7,7 +7,7 @@ import { ordenarPorEncaje } from "@/lib/recomendar";
 import TardeoCard from "@/components/TardeoCard";
 import { FAMILIAS, familiasDe, normalizarEstilo, etiquetaDe, idEstilo } from "@/lib/musica";
 import { AMBIENTES, TIPOS_EVENTO, PUBLICOS, DRESS_CODES, contiene, mismoValor } from "@/lib/adn";
-import { zonaGrande, zonasDe } from "@/lib/zonas";
+import { mismaZona, zonasDe } from "@/lib/zonas";
 import { useUbicacion } from "@/lib/ubicacion";
 import { distanciaKm } from "@/lib/geo";
 import { Tardeo } from "@/lib/types";
@@ -271,7 +271,7 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
 
   const filtrados = todos.filter(
     (t) =>
-      (!f.zona || zonaGrande(t.zona) === f.zona) &&
+      (!f.zona || mismaZona(t.zona, f.zona)) &&
       encajaMusica(t) &&
       encajaPrecio(t) &&
       encajaPublico(t) &&

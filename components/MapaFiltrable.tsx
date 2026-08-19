@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import MapaClient from "@/components/MapaClient";
-import { zonaGrande, zonasDe } from "@/lib/zonas";
+import { mismaZona, zonasDe } from "@/lib/zonas";
 import { Tardeo } from "@/lib/types";
 import { MapPin, X } from "lucide-react";
 
@@ -48,7 +48,7 @@ export default function MapaFiltrable({ todos }: { todos: Tardeo[] }) {
   const zonas = useMemo(() => zonasDe(todos).map((z) => z.zona), [todos]);
 
   const lista = useMemo(
-    () => todos.filter((t) => (!zona || zonaGrande(t.zona) === zona) && enRango(t.fecha, cuando)),
+    () => todos.filter((t) => (!zona || mismaZona(t.zona, zona)) && enRango(t.fecha, cuando)),
     [todos, zona, cuando]
   );
 
