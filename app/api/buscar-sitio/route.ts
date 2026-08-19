@@ -143,3 +143,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "El buscador de direcciones no responde ahora mismo." }, { status: 502 });
   }
 }
+
+/**
+ * Solo dice si el servidor tiene clave de Google puesta. Nunca el valor.
+ *
+ * Existe porque el fallo más probable es mudo: sin clave la ruta cae a
+ * OpenStreetMap y sigue devolviendo resultados, así que nadie se entera de que
+ * se está buscando con el buscador malo. Con esto se ve de un vistazo.
+ */
+export async function GET() {
+  return NextResponse.json({
+    clave: !!process.env.GOOGLE_PLACES_KEY,
+    buscador: process.env.GOOGLE_PLACES_KEY ? "google" : "openstreetmap",
+  });
+}
