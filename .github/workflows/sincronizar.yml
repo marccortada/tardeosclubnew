@@ -89,3 +89,26 @@ jobs:
           NUEVO_URL: ${{ secrets.NUEVO_URL }}
           NUEVO_SERVICE_KEY: ${{ secrets.NUEVO_SERVICE_KEY }}
         run: node scripts/clasificar-tipos.mjs --escribir
+
+      # Avisar a la web de que hay datos nuevos.
+      #
+      # Sin esto la web se entera cuando le toque regenerarse sola, y eso falló:
+      # el 20 de agosto estuvo ocho horas enseñando 17 tardeos con 33 en la
+      # base, respondiendo STALE sin rehacerse nunca hasta que se reinició el
+      # proceso.
+      #
+      # `continue-on-error` a propósito: los datos ya están escritos y esto es
+      # solo el aviso. Si la web estuviera caída en ese momento, no tiene
+      # sentido marcar en rojo una sincronización que sí funcionó.
+      - name: Avisar a la web
+        continue-on-error: true
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "Sin CRON_SECRET: me salto el aviso. Añádelo en Settings -> Secrets."
+            exit 0
+          fi
+          curl -sS -f -X POST https://crm.gnerai.com/api/revalidar \
+            -H "x-cron-secret: $CRON_SECRET"
+          echo

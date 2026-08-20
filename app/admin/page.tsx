@@ -6,9 +6,9 @@ import PanelHeader from "@/components/PanelHeader";
 import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
 import {
-  CalendarDays, Store, Disc3, Euro, BadgeCheck, X, Check, Bot,
+  CalendarDays, Store, Disc3, Euro, BadgeCheck, X, Check,
   Megaphone, Bell, BellRing, ShieldAlert, ChevronRight, Loader2, Star,
-  Plus, CreditCard, ShieldCheck, Sparkles, Mail,
+  Plus, CreditCard, ShieldCheck, Mail,
 } from "lucide-react";
 
 const GESTION = [
@@ -101,13 +101,6 @@ export default function PanelAdmin() {
           ))}
         </section>
 
-        {/* Agentes IA (demo) */}
-        <section className="mt-5 flex items-center gap-3 rounded-2xl bg-tinta p-4 text-white">
-          <Bot size={26} className="shrink-0 text-oro" />
-          <p className="flex-1 text-sm font-semibold md:text-base">
-          </p>
-        </section>
-
         <h2 className="mb-3 mt-7 font-display text-xl font-black md:text-2xl">Requiere tu atención</h2>
 
         {/* Verificaciones REALES */}
@@ -141,6 +134,24 @@ export default function PanelAdmin() {
           </div>
         </div>
 
+        {/* Gestión.
+            Se perdió entera al quitar la maqueta de agentes: el bloque de la
+            maqueta terminaba justo aquí encima y el borrado se llevó también
+            esto. Resultado: las diez pantallas de administración existían y
+            ninguna se podía abrir desde el panel. */}
+        <h2 className="mb-3 mt-7 font-display text-xl font-black md:text-2xl">Gestión</h2>
+        <section className="grid gap-3 sm:grid-cols-2">
+          {GESTION.map(({ icon: Icon, label, sub, href }) => (
+            <Link key={label} href={href} className="flex items-center gap-4 rounded-2xl bg-white p-5 text-left shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta"><Icon size={24} /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-lg font-black leading-tight">{label}</span>
+                <span className="text-sm font-semibold text-tinta/60">{sub}</span>
+              </span>
+              <ChevronRight size={20} className="text-tinta/30" />
+            </Link>
+          ))}
+        </section>
       </div>
     </main>
   );
