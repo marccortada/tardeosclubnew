@@ -243,8 +243,6 @@ export default function CrearTardeo() {
       estilo: form.estilo,
       // Las tres columnas de precio más los dos enlaces salen del componente.
       ...aColumnas(precio),
-      promo_titulo: promo.titulo.trim() || null,
-      promo_texto: promo.texto.trim() || null,
       etiquetas: promo.etiquetas.length ? promo.etiquetas : null,
       flyer_url,
       flyer_origen: "subido",

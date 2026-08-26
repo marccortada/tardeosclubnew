@@ -13,6 +13,7 @@ import PromoTardeo, { PROMO_VACIA, type Promo } from "@/components/PromoTardeo";
 import { flyerSrc } from "@/lib/mockData";
 import { Tardeo } from "@/lib/types";
 import { Music, Calendar, Clock, Disc3, MapPin, Ticket, Check, Loader2, Trash2, EyeOff, Eye } from "lucide-react";
+import PromocionesDeTardeo from "@/components/PromocionesDeTardeo";
 
 export default function EditarTardeo({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -59,11 +60,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
           estado: t.estado === "programado" ? "programado" : t.estado === "borrador" ? "borrador" : "publicado",
           publicarEn: t.publicarEn ? paraInput(new Date(t.publicarEn)) : "",
         });
-        setPromo({
-          titulo: t.promoTitulo ?? "",
-          texto: t.promoTexto ?? "",
-          etiquetas: t.etiquetas ?? [],
-        });
+        setPromo({ etiquetas: t.etiquetas ?? [] });
         setTipoEvento(t.tipoEvento ?? "");
         setAmbiente(t.ambiente ?? []);
         setPublico(t.publico ?? []);
@@ -97,8 +94,6 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
         : null,
       // null y no [] cuando está vacío: así "sin indicar" no se confunde con
       // "lo revisó y lo dejó a cero".
-      promo_titulo: promo.titulo.trim() || null,
-      promo_texto: promo.texto.trim() || null,
       etiquetas: promo.etiquetas.length ? promo.etiquetas : null,
       tipo_evento: tipoEvento || null,
       ambiente: ambiente.length ? ambiente : null,
@@ -205,6 +200,12 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
           </label>
 
           <PromoTardeo valor={promo} onCambio={setPromo} />
+
+          {/* Las promociones se guardan solas, aparte del resto del formulario:
+              van en su propia tabla y cada una es una fila. Meterlas en el
+              "Guardar cambios" de abajo obligaría a guardar el tardeo entero
+              para añadir una oferta. */}
+          <PromocionesDeTardeo tardeoId={id} />
 
           <ProgramarPublicacion valor={cuando} onCambio={setCuando} />
 

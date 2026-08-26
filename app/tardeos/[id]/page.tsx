@@ -12,6 +12,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import { jsonLdEvento, urlAbsoluta } from "@/lib/seo";
+import { getPromosDeTardeo } from "@/lib/promociones";
 import { ArrowLeft, MapPin, Clock, Music, BadgeCheck, Star, CalendarPlus, Sparkles, Users, Shirt, PartyPopper, Tag } from "lucide-react";
 import { tieneValoracion, valoracion } from "@/lib/reputacion";
 
@@ -60,6 +61,7 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const tardeo = await getTardeoById(id);
   if (!tardeo) notFound();
+  const promos = await getPromosDeTardeo(id);
 
   const ini = fmtCal(tardeo.fecha, tardeo.horaInicio || "18:00");
   const fechaFin = tardeo.horaFin && tardeo.horaFin < (tardeo.horaInicio || "18:00") ? sumarDia(tardeo.fecha) : tardeo.fecha;
@@ -155,28 +157,42 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
           </div>
         )}
 
-        {/* La promoción del local. Aquí y no en la portada: la ve quien ya ha
-            entrado a mirar este tardeo, así que no interrumpe a nadie. */}
-        {/* El `> 0` no sobra: `etiquetas` se mapea a [] cuando viene vacía, y
-            `[] .length` es 0, que en JSX React PINTA como un cero suelto en
+        {/* Etiquetas: rótulos cortos, sin código ni fechas. Las promociones
+            de verdad van justo debajo, en su propio bloque.
+
+            El `> 0` no sobra: `etiquetas` se mapea a [] cuando viene vacía, y
+            `[].length` es 0, que en JSX React PINTA como un cero suelto en
             medio de la ficha en vez de no pintar nada. */}
-        {(tardeo.promoTitulo || (tardeo.etiquetas?.length ?? 0) > 0) && (
-          <div className="mt-4 rounded-2xl bg-oro/15 p-4 ring-1 ring-oro/40">
-            {tardeo.promoTitulo && (
-              <p className="flex items-center gap-2 font-display text-lg font-black leading-tight">
-                <Tag size={19} className="shrink-0 text-oro-600" /> {tardeo.promoTitulo}
-              </p>
-            )}
-            {tardeo.promoTexto && <p className="mt-1 font-semibold text-tinta/75">{tardeo.promoTexto}</p>}
-            {tardeo.etiquetas?.length ? (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {tardeo.etiquetas.map((e) => (
-                  <span key={e} className="rounded-full bg-oro px-3 py-1 text-sm font-black text-tinta">{e}</span>
-                ))}
-              </div>
-            ) : null}
+        {(tardeo.etiquetas?.length ?? 0) > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {tardeo.etiquetas!.map((e) => (
+              <span key={e} className="rounded-full bg-oro px-3 py-1 text-sm font-black text-tinta">{e}</span>
+            ))}
           </div>
         )}
+
+        {/* Las promociones vigentes. La base solo devuelve esas: una caducada
+            no es que no se pinte, es que no se puede leer. Aquí y no en la
+            portada, que la ve quien ya ha entrado a mirar este tardeo. */}
+        {promos.map((p) => (
+          <div key={p.id} className="mt-4 rounded-2xl bg-oro/15 p-4 ring-1 ring-oro/40">
+            <p className="flex items-center gap-2 font-display text-lg font-black leading-tight">
+              <Tag size={19} className="shrink-0 text-oro-600" /> {p.nombre}
+            </p>
+            {p.beneficio && <p className="mt-1 font-semibold text-tinta/75">{p.beneficio}</p>}
+            {p.codigo && (
+              <p className="mt-2 text-sm font-bold text-tinta/70">
+                Con el código{" "}
+                <span className="rounded bg-tinta px-2 py-1 font-mono font-black text-white">{p.codigo}</span>
+              </p>
+            )}
+            {p.hasta && (
+              <p className="mt-2 text-xs font-bold text-tinta/50">
+                Hasta el {new Date(p.hasta).toLocaleDateString("es-ES", { day: "numeric", month: "long" })}
+              </p>
+            )}
+          </div>
+        ))}
 
         <a
           href={calUrl}
