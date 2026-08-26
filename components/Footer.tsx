@@ -15,7 +15,7 @@ export default function Footer() {
           <nav className="grid grid-cols-2 gap-x-10 gap-y-2 text-sm font-bold text-tinta/70">
             <Link href="/tardeos" className="transition hover:text-magenta">Tardeos</Link>
             <Link href="/mapa" className="transition hover:text-magenta">Mapa</Link>
-            <Link href="/favoritos" className="transition hover:text-magenta">Favoritos</Link>
+            <Link href="/favoritos" className="transition hover:text-magenta">Mis planes</Link>
             <Link href="/perfil" className="transition hover:text-magenta">Entrar / Únete</Link>
             <Link href="/perfil" className="transition hover:text-magenta">Soy un local</Link>
             <Link href="/perfil" className="transition hover:text-magenta">Soy DJ</Link>

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, Star, Disc3, ArrowRight } from "lucide-react";
+import { tieneValoracion, valoracion } from "@/lib/reputacion";
 
 export default function DjsDestacados({ djs }: { djs: any[] }) {
   if (!djs || djs.length === 0) return null;
@@ -34,9 +35,11 @@ export default function DjsDestacados({ djs }: { djs: any[] }) {
                 {dj.nombre_artistico}
                 {dj.verificado && <BadgeCheck size={13} className="shrink-0 text-oro-600" />}
               </p>
-              <span className="inline-flex items-center gap-0.5 text-xs font-black text-oro-600">
-                <Star size={11} fill="currentColor" /> {Number(dj.reputacion_score ?? 0).toFixed(1)}
-              </span>
+              {tieneValoracion(dj.reputacion_score) && (
+                <span className="inline-flex items-center gap-0.5 text-xs font-black text-oro-600">
+                  <Star size={11} fill="currentColor" /> {valoracion(dj.reputacion_score)}
+                </span>
+              )}
             </Link>
           );
         })}

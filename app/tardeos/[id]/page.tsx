@@ -13,6 +13,7 @@ import type { Metadata } from "next";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import { jsonLdEvento, urlAbsoluta } from "@/lib/seo";
 import { ArrowLeft, MapPin, Clock, Music, BadgeCheck, Star, CalendarPlus, Sparkles, Users, Shirt, PartyPopper, Tag } from "lucide-react";
+import { tieneValoracion, valoracion } from "@/lib/reputacion";
 
 export const dynamic = "force-dynamic";
 
@@ -208,9 +209,11 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
                     <p className="text-xs font-semibold text-tinta/60">{dj.estilos.join(" · ")}</p>
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-oro/15 px-2.5 py-1 text-sm font-black text-oro-600">
-                  <Star size={14} fill="currentColor" /> {dj.reputacion}
-                </span>
+                {tieneValoracion(dj.reputacion) && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-oro/15 px-2.5 py-1 text-sm font-black text-oro-600">
+                    <Star size={14} fill="currentColor" /> {valoracion(dj.reputacion)}
+                  </span>
+                )}
               </Link>
             ))}
           </div>

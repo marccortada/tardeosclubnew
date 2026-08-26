@@ -15,7 +15,6 @@ dueño, en [`PEDIR_AL_DUENO.md`](PEDIR_AL_DUENO.md).
 | Estilos | Tailwind CSS 3 (paleta de marca en `tailwind.config.ts`) |
 | Datos y login | Supabase (Postgres + Auth), con RLS |
 | Leer flyers | Anthropic Claude (visión + salida estructurada) |
-| Crear flyers | OpenAI `gpt-image-1` + sello estampado con `sharp` |
 | Emails | Resend |
 | Mapa | Leaflet |
 
@@ -94,7 +93,6 @@ scripts/        Utilidades sueltas (generador de flyers de ejemplo)
 | Ruta | Quién puede | Notas |
 |---|---|---|
 | `POST /api/leer-flyer` | Local dado de alta o admin | Claude lee el flyer. 40/hora por usuario |
-| `POST /api/crear-flyer` | Local dado de alta o admin | Genera imagen (se paga por llamada). 15/hora |
 | `POST /api/enviar-oferta` | Solo admin | Email masivo a los locales |
 | `GET/POST /api/recordatorios` | Cron con `x-cron-secret` | Avisa a los apuntados del día siguiente |
 

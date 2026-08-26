@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
 import { getMiLocal, getMiDj } from "@/lib/tardeos";
-import { User, CalendarCheck, Heart, ShieldAlert, LogOut, Loader2, Store, Mail, Lock, Disc3, Sparkles } from "lucide-react";
+import { User, CalendarCheck, ShieldAlert, LogOut, Loader2, Store, Mail, Lock, Disc3, Sparkles } from "lucide-react";
 
 export default function Perfil() {
   const { user, loading } = useAuth();
@@ -123,13 +123,16 @@ export default function Perfil() {
                 <span className="text-sm font-semibold text-tinta/55">Música, ambiente, zonas… para proponerte lo que encaja</span>
               </span>
             </Link>
+            {/* Una sola entrada. Antes había dos —"Mis inscripciones" y "Mis
+                favoritos"— y las dos llevaban a la misma página, que ya enseña
+                las dos cosas: a los que vas y los que guardaste. Son lo mismo
+                para quien mira: sus planes. */}
             <Link href="/favoritos" className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-magenta-100 transition hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.99]">
               <div className="grid h-11 w-11 place-items-center rounded-xl bg-magenta-50 text-magenta"><CalendarCheck size={24} /></div>
-              <span className="text-lg font-black">Mis inscripciones</span>
-            </Link>
-            <Link href="/favoritos" className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-magenta-100 transition hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.99]">
-              <div className="grid h-11 w-11 place-items-center rounded-xl bg-magenta-50 text-magenta"><Heart size={24} /></div>
-              <span className="text-lg font-black">Mis favoritos</span>
+              <span className="flex-1">
+                <span className="block text-lg font-black">Mis planes</span>
+                <span className="text-sm font-semibold text-tinta/55">A los que vas y los que has guardado</span>
+              </span>
             </Link>
             {isAdmin && (
               <Link href="/admin" className="flex items-center gap-3 rounded-2xl bg-tinta p-4 text-white shadow-tarjeta transition hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.99]">

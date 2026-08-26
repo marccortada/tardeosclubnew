@@ -32,7 +32,7 @@ export default function Favoritos() {
       <main className="mx-auto max-w-lg px-4 pt-6 text-center md:pt-16">
         <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-8 shadow-tarjeta ring-1 ring-magenta-100">
           <Heart size={48} className="text-magenta" />
-          <p className="text-lg font-bold text-tinta/70">Entra para guardar tus tardeos y ver tus inscripciones.</p>
+          <p className="text-lg font-bold text-tinta/70">Entra para ver tus planes: a los que vas y los que has guardado.</p>
           <Link href="/perfil" className="inline-flex items-center gap-2 rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">
             <LogIn size={20} /> Entrar
           </Link>
@@ -46,6 +46,8 @@ export default function Favoritos() {
       <header className="mb-4 flex flex-col items-center md:hidden">
         <Image src="/branding/logo-transp.png" alt="TardeosClub" width={150} height={90} className="h-11 w-auto" />
       </header>
+
+      <h1 className="mb-5 font-display text-3xl font-black md:text-4xl">Mis planes</h1>
 
       {/* Inscripciones */}
       <section className="mb-8">

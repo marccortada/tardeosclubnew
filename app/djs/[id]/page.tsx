@@ -11,6 +11,7 @@ import type { Metadata } from "next";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import { jsonLdDj, urlAbsoluta } from "@/lib/seo";
 import { ArrowLeft, BadgeCheck, Star, Music, Disc3, CalendarDays, Instagram, Youtube, Music2, Phone } from "lucide-react";
+import { tieneValoracion, valoracion } from "@/lib/reputacion";
 
 export const dynamic = "force-dynamic";
 
@@ -88,9 +89,13 @@ export default async function PaginaDj({ params }: { params: Promise<{ id: strin
               {dj.nombre_artistico}
               {dj.verificado && <BadgeCheck size={22} className="text-oro-400" />}
             </h1>
-            <p className="mt-1 inline-flex items-center gap-1 font-bold text-oro-400">
-              <Star size={16} fill="currentColor" /> {Number(dj.reputacion_score ?? 0).toFixed(1)} de reputación
-            </p>
+            {tieneValoracion(dj.reputacion_score) ? (
+              <p className="mt-1 inline-flex items-center gap-1 font-bold text-oro-400">
+                <Star size={16} fill="currentColor" /> {valoracion(dj.reputacion_score)} de reputación
+              </p>
+            ) : (
+              <p className="mt-1 inline-flex items-center gap-1 font-bold text-white/70">Nuevo en TardeosClub</p>
+            )}
             {socials.length > 0 && (
               <div className="mt-2 flex gap-2">
                 {socials.map(({ k, icon: Ic, url }) => (

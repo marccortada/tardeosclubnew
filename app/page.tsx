@@ -1,7 +1,6 @@
 import Image from "next/image";
 import TopBar from "@/components/TopBar";
 import CarruselTardeos from "@/components/CarruselTardeos";
-import ZonasRapidas from "@/components/ZonasRapidas";
 import DjsDestacados from "@/components/DjsDestacados";
 import LocalesDestacados from "@/components/LocalesDestacados";
 import NexoRadio from "@/components/NexoRadio";
@@ -12,9 +11,8 @@ import { getTardeosPublicados, getDjsPublicos, getLocalesDestacados } from "@/li
 import ParaTi from "@/components/ParaTi";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import { jsonLdSitio, urlAbsoluta } from "@/lib/seo";
-import { zonasDe } from "@/lib/zonas";
 import type { Metadata } from "next";
-import { CalendarDays, SlidersHorizontal, MapPin, ArrowRight, Sparkles, Sun, MessageCircle } from "lucide-react";
+import { CalendarDays, MapPin, ArrowRight, Sparkles, Sun, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import MapaClient from "@/components/MapaClient";
 
@@ -72,7 +70,6 @@ export default async function Inicio() {
   }
   const esteFinde = tardeos.filter((t) => finde.has(t.fecha));
 
-  const zonas = zonasDe(tardeos);
 
   return (
     <main>
@@ -102,18 +99,16 @@ export default async function Inicio() {
             </h1>
             <p className="mt-3 font-script text-2xl text-white/90 md:text-3xl">Sal, conecta y vive el tardeo ✨</p>
 
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            {/* Un solo botón. Antes había otro, "Filtrar tardeos", que llevaba
+                exactamente al mismo sitio: la portada es para descubrir un plan
+                de un vistazo, y filtrar es lo que se hace ya dentro de /tardeos
+                cuando lo de arriba no te vale. */}
+            <div className="mt-6">
               <Link
                 href="/tardeos"
-                className="flex items-center justify-center gap-2 rounded-2xl bg-oro px-6 py-4 text-lg font-extrabold text-tinta shadow-lg transition hover:brightness-105 active:scale-[0.98]"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-oro px-6 py-4 text-lg font-extrabold text-tinta shadow-lg transition hover:brightness-105 active:scale-[0.98] sm:inline-flex"
               >
                 <CalendarDays size={22} /> Ver tardeos
-              </Link>
-              <Link
-                href="/tardeos"
-                className="glass flex items-center justify-center gap-2 rounded-2xl px-6 py-4 text-lg font-extrabold text-white transition hover:bg-white/20 active:scale-[0.98]"
-              >
-                <SlidersHorizontal size={22} /> Filtrar tardeos
               </Link>
             </div>
 
@@ -174,7 +169,6 @@ export default async function Inicio() {
           el DJ acompaña. */}
       <LocalesDestacados locales={localesTop.locales} sonDePago={localesTop.sonDePago} />
       <DjsDestacados djs={djs.slice(0, 10)} />
-      <ZonasRapidas zonas={zonas} />
       <NexoRadio />
       <CtaLocalDj />
       <Footer />

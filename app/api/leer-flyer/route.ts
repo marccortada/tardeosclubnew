@@ -92,7 +92,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ data: JSON.parse(text) });
   } catch (e: unknown) {
     console.error("[leer-flyer] falló la lectura:", e);
-    // Mismo criterio que crear-flyer: el detalle al log, y a la pantalla algo
+    // El detalle al log, y a la pantalla algo
     // en español que el dueño de un bar pueda entender.
     const err = e as { status?: number };
     const message =

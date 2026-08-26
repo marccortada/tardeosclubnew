@@ -11,6 +11,7 @@ import ContenidoDj from "@/components/ContenidoDj";
 import CampoPlaylist from "@/components/CampoPlaylist";
 import SelectorEstilos from "@/components/SelectorEstilos";
 import { Disc3, BadgeCheck, Star, Music, Loader2, Pencil, Camera, Check, X, Instagram, Youtube, Music2, Phone } from "lucide-react";
+import { tieneValoracion, valoracion } from "@/lib/reputacion";
 
 type Redes = { instagram?: string; soundcloud?: string; youtube?: string; whatsapp?: string };
 
@@ -169,7 +170,7 @@ export default function PanelDj() {
                 <h2 className="font-display text-2xl font-black leading-tight md:text-3xl">{dj.nombre_artistico}</h2>
               )}
               <p className="mt-1 inline-flex items-center gap-1 font-bold text-oro">
-                <Star size={16} fill="currentColor" /> {Number(dj.reputacion_score ?? 0).toFixed(1)} de reputación
+                <Star size={16} fill="currentColor" /> {tieneValoracion(dj.reputacion_score) ? `${valoracion(dj.reputacion_score)} de reputación` : "Nuevo, aún sin reseñas"}
               </p>
             </div>
 

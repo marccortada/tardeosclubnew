@@ -12,7 +12,7 @@ const BASE = [
   { href: "/tardeos", label: "Tardeos", icon: CalendarDays },
   { href: "/colaboradores", label: "Colaboradores", icon: Handshake },
   { href: "/mapa", label: "Mapa", icon: MapPin },
-  { href: "/favoritos", label: "Favoritos", icon: Heart },
+  { href: "/favoritos", label: "Mis planes", icon: Heart },
   { href: "/perfil", label: "Perfil", icon: User },
 ];
 

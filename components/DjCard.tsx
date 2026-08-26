@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, Star } from "lucide-react";
+import { tieneValoracion, valoracion } from "@/lib/reputacion";
 
 export default function DjCard({ dj }: { dj: any }) {
   const estilos: string[] = Array.isArray(dj.estilos) ? dj.estilos : [];
@@ -20,9 +21,11 @@ export default function DjCard({ dj }: { dj: any }) {
         {dj.nombre_artistico}
         {dj.verificado && <BadgeCheck size={15} className="shrink-0 text-oro-600" />}
       </p>
-      <span className="inline-flex items-center gap-1 rounded-full bg-oro/15 px-2.5 py-0.5 text-sm font-black text-oro-600">
-        <Star size={13} fill="currentColor" /> {Number(dj.reputacion_score ?? 0).toFixed(1)}
-      </span>
+      {tieneValoracion(dj.reputacion_score) && (
+        <span className="inline-flex items-center gap-1 rounded-full bg-oro/15 px-2.5 py-0.5 text-sm font-black text-oro-600">
+          <Star size={13} fill="currentColor" /> {valoracion(dj.reputacion_score)}
+        </span>
+      )}
       {estilos.length > 0 && (
         <p className="line-clamp-1 text-xs font-semibold text-tinta/60">{estilos.join(" · ")}</p>
       )}

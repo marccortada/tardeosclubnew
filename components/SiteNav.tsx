@@ -11,7 +11,7 @@ const links = [
   { href: "/tardeos", label: "Tardeos" },
   { href: "/colaboradores", label: "Colaboradores" },
   { href: "/mapa", label: "Mapa" },
-  { href: "/favoritos", label: "Favoritos" },
+  { href: "/favoritos", label: "Mis planes" },
 ];
 
 export default function SiteNav() {

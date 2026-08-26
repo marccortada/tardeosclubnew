@@ -6,6 +6,7 @@ import PanelHeader from "@/components/PanelHeader";
 import AsignarDueno from "@/components/AsignarDueno";
 import { supabase } from "@/lib/supabase";
 import { BadgeCheck, Star, Eye, EyeOff, Loader2, Plus } from "lucide-react";
+import { tieneValoracion, valoracion } from "@/lib/reputacion";
 
 type D = {
   id: string; nombre_artistico: string; estilos: string[] | null; verificado: boolean;
@@ -71,7 +72,7 @@ export default function AdminDjs() {
                     </p>
                     <p className="inline-flex items-center gap-2 text-sm font-semibold text-tinta/60">
                       {(d.estilos ?? []).join(" · ") || "—"}
-                      <span className="inline-flex items-center gap-0.5 text-oro-600"><Star size={12} fill="currentColor" /> {Number(d.reputacion_score ?? 0).toFixed(1)}</span>
+                      <span className="inline-flex items-center gap-0.5 text-oro-600"><Star size={12} fill="currentColor" /> {tieneValoracion(d.reputacion_score) ? valoracion(d.reputacion_score) : "—"}</span>
                     </p>
                     <AsignarDueno
                       tabla="djs" campo="profile_id" id={d.id} duenoEmail={d.duenoEmail}
