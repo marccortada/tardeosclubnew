@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { invalidarCacheTardeos } from "@/lib/tardeos";
+import { invalidarCacheTardeos, invalidarCacheListas } from "@/lib/tardeos";
+import { autorizarAdmin } from "@/lib/apiAuth";
 
 export const runtime = "nodejs";
 
@@ -22,7 +23,7 @@ export const runtime = "nodejs";
  */
 const RUTAS = ["/", "/tardeos", "/mapa", "/colaboradores"];
 
-function autorizado(req: Request): boolean {
+function conSecreto(req: Request): boolean {
   const esperado = process.env.CRON_SECRET;
   if (!esperado) return false;
   const url = new URL(req.url);
@@ -31,16 +32,20 @@ function autorizado(req: Request): boolean {
 }
 
 async function handler(req: Request) {
-  if (!process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Falta CRON_SECRET en el servidor." }, { status: 500 });
-  }
-  if (!autorizado(req)) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  // Dos formas de entrar: el secreto (lo usa la sincronización diaria) o una
+  // sesión de admin. Lo segundo es para que al marcar un destacado la portada
+  // lo enseñe ya: si hay que esperar el minuto de la caché, quien lo acaba de
+  // marcar va a mirar, no lo ve, y da por hecho que no funciona.
+  if (!conSecreto(req)) {
+    const cuerpo = await req.json().catch(() => ({}) as { accessToken?: string });
+    const auth = await autorizarAdmin(cuerpo?.accessToken);
+    if (auth instanceof NextResponse) return auth;
   }
 
-  // La caché en memoria del proceso dura un minuto. Sin vaciarla, la página se
-  // rehace leyendo lo de hace un rato y el aviso no serviría de nada.
+  // Las cachés en memoria duran un minuto. Sin vaciarlas, la página se pinta
+  // leyendo lo de hace un rato y el aviso no serviría de nada.
   invalidarCacheTardeos();
+  invalidarCacheListas();
   RUTAS.forEach((r) => revalidatePath(r));
 
   return NextResponse.json({ ok: true, rehechas: RUTAS });

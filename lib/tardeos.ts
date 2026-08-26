@@ -32,19 +32,11 @@ const A_LA_VISTA = () =>
  * que ya teníamos. Dura poco a propósito, que esto cambia cuando un local
  * publica.
  */
-const CACHE_MS = 60_000;
-let cache: { cuando: number; datos: Tardeo[] } | null = null;
-let enVuelo: Promise<Tardeo[]> | null = null;
-// Sube en cada invalidación. Una consulta que empezó antes no puede guardar su
-// resultado si mientras tanto alguien publicó: traería datos ya viejos y los
-// dejaría fijados otro minuto.
-let generacion = 0;
+const memoTardeos = memo("tardeos-publicados", () => leerTardeosPublicados());
 
 /** Tira la caché: úsalo tras publicar o editar un tardeo. */
 export function invalidarCacheTardeos() {
-  cache = null;
-  enVuelo = null;
-  generacion++;
+  memoTardeos.invalidar();
 }
 
 function mapRow(r: any): Tardeo {
@@ -128,40 +120,31 @@ export function horizonteISO(): string {
  * Cachea un minuto y comparte la petición en vuelo, para que dos componentes
  * que la piden a la vez no hagan dos viajes.
  */
-export async function getTardeosPublicados(): Promise<Tardeo[]> {
-  if (cache && Date.now() - cache.cuando < CACHE_MS) return cache.datos;
-  if (enVuelo) return enVuelo;
+async function leerTardeosPublicados(): Promise<Tardeo[]> {
+  try {
+    const { data, error } = await supabase
+      .from("tardeos")
+      .select(SELECT)
+      .or(A_LA_VISTA())
+      .gte("fecha", hoyISO())
+      .lte("fecha", horizonteISO())
+      .order("fecha", { ascending: true });
+    if (error) throw error;
+    return (data ?? []).map(mapRow);
+  } catch (e) {
+    console.error("[tardeos] Error cargando tardeos:", e);
+    // En build hay que reventar. Devolver [] aquí hornea la portada, /tardeos
+    // y /mapa vacías y `next build` termina en verde: se despliega una web sin
+    // contenido y nadie se entera hasta que un usuario la abre. Pasó de verdad.
+    // En ejecución es lo contrario: una lista vacía se recupera al revalidar,
+    // y es mejor que enseñarle un 500 a quien está mirando.
+    if (process.env.NEXT_PHASE === "phase-production-build") throw e;
+    return [];
+  }
+}
 
-  const hoy = hoyISO();
-  const gen = generacion;
-  enVuelo = (async () => {
-    try {
-      const { data, error } = await supabase
-        .from("tardeos")
-        .select(SELECT)
-        .or(A_LA_VISTA())
-        .gte("fecha", hoy)
-        .lte("fecha", horizonteISO())
-        .order("fecha", { ascending: true });
-      if (error) throw error;
-      const datos = (data ?? []).map(mapRow);
-      // Si alguien invalidó mientras esto viajaba, no lo guardamos.
-      if (gen === generacion) cache = { cuando: Date.now(), datos };
-      return datos;
-    } catch (e) {
-      console.error("[tardeos] Error cargando tardeos:", e);
-      // En build hay que reventar. Devolver [] aquí hornea la portada, /tardeos
-      // y /mapa vacías y `next build` termina en verde: se despliega una web sin
-      // contenido y nadie se entera hasta que un usuario la abre. Pasó de verdad.
-      // En ejecución es lo contrario: una lista vacía se recupera al revalidar,
-      // y es mejor que enseñarle un 500 a quien está mirando.
-      if (process.env.NEXT_PHASE === "phase-production-build") throw e;
-      return [];
-    } finally {
-      enVuelo = null;
-    }
-  })();
-  return enVuelo;
+export function getTardeosPublicados(): Promise<Tardeo[]> {
+  return memoTardeos.get();
 }
 
 /**
@@ -545,9 +528,9 @@ export async function getInscripciones(uid: string): Promise<Tardeo[]> {
  *
  * `getTardeosPublicados` ya llevaba su propia caché igual desde antes.
  */
-const memoLocalesPublicos = memo(() => leerLocalesPublicos());
-const memoDjsPublicos = memo(() => leerDjsPublicos());
-const memoLocalesDestacados = memo(() => leerLocalesDestacados(10));
+const memoLocalesPublicos = memo("locales-publicos", () => leerLocalesPublicos());
+const memoDjsPublicos = memo("djs-publicos", () => leerDjsPublicos());
+const memoLocalesDestacados = memo("locales-destacados", () => leerLocalesDestacados(10));
 
 export function getLocalesPublicos(): Promise<any[]> {
   return memoLocalesPublicos.get();

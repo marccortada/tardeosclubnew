@@ -1,45 +1,55 @@
 /**
- * Caché en memoria de un proceso, con la petición compartida.
+ * Caché en memoria del proceso, con la petición compartida.
  *
  * Las páginas públicas dejaron de usar la regeneración de Next (ISR) porque se
  * atascaba: dos veces en seis días la web se quedó enseñando la cartelera de
- * hacía cinco días, respondiendo `x-nextjs-cache: STALE` a cada petición sin
- * rehacerse nunca. Ni el temporizador ni `revalidatePath` la desatascaban; solo
- * reiniciar el proceso.
+ * días atrás sin rehacerse nunca. Ahora se pintan en cada visita y la frescura
+ * la garantiza esto: como mucho una consulta por minuto y por dato, la vengan a
+ * pedir mil visitas o una.
  *
- * Ahora esas páginas se pintan en cada visita y la frescura la garantiza esto,
- * que es código nuestro y se puede razonar: como mucho una consulta por minuto
- * y por dato, la vengan a pedir mil visitas o una.
- *
- * `enVuelo` comparte la petición en curso para que dos componentes que piden lo
- * mismo a la vez no hagan dos viajes, y `generacion` evita guardar un resultado
- * que salió ANTES de una invalidación: si alguien publica un tardeo mientras la
- * consulta viaja, lo que llega ya es viejo y no debe quedarse en la caché.
+ * OJO CON EL REGISTRO GLOBAL, que no es manía: el empaquetado de Next puede dar
+ * a una ruta de API y a una página COPIAS DISTINTAS del mismo módulo. Con el
+ * estado en el cierre de la función, `/api/revalidar` vaciaba su copia y la
+ * portada seguía con la suya —comprobado: se quitó un destacado, se avisó a la
+ * web y la portada tardó los 60 s del caducado en enterarse—. Colgado de
+ * globalThis hay una sola caché por nombre para todo el proceso.
  */
-export function memo<T>(cargar: () => Promise<T>, ms = 60_000) {
-  let cache: { cuando: number; datos: T } | null = null;
-  let enVuelo: Promise<T> | null = null;
-  let generacion = 0;
+type Entrada = { cache: { cuando: number; datos: unknown } | null; enVuelo: Promise<unknown> | null; generacion: number };
 
+const REGISTRO: Map<string, Entrada> = ((globalThis as Record<string, unknown>).__memoTardeos as Map<string, Entrada>)
+  ?? ((globalThis as Record<string, unknown>).__memoTardeos = new Map<string, Entrada>());
+
+function entrada(nombre: string): Entrada {
+  let e = REGISTRO.get(nombre);
+  if (!e) { e = { cache: null, enVuelo: null, generacion: 0 }; REGISTRO.set(nombre, e); }
+  return e;
+}
+
+export function memo<T>(nombre: string, cargar: () => Promise<T>, ms = 60_000) {
   return {
     async get(): Promise<T> {
-      if (cache && Date.now() - cache.cuando < ms) return cache.datos;
-      if (enVuelo) return enVuelo;
-      const gen = generacion;
-      enVuelo = (async () => {
+      const e = entrada(nombre);
+      if (e.cache && Date.now() - e.cache.cuando < ms) return e.cache.datos as T;
+      if (e.enVuelo) return e.enVuelo as Promise<T>;
+      const gen = e.generacion;
+      e.enVuelo = (async () => {
         try {
           const datos = await cargar();
-          if (gen === generacion) cache = { cuando: Date.now(), datos };
+          // Si alguien invalidó mientras esto viajaba, no se guarda: traería
+          // datos ya viejos y los dejaría fijados otro minuto.
+          if (gen === e.generacion) e.cache = { cuando: Date.now(), datos };
           return datos;
         } finally {
-          enVuelo = null;
+          e.enVuelo = null;
         }
       })();
-      return enVuelo;
+      return e.enVuelo as Promise<T>;
     },
     invalidar() {
-      cache = null;
-      generacion++;
+      const e = entrada(nombre);
+      e.cache = null;
+      e.enVuelo = null;
+      e.generacion++;
     },
   };
 }

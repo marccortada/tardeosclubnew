@@ -5,6 +5,7 @@ import PanelHeader from "@/components/PanelHeader";
 import { supabase } from "@/lib/supabase";
 import { Store, Disc3, Megaphone, ArrowUp, ArrowDown, Star, X, Plus, Loader2 } from "lucide-react";
 import { plegar, contieneTexto } from "@/lib/texto";
+import DestacadosTardeos from "@/components/DestacadosTardeos";
 
 type Ficha = {
   id: string;
@@ -12,7 +13,7 @@ type Ficha = {
   tipo?: string;          // solo locales: local | promotor
   destacado_orden: number | null;
 };
-type Cual = "locales" | "djs";
+type Cual = "locales" | "djs" | "tardeos";
 
 /**
  * Quién sale primero, segundo y tercero en la home.
@@ -25,7 +26,7 @@ type Cual = "locales" | "djs";
  * cambia es quién decide el número.
  */
 export default function AdminDestacados() {
-  const [cual, setCual] = useState<Cual>("locales");
+  const [cual, setCual] = useState<Cual>("tardeos");
   const [fichas, setFichas] = useState<Ficha[]>([]);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -34,6 +35,9 @@ export default function AdminDestacados() {
 
   useEffect(() => {
     let cancel = false;
+    // Los tardeos los lleva su propio componente: distinta tabla y distinta
+    // mecánica (sí/no que caduca, en vez de un orden manual).
+    if (cual === "tardeos") { setCargando(false); return; }
     setCargando(true); setError("");
     (async () => {
       // Dos ramas explícitas: las tablas no comparten el nombre de la columna
@@ -103,17 +107,19 @@ export default function AdminDestacados() {
       <PanelHeader titulo="Destacados" volverHref="/admin" />
       <div className="mx-auto max-w-2xl px-4 pt-5 md:px-8">
         <div className="mb-4 flex gap-2">
-          {(["locales", "djs"] as Cual[]).map((c) => (
+          {(["tardeos", "locales", "djs"] as Cual[]).map((c) => (
             <button key={c} onClick={() => { setCual(c); setBusca(""); }}
-              className={`min-h-[44px] flex-1 rounded-xl text-sm font-extrabold transition ${cual === c ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100"}`}>
-              {c === "locales" ? "Locales y promotores" : "DJs"}
+              className={`min-h-[44px] flex-1 rounded-xl px-2 text-sm font-extrabold transition ${cual === c ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100"}`}>
+              {c === "tardeos" ? "Tardeos" : c === "locales" ? "Locales" : "DJs"}
             </button>
           ))}
         </div>
 
         {error && <p className="mb-3 rounded-xl bg-magenta-50 p-3 text-sm font-bold text-magenta">{error}</p>}
 
-        {cargando ? (
+        {cual === "tardeos" ? (
+          <DestacadosTardeos />
+        ) : cargando ? (
           <div className="flex items-center justify-center gap-2 py-16 text-tinta/50"><Loader2 className="animate-spin" /> Cargando…</div>
         ) : (
           <>

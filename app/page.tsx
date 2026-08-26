@@ -12,7 +12,7 @@ import ParaTi from "@/components/ParaTi";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import { jsonLdSitio, urlAbsoluta } from "@/lib/seo";
 import type { Metadata } from "next";
-import { CalendarDays, MapPin, ArrowRight, Sparkles, Sun, MessageCircle } from "lucide-react";
+import { CalendarDays, MapPin, ArrowRight, Flame, Sun, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import MapaClient from "@/components/MapaClient";
 
@@ -49,16 +49,25 @@ export default async function Inicio() {
     getLocalesDestacados(),
   ]);
   /**
-   * El primer carrusel enseña los destacados de pago si los hay y, si no, los
-   * próximos por fecha. Antes desaparecía cuando no había ninguno destacado, y
-   * la portada se quedaba vacía teniendo 27 tardeos que enseñar.
-   *
-   * El título cambia con el contenido: llamar "Destacados" a los que salen
-   * solo por ser los siguientes sería vender algo que nadie ha pagado.
+   * Los destacados son los que ha elegido el admin en /admin/destacados, y solo
+   * esos. Si no hay ninguno, esta sección no se pinta: llamar "Destacados" a
+   * los que salen por ser los siguientes es vender algo que nadie ha elegido.
+   * La portada no se queda vacía porque debajo va "Próximos tardeos".
    */
-  const marcados = tardeos.filter((t) => t.destacado);
-  const hayDestacados = marcados.length > 0;
-  const destacados = hayDestacados ? marcados : tardeos.slice(0, 10);
+  const destacados = tardeos.filter((t) => t.destacado);
+
+  /**
+   * Cada tardeo sale UNA vez en la portada, en la sección de más arriba a la
+   * que pertenezca. Antes el primer carrusel y "Este finde" enseñaban las
+   * mismas tarjetas seguidas, y la portada parecía tener el doble de contenido
+   * del que tiene.
+   */
+  const yaSale = new Set(destacados.map((t) => t.id));
+  const sinRepetir = (lista: typeof tardeos) => {
+    const nuevos = lista.filter((t) => !yaSale.has(t.id));
+    nuevos.forEach((t) => yaSale.add(t.id));
+    return nuevos;
+  };
 
   // "Este finde": viernes, sábado y domingo de la semana en curso (dinámico)
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
@@ -68,7 +77,9 @@ export default async function Inicio() {
     const dow = d.getDay(); // 5 vie, 6 sáb, 0 dom
     if (dow === 5 || dow === 6 || dow === 0) finde.add(d.toISOString().slice(0, 10));
   }
-  const esteFinde = tardeos.filter((t) => finde.has(t.fecha));
+  const esteFinde = sinRepetir(tardeos.filter((t) => finde.has(t.fecha)));
+  const paraTi = tardeos.filter((t) => !yaSale.has(t.id));
+  const proximos = sinRepetir(tardeos).slice(0, 10);
 
 
   return (
@@ -151,19 +162,17 @@ export default async function Inicio() {
         </div>
       </section>
 
-      {/* Carruseles y secciones */}
-      <CarruselTardeos
-        titulo={hayDestacados
-          ? <>Destacados <Sparkles size={22} className="text-oro" /></>
-          : <>Próximos tardeos <CalendarDays size={22} className="text-oro" /></>}
-        tardeos={destacados}
-      />
-      {/* Solo se pinta si has dicho qué te gusta y hay planes que encajen.
-          Va aquí y no arriba del todo porque el hero y los destacados son lo
-          que ve todo el mundo, con sesión o sin ella. */}
-      <ParaTi tardeos={tardeos} />
+      {/* Carruseles y secciones, de más elegido a más genérico. */}
+      <CarruselTardeos titulo={<>Tardeos destacados <Flame size={22} className="text-oro" /></>} tardeos={destacados} />
 
       <CarruselTardeos titulo={<>Este finde <Sun size={22} className="text-oro" /></>} tardeos={esteFinde} />
+
+      {/* Solo se pinta si has dicho qué te gusta y hay planes que encajen. Va
+          después de lo editorial porque el hero, los destacados y el finde son
+          lo que ve todo el mundo, con sesión o sin ella. */}
+      <ParaTi tardeos={paraTi} />
+
+      <CarruselTardeos titulo={<>Próximos tardeos <CalendarDays size={22} className="text-oro" /></>} tardeos={proximos} />
 
       {/* Locales antes que DJs: el local es quien paga y quien pone el sitio;
           el DJ acompaña. */}
