@@ -121,5 +121,7 @@ export async function actualizarPromo(id: string, campos: Record<string, unknown
 }
 
 export async function borrarPromo(id: string) {
-  return supabase.from("promociones").delete().eq("id", id);
+  // `.select()` para saber CUÁNTAS filas se borraron: sin permiso la base no
+  // da error, borra cero y responde que todo bien.
+  return supabase.from("promociones").delete().eq("id", id).select("id");
 }

@@ -71,15 +71,20 @@ export default function PromocionesDeTardeo({ tardeoId }: { tardeoId: string }) 
   };
 
   const alternar = async (p: Promocion) => {
-    const { error: e } = await actualizarPromo(p.id, { activa: !p.activa });
+    const { data, error: e } = await actualizarPromo(p.id, { activa: !p.activa });
     if (e) { setError(e.message); return; }
+    // Sin permiso la base NO da error: filtra las filas y actualiza cero, así
+    // que responde "correcto" sin haber cambiado nada. Hay que mirar lo que
+    // devuelve, no si falló.
+    if (!data || data.length === 0) { setError("No se pudo: este tardeo no es de tu local."); return; }
     cargar();
   };
 
   const eliminar = async (p: Promocion) => {
     if (!confirm(`¿Borrar «${p.nombre}»? No se puede deshacer.`)) return;
-    const { error: e } = await borrarPromo(p.id);
+    const { data, error: e } = await borrarPromo(p.id);
     if (e) { setError(e.message); return; }
+    if (!data || data.length === 0) { setError("No se pudo: este tardeo no es de tu local."); return; }
     cargar();
   };
 
