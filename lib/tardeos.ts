@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import { Tardeo } from "./types";
 import { memo } from "@/lib/memo";
+import { plegar } from "@/lib/texto";
 
 // Acotado a lo que usa mapRow. Con `locales(*)` venían descripción, redes,
 // fotos, horarios y el email de cada local: 42 KB por consulta en vez de 30.
@@ -437,23 +438,51 @@ export async function borrarTardeo(id: string) {
   return supabase.from("tardeos").delete({ count: "exact" }).eq("id", id);
 }
 
-/** Vincula DJs existentes a un tardeo, buscándolos por nombre artístico. */
-export async function vincularDjsPorNombre(tardeoId: string, nombres: string[]): Promise<number> {
-  const limpios = nombres.map((n) => n.trim()).filter(Boolean);
-  if (limpios.length === 0) return 0;
-  // Buscar DJs existentes cuyo nombre coincida (insensible a mayúsculas)
+export type EnlaceDjs = {
+  /** Nombres que sí tienen ficha y han quedado enlazados. */
+  enlazados: string[];
+  /** Nombres escritos en el flyer que no corresponden a ningún DJ fichado. */
+  sinFicha: string[];
+};
+
+/**
+ * Enlaza a un tardeo los DJs que ya tienen ficha, buscándolos por su nombre.
+ *
+ * Compara sin tildes ni mayúsculas y tolerando el "DJ " de delante: en un
+ * flyer lo mismo pone "José AM" que "DJ Jose AM", y con comparación exacta no
+ * casaba ninguno de los dos con la ficha "Jose AM".
+ *
+ * Devuelve también los nombres que NO encontró. Antes solo contaba los
+ * enlazados, así que un flyer con un DJ sin ficha se publicaba sin decir nada
+ * y ese tardeo no salía nunca en el perfil de nadie.
+ */
+export async function vincularDjsPorNombre(tardeoId: string, nombres: string[]): Promise<EnlaceDjs> {
+  const limpios = [...new Set(nombres.map((n) => n.trim()).filter(Boolean))];
+  if (limpios.length === 0) return { enlazados: [], sinFicha: [] };
+
+  // El "DJ" se quita esté delante o detrás: en las fichas está de las dos
+  // formas ("Dj Taño", "German Navarro DJ") y en los flyers, de cualquiera.
+  const clave = (s: string) => plegar(s).replace(/^dj\s+/, "").replace(/\s+dj$/, "").trim();
+
   const { data } = await supabase.from("djs").select("id,nombre_artistico");
-  const encontrados = (data ?? []).filter((d: any) =>
-    limpios.some((n) => (d.nombre_artistico || "").toLowerCase() === n.toLowerCase())
-  );
-  if (encontrados.length === 0) return 0;
-  const filas = encontrados.map((d: any) => ({ tardeo_id: tardeoId, dj_id: d.id }));
-  await supabase.from("tardeo_djs").upsert(filas, { onConflict: "tardeo_id,dj_id" });
-  return filas.length;
+  const fichados = (data ?? []).map((d: any) => ({ ...d, clave: clave(d.nombre_artistico || "") }));
+
+  const enlazados: string[] = [];
+  const sinFicha: string[] = [];
+  const filas: { tardeo_id: string; dj_id: string }[] = [];
+
+  for (const n of limpios) {
+    const dj = fichados.find((d) => d.clave && d.clave === clave(n));
+    if (dj) { enlazados.push(n); filas.push({ tardeo_id: tardeoId, dj_id: dj.id }); }
+    else sinFicha.push(n);
+  }
+
+  if (filas.length) await supabase.from("tardeo_djs").upsert(filas, { onConflict: "tardeo_id,dj_id" });
+  return { enlazados, sinFicha };
 }
 
 /** Reemplaza por completo los DJs de un tardeo (borra y revincula por nombre). */
-export async function setDjsDeTardeo(tardeoId: string, nombres: string[]) {
+export async function setDjsDeTardeo(tardeoId: string, nombres: string[]): Promise<EnlaceDjs> {
   await supabase.from("tardeo_djs").delete().eq("tardeo_id", tardeoId);
   return vincularDjsPorNombre(tardeoId, nombres);
 }

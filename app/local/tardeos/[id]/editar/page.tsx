@@ -23,6 +23,10 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
+  // Nombres escritos en el campo DJ que no tienen ficha. Si los hay no se
+  // vuelve al panel: el aviso se perdería en el salto y el tardeo se quedaría
+  // sin salir en el perfil de ese DJ sin que nadie lo supiera.
+  const [djsSinFicha, setDjsSinFicha] = useState<string[]>([]);
 
   const [titulo, setTitulo] = useState("");
   const [fecha, setFecha] = useState("");
@@ -107,9 +111,11 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
     });
     if (e) { setGuardando(false); setError(e.message); return; }
     if (!data || data.length === 0) { setGuardando(false); setError("No se guardó: este tardeo no es de tu local (permisos)."); return; }
-    try { await setDjsDeTardeo(id, dj.split(/[,·&]|\sy\s/i)); } catch { /* no crítico */ }
+    let sinFicha: string[] = [];
+    try { ({ sinFicha } = await setDjsDeTardeo(id, dj.split(/[,·&]|\sy\s/i))); } catch { /* no crítico: los cambios ya están guardados */ }
     setGuardando(false);
-    router.push("/local");
+    setDjsSinFicha(sinFicha);
+    if (sinFicha.length === 0) router.push("/local");
   };
 
   const cambiarEstado = async (nuevo: string) => {
@@ -225,6 +231,19 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
           </div>
 
           {error && <p className="text-sm font-bold text-magenta">{error}</p>}
+
+          {djsSinFicha.length > 0 && (
+            <div className="rounded-2xl bg-oro/15 p-4 ring-1 ring-oro/40">
+              <p className="font-black">Guardado, pero ojo:</p>
+              <p className="mt-1 text-sm font-semibold text-tinta/75">
+                {djsSinFicha.length === 1 ? "No hay ficha de " : "No hay ficha de "}
+                <b>{djsSinFicha.join(", ")}</b>, así que este tardeo no saldrá en su perfil.
+              </p>
+              <Link href="/local" className="mt-2 inline-block text-sm font-black text-magenta">
+                Volver al panel
+              </Link>
+            </div>
+          )}
 
           <button onClick={guardar} disabled={guardando} className="flex items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white shadow-tarjeta active:scale-[0.98] disabled:opacity-40">
             {guardando ? <Loader2 size={22} className="animate-spin" /> : <Check size={22} />} Guardar cambios

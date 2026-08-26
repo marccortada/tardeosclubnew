@@ -89,6 +89,10 @@ export default function CrearTardeo() {
   const [locales, setLocales] = useState<any[]>([]);
   const [localId, setLocalId] = useState("");
   const [publicando, setPublicando] = useState(false);
+  // Nombres del flyer que no corresponden a ningún DJ fichado. Se avisa al
+  // publicar: si no, el tardeo se queda sin salir en el perfil de ese DJ y
+  // nadie se entera nunca.
+  const [djsSinFicha, setDjsSinFicha] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [revisar, setRevisar] = useState<Set<string>>(new Set());
   const [flyerGen, setFlyerGen] = useState<string | null>(null);
@@ -303,7 +307,10 @@ export default function CrearTardeo() {
     // Vincular los DJs del flyer (por nombre) para que aparezca en su perfil
     if (nuevo?.id && form.dj) {
       const nombres = form.dj.split(/[,·&]|\sy\s/i);
-      try { await vincularDjsPorNombre(nuevo.id, nombres); } catch { /* no crítico */ }
+      try {
+        const { sinFicha } = await vincularDjsPorNombre(nuevo.id, nombres);
+        setDjsSinFicha(sinFicha);
+      } catch { /* no crítico: el tardeo ya está publicado */ }
     }
 
     setPublicando(false);
@@ -332,6 +339,19 @@ export default function CrearTardeo() {
           </p>
           {esAdmin && local && (
             <p className="-mt-2 text-sm font-semibold text-tinta/50">Publicado en {local.nombre}.</p>
+          )}
+
+          {djsSinFicha.length > 0 && (
+            <div className="mt-1 rounded-2xl bg-oro/15 p-4 text-left ring-1 ring-oro/40">
+              <p className="font-black">
+                {djsSinFicha.length === 1 ? "Este DJ no tiene ficha" : "Estos DJs no tienen ficha"}:{" "}
+                {djsSinFicha.join(", ")}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-tinta/70">
+                El tardeo está publicado, pero no saldrá en su perfil hasta que exista.
+                {esAdmin ? " Créala en Administración → Crear / invitar." : " Dínoslo y la creamos."}
+              </p>
+            </div>
           )}
           <div className="mt-2 flex flex-col gap-3 sm:flex-row">
             <Link href={panelHref} className="rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">
