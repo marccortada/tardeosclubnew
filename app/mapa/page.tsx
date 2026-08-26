@@ -2,7 +2,8 @@ import MapaFiltrable from "@/components/MapaFiltrable";
 import { getTardeosPublicados } from "@/lib/tardeos";
 
 // Los mismos 60 s que la portada y el listado.
-export const revalidate = 60;
+// Se pinta en cada visita, no por ISR: ver el porqué en app/page.tsx.
+export const dynamic = "force-dynamic";
 
 /**
  * El mapa, con los tardeos ya cargados del servidor.

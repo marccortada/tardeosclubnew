@@ -23,7 +23,20 @@ import MapaClient from "@/components/MapaClient";
 // lib/tardeos, así que un tardeo recién publicado tarda como mucho eso en
 // asomar. Al publicar se invalida la caché de cliente, que es lo que ve el
 // local al terminar.
-export const revalidate = 60;
+/**
+ * Se pinta en cada visita, no por ISR.
+ *
+ * Con `revalidate` esta página se congeló dos veces en seis días: el 26 de
+ * agosto llevaba cinco días enseñando la cartelera del día 21 —65 tardeos ya
+ * terminados, 58 de cuyas fichas daban 404— respondiendo `x-nextjs-cache:
+ * STALE` a cada petición sin rehacerse nunca. Ni el temporizador ni
+ * `revalidatePath` la desatascaban: solo reiniciar el proceso.
+ *
+ * Pintar en cada visita no cuesta consultas: la capa de datos cachea un minuto
+ * en memoria del proceso, así que el gasto es el mismo que con ISR y la
+ * frescura la garantiza código nuestro.
+ */
+export const dynamic = "force-dynamic";
 
 // El título y la descripción los pone el layout; aquí solo falta decirle a
 // Google cuál es la dirección buena de la portada.

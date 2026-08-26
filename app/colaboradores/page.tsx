@@ -5,7 +5,8 @@ import { metadataPublica } from "@/lib/seo";
 import { Handshake } from "lucide-react";
 
 // Cambia poco: no hace falta consultar Supabase en cada visita.
-export const revalidate = 60;
+// Se pinta en cada visita, no por ISR: ver el porqué en app/page.tsx.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = metadataPublica(
   "Colaboradores · TardeosClub",

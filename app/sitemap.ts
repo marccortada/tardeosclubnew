@@ -4,7 +4,9 @@ import { SITE_URL } from "@/lib/seo";
 
 // Se rehace cada hora: los tardeos entran y salen del catálogo solos según la
 // fecha, y la app antigua publica con uno o dos días de antelación.
-export const revalidate = 3600;
+// Igual que las listas: se genera al pedirlo. Congelado anunciaba a Google
+// decenas de tardeos ya terminados, cuyas fichas devuelven 404.
+export const dynamic = "force-dynamic";
 
 /**
  * El mapa del sitio.

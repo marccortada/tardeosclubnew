@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { Tardeo } from "./types";
+import { memo } from "@/lib/memo";
 
 // Acotado a lo que usa mapRow. Con `locales(*)` venían descripción, redes,
 // fotos, horarios y el email de cada local: 42 KB por consulta en vez de 30.
@@ -169,7 +170,7 @@ export async function getTardeosPublicados(): Promise<Tardeo[]> {
  * los verificados por delante y luego alfabético, que en un listado de negocios
  * es lo que la gente espera.
  */
-export async function getLocalesPublicos(): Promise<any[]> {
+async function leerLocalesPublicos(): Promise<any[]> {
   const { data, error } = await supabase
     .from("locales")
     .select("id,nombre,zona,direccion,logo_url,tipo,verificado,destacado_orden")
@@ -187,7 +188,7 @@ export async function getLocalesPublicos(): Promise<any[]> {
  * Solo activos: un local en borrador o suspendido por impago no puede salir
  * en portada aunque alguien lo destacara en su día.
  */
-export async function getLocalesDestacados(limite = 10): Promise<{ locales: any[]; sonDePago: boolean }> {
+async function leerLocalesDestacados(limite = 10): Promise<{ locales: any[]; sonDePago: boolean }> {
   const { data, error } = await supabase
     .from("locales")
     .select("id,nombre,zona,logo_url,tipo,verificado,destacado_orden")
@@ -332,7 +333,7 @@ export async function getMiDj(profileId: string): Promise<any | null> {
 }
 
 /** Lista pública de DJs (no ocultos), ordenados por reputación. */
-export async function getDjsPublicos(): Promise<any[]> {
+async function leerDjsPublicos(): Promise<any[]> {
   const { data } = await supabase
     .from("djs")
     .select("id,nombre_artistico,estilos,avatar_url,verificado,reputacion_score,destacado_orden")
@@ -503,4 +504,39 @@ export async function cancelarInscripcion(uid: string, tid: string): Promise<voi
 export async function getInscripciones(uid: string): Promise<Tardeo[]> {
   const { data } = await supabase.from("inscripciones").select(`tardeos(${SELECT})`).eq("profile_id", uid).eq("estado", "apuntado");
   return (data ?? []).map((r: any) => r.tardeos).filter(Boolean).map(mapRow);
+}
+
+
+// ---------- Caché de las listas públicas ----------
+/**
+ * Las páginas de listado (/, /tardeos, /mapa, /colaboradores) se pintan en cada
+ * visita desde que dejaron de usar la regeneración de Next, que se atascaba.
+ * Sin esto, cada visita serían tres o cuatro viajes a Supabase; con esto, como
+ * mucho uno por minuto y por dato.
+ *
+ * `getTardeosPublicados` ya llevaba su propia caché igual desde antes.
+ */
+const memoLocalesPublicos = memo(() => leerLocalesPublicos());
+const memoDjsPublicos = memo(() => leerDjsPublicos());
+const memoLocalesDestacados = memo(() => leerLocalesDestacados(10));
+
+export function getLocalesPublicos(): Promise<any[]> {
+  return memoLocalesPublicos.get();
+}
+
+export function getDjsPublicos(): Promise<any[]> {
+  return memoDjsPublicos.get();
+}
+
+export function getLocalesDestacados(limite = 10): Promise<{ locales: any[]; sonDePago: boolean }> {
+  // La caché cubre el caso normal, que es el único que se usa. Con otro límite
+  // se consulta directo: no compensa una caché por cada valor posible.
+  return limite === 10 ? memoLocalesDestacados.get() : leerLocalesDestacados(limite);
+}
+
+/** Que la portada y el directorio vean ya un cambio del panel. */
+export function invalidarCacheListas() {
+  memoLocalesPublicos.invalidar();
+  memoDjsPublicos.invalidar();
+  memoLocalesDestacados.invalidar();
 }
