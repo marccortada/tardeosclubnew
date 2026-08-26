@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/useAuth";
 import { getMiLocal, updateMiLocal, subirLogoLocal } from "@/lib/tardeos";
 import CampoPlaylist from "@/components/CampoPlaylist";
 import { Store, Phone, MapPin, FileText, Check, Loader2, ImagePlus, Megaphone } from "lucide-react";
+import SelectorAdnLocal, { type AdnLocal, ADN_LOCAL_VACIO } from "@/components/SelectorAdnLocal";
 
 export default function EditarLocal() {
   const { user, loading } = useAuth();
@@ -28,6 +29,7 @@ export default function EditarLocal() {
   const [cambiarDir, setCambiarDir] = useState(false);
   const [playlist, setPlaylist] = useState("");
   const [logo, setLogo] = useState<string | null>(null);
+  const [adn, setAdn] = useState<AdnLocal>(ADN_LOCAL_VACIO);
   const [subiendoLogo, setSubiendoLogo] = useState(false);
 
   const esPromotor = local?.tipo === "promotor";
@@ -44,6 +46,16 @@ export default function EditarLocal() {
         setDireccion(l.direccion || "");
         setZona(l.zona || "");
         setLogo(l.logo_url || null);
+        setAdn({
+          tipoLocal: l.tipo_local || "",
+          aforo: l.aforo != null ? String(l.aforo) : "",
+          espacios: l.espacios ?? [],
+          musica: l.musica ?? [],
+          ambiente: l.ambiente ?? [],
+          publico: l.publico ?? [],
+          dressCode: l.dress_code || "",
+          horarioHabitual: l.horario_habitual || "",
+        });
       }
       setCargando(false);
     });
@@ -80,6 +92,16 @@ export default function EditarLocal() {
       telefono: telefono.trim() || null,
       descripcion: descripcion.trim() || null,
       playlist_url: playlist.trim() || null,
+      // El ADN: null cuando está vacío, no "" ni []. Así el filtro y las
+      // recomendaciones distinguen "no lo ha dicho" de "ha dicho que ninguno".
+      tipo_local: adn.tipoLocal.trim() || null,
+      aforo: adn.aforo ? Number(adn.aforo) : null,
+      espacios: adn.espacios.length ? adn.espacios : null,
+      musica: adn.musica.length ? adn.musica : null,
+      ambiente: adn.ambiente.length ? adn.ambiente : null,
+      publico: adn.publico.length ? adn.publico : null,
+      dress_code: adn.dressCode.trim() || null,
+      horario_habitual: adn.horarioHabitual.trim() || null,
     };
     // Al promotor no se le tocan dirección ni coordenadas: no tiene ninguna, y
     // guardarle cadenas vacías le sobreescribiría lo que ya hubiera.
@@ -183,6 +205,18 @@ export default function EditarLocal() {
               {zona && <p className="mt-1 text-xs font-semibold text-tinta/50">Zona: <b>{zona}</b></p>}
             </div>
           )}
+
+          {/* El ADN del local. Va al final porque lo de arriba —nombre,
+              teléfono, dirección— es lo que hay que rellenar sí o sí, y esto
+              es lo que hace que te encuentren. */}
+          <div className="rounded-2xl bg-crema/60 p-4 ring-1 ring-magenta-100">
+            <p className="font-display text-lg font-black">Cómo es tu sitio</p>
+            <p className="mb-4 text-sm font-semibold text-tinta/60">
+              Nada de esto es obligatorio, pero cuanto más cuentes, en más búsquedas apareces
+              y mejor te recomendamos a quien encaja contigo.
+            </p>
+            <SelectorAdnLocal adn={adn} onCambio={setAdn} />
+          </div>
 
           {error && <p className="text-sm font-bold text-magenta">{error}</p>}
 

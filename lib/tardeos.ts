@@ -222,7 +222,7 @@ export async function getLocalById(id: string): Promise<any | null> {
     // `owner_id` solo para saber si la ficha tiene dueño, y no baja al
     // navegador: lo que sale de aquí es un booleano, no el identificador de
     // una persona.
-    .select("id,nombre,descripcion,direccion,lat,lng,zona,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,playlist_url,owner_id")
+    .select("id,nombre,descripcion,direccion,lat,lng,zona,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,playlist_url,owner_id,tipo_local,aforo,espacios,ambiente,publico,dress_code,musica,horario_habitual")
     .eq("id", id)
     .maybeSingle();
   if (!data) return null;
@@ -268,7 +268,7 @@ export async function getMiLocal(ownerId: string): Promise<any | null> {
   // local. Pasó con `email` al restringirla en el lote 14.
   const { data, error } = await supabase
     .from("locales")
-    .select("id,nombre,descripcion,direccion,lat,lng,zona,codigo_postal,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,owner_id")
+    .select("id,nombre,descripcion,direccion,lat,lng,zona,codigo_postal,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,owner_id,playlist_url,tipo_local,aforo,espacios,ambiente,publico,dress_code,musica,horario_habitual")
     .eq("owner_id", ownerId)
     .order("created_at", { ascending: true }).limit(1).maybeSingle();
   // Antes el error se tragaba en silencio y devolvía null, que la app

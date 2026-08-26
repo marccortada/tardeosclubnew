@@ -54,6 +54,58 @@ export const TIPOS_EVENTO = [
 /** Franjas de edad. Un tardeo puede apuntar a varias. */
 export const PUBLICOS = ["+21", "25-35", "35-55", "+55"];
 
+/**
+ * Qué clase de sitio es. Uno solo.
+ *
+ * OJO, no confundir con `locales.tipo`, que distingue local de promotor: eso es
+ * quién eres, esto es qué eres. Un promotor no tiene tipo de local porque no
+ * tiene local.
+ */
+export const TIPOS_LOCAL = [
+  "Bar",
+  "Pub",
+  "Discoteca",
+  "Sala de conciertos",
+  "Chiringuito",
+  "Beach club",
+  "Restaurante",
+  "Terraza",
+  "Rooftop",
+  "Club náutico",
+  "Espacio polivalente",
+];
+
+/**
+ * Dónde se está dentro del sitio. Varios a la vez: un chiringuito puede tener
+ * barra dentro y terraza fuera, y eso cambia el plan según llueva o no.
+ */
+export const ESPACIOS = [
+  "Interior",
+  "Exterior",
+  "Terraza",
+  "Rooftop",
+  "Jardín",
+  "Piscina",
+  "Playa",
+  "Aparcamiento",
+  "Cubierto si llueve",
+];
+
+/**
+ * El tamaño se deduce del aforo, no se pregunta aparte.
+ *
+ * Preguntar las dos cosas es pedir dos veces el mismo dato y abrir la puerta a
+ * que se contradigan: alguien pone "pequeño" y 800 de aforo y ya no sabes cuál
+ * creerte.
+ */
+export function tamanoDeAforo(aforo?: number | null): string | null {
+  if (!aforo || aforo <= 0) return null;
+  if (aforo < 100) return "Pequeño";
+  if (aforo < 300) return "Mediano";
+  if (aforo < 800) return "Grande";
+  return "Muy grande";
+}
+
 /** Cómo se va vestido. Una sola por tardeo. */
 export const DRESS_CODES = [
   "Casual",
