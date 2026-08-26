@@ -43,6 +43,31 @@ rsync -az --delete .next/static/ "$SERVIDOR:$DESTINO/.next/static/"
 echo "▸ Subiendo public/"
 rsync -az --delete --exclude '.DS_Store' public/ "$SERVIDOR:$DESTINO/public/"
 
+# sharp, con los binarios de LINUX.
+#
+# Aquí se compila en un Mac, así que el node_modules que sube el rsync lleva
+# sharp-darwin-arm64: en el droplet no carga, Next se queda sin optimizador y
+# sirve CADA IMAGEN a tamaño completo. La portada pesaba 2,2 MB solo de foto de
+# cabecera —y en un móvil con mala cobertura eso no llega a cargar: es
+# exactamente "se ha caído la foto del inicio"—.
+#
+# No basta con el sharp de la raíz: `next/dist/server/image-optimizer.js` hace
+# require("sharp") y Node resuelve ANTES el que hay en next/node_modules. Hay
+# que reponer los dos.
+#
+# La copia buena vive en /root/sharp-linux, instalada una vez en el servidor:
+#   mkdir -p /root/sharp-linux && cd /root/sharp-linux
+#   npm init -y && npm install sharp@0.35.3
+# Si algún día sube la versión de sharp en package.json, hay que repetirlo ahí.
+echo "▸ Reponiendo sharp de Linux"
+ssh "$SERVIDOR" 'S=/root/sharp-linux/node_modules
+  for D in /var/www/tardeosclub/node_modules /var/www/tardeosclub/node_modules/next/node_modules; do
+    for P in $(ls "$S" | grep -v "^\."); do rm -rf "$D/$P"; cp -R "$S/$P" "$D/$P"; done
+  done
+  # La caché guarda lo ya servido: si quedó de una vez sin sharp, seguiría
+  # devolviendo el original sin optimizar aunque ahora sí se pueda.
+  rm -rf /var/www/tardeosclub/.next/cache/images'
+
 echo "▸ Reiniciando"
 ssh "$SERVIDOR" "pm2 restart $PROCESO --update-env >/dev/null && sleep 4"
 
@@ -66,6 +91,17 @@ comprobar "/mapa" 200
 # rompa no se dé por bueno.
 comprobar "/_next/image?url=%2Fbranding%2Flogo-transp.png&w=256&q=75" 200
 comprobar "/api/buscar-sitio" 200
+
+# Que el optimizador OPTIMICE, no solo que responda 200. Cuando sharp no carga
+# devuelve el original tal cual con un 200 tan válido como este.
+TIPO=$(curl -s -H 'Accept: image/avif,image/webp,*/*' -o /dev/null -w '%{content_type}' \
+  'https://crm.gnerai.com/_next/image?url=%2Fimg%2Fhero.jpg&w=640&q=75')
+if [ "$TIPO" = "image/avif" ] || [ "$TIPO" = "image/webp" ]; then
+  printf '   ok   %-46s %s\n' "optimizador de imágenes" "$TIPO"
+else
+  printf '   MAL  %-46s %s (sharp no está optimizando)\n' "optimizador de imágenes" "$TIPO"
+  FALLOS=$((FALLOS + 1))
+fi
 
 echo "   canónica: $(curl -s https://crm.gnerai.com/ | grep -oE 'rel="canonical" href="[^"]*"' | head -1)"
 
