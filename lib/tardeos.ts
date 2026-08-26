@@ -219,10 +219,15 @@ async function leerLocalesDestacados(limite = 10): Promise<{ locales: any[]; son
 export async function getLocalById(id: string): Promise<any | null> {
   const { data } = await supabase
     .from("locales")
-    .select("id,nombre,descripcion,direccion,lat,lng,zona,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,playlist_url")
+    // `owner_id` solo para saber si la ficha tiene dueño, y no baja al
+    // navegador: lo que sale de aquí es un booleano, no el identificador de
+    // una persona.
+    .select("id,nombre,descripcion,direccion,lat,lng,zona,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,playlist_url,owner_id")
     .eq("id", id)
     .maybeSingle();
-  return data ?? null;
+  if (!data) return null;
+  const { owner_id, ...resto } = data as Record<string, unknown>;
+  return { ...resto, sinDueno: owner_id == null };
 }
 
 /** Tardeos publicados y no expirados de un local (para su página pública). */
@@ -341,10 +346,14 @@ async function leerDjsPublicos(): Promise<any[]> {
 export async function getDjById(id: string): Promise<any | null> {
   const { data } = await supabase
     .from("djs")
-    .select("id,nombre_artistico,bio,estilos,galeria,redes,verificado,reputacion_score,avatar_url,playlist_url,zonas,contacto")
+    // Igual que en los locales: `profile_id` entra solo para saber si la ficha
+    // está reclamada y sale convertido en booleano.
+    .select("id,nombre_artistico,bio,estilos,galeria,redes,verificado,reputacion_score,avatar_url,playlist_url,zonas,contacto,profile_id")
     .eq("id", id)
     .maybeSingle();
-  return data ?? null;
+  if (!data) return null;
+  const { profile_id, ...resto } = data as Record<string, unknown>;
+  return { ...resto, sinDueno: profile_id == null };
 }
 
 /** Tardeos publicados y no expirados en los que pincha un DJ. */

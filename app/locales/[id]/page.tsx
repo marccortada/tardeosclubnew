@@ -10,6 +10,7 @@ import type { Metadata } from "next";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import { jsonLdLocal, urlAbsoluta } from "@/lib/seo";
 import { ArrowLeft, MapPin, Phone, BadgeCheck, Store, CalendarDays , Megaphone } from "lucide-react";
+import ReclamarFicha from "@/components/ReclamarFicha";
 
 export const dynamic = "force-dynamic";
 
@@ -133,6 +134,11 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
         <Playlist url={local.playlist_url} titulo="Lo que suena aquí" />
 
         {/* Reseñas */}
+        {/* Solo si no la lleva nadie. En cuanto la reclamen desaparece. */}
+        {local.sinDueno && (
+          <ReclamarFicha tipo="local" objetivoId={local.id} nombre={local.nombre} />
+        )}
+
         <Resenas tipo="local" objetivoId={local.id} nombre={local.nombre} />
       </div>
     </main>

@@ -12,6 +12,7 @@ import DatosEstructurados from "@/components/DatosEstructurados";
 import { jsonLdDj, urlAbsoluta } from "@/lib/seo";
 import { ArrowLeft, BadgeCheck, Star, Music, Disc3, CalendarDays, Instagram, Youtube, Music2, Phone } from "lucide-react";
 import { tieneValoracion, valoracion } from "@/lib/reputacion";
+import ReclamarFicha from "@/components/ReclamarFicha";
 
 export const dynamic = "force-dynamic";
 
@@ -165,6 +166,10 @@ export default async function PaginaDj({ params }: { params: Promise<{ id: strin
         <Playlist url={dj.playlist_url} titulo="Su playlist" />
 
         <ContenidoPublicoDj djId={dj.id} />
+
+        {dj.sinDueno && (
+          <ReclamarFicha tipo="dj" objetivoId={dj.id} nombre={dj.nombre_artistico} />
+        )}
 
         <Resenas tipo="dj" objetivoId={dj.id} nombre={dj.nombre_artistico} />
       </div>

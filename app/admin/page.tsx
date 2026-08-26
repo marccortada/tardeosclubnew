@@ -18,6 +18,7 @@ const GESTION = [
   { icon: Bell, label: "Popups", sub: "Ofertas y noticias", href: "/admin/popups" },
   { icon: BellRing, label: "Notificaciones push", sub: "Aviso al móvil de los suscritos", href: "/admin/notificaciones" },
   { icon: Star, label: "Destacados", sub: "Quién sale primero en la home", href: "/admin/destacados" },
+  { icon: BadgeCheck, label: "Reclamaciones", sub: "Quién pide gestionar su ficha", href: "/admin/reclamaciones" },
   { icon: ShieldCheck, label: "Moderación", sub: "Reseñas y flyers", href: "/admin/moderacion" },
   { icon: CreditCard, label: "Suscripciones", sub: "Pagos e impagos", href: "/admin/suscripciones" },
   { icon: Store, label: "Locales", sub: "Gestión de locales", href: "/admin/locales" },
