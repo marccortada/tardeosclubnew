@@ -96,7 +96,7 @@ comprobar "/api/buscar-sitio" 200
 # devuelve el original tal cual con un 200 tan válido como este.
 TIPO=$(curl -s -H 'Accept: image/avif,image/webp,*/*' -o /dev/null -w '%{content_type}' \
   'https://crm.gnerai.com/_next/image?url=%2Fimg%2Fhero.jpg&w=640&q=75')
-if [ "$TIPO" = "image/avif" ] || [ "$TIPO" = "image/webp" ]; then
+if [ "$TIPO" = "image/webp" ] || [ "$TIPO" = "image/avif" ]; then
   printf '   ok   %-46s %s\n' "optimizador de imágenes" "$TIPO"
 else
   printf '   MAL  %-46s %s (sharp no está optimizando)\n' "optimizador de imágenes" "$TIPO"
