@@ -13,6 +13,7 @@ import CalendarioLocal from "@/components/CalendarioLocal";
 import { formatFecha, flyerSrc } from "@/lib/mockData";
 import { Tardeo } from "@/lib/types";
 import { Plus, Users, Eye, TrendingUp, CreditCard, Pencil, BadgeCheck, ChevronRight, Sparkles, Store, Loader2, Megaphone } from "lucide-react";
+import EstadisticasLocal from "@/components/EstadisticasLocal";
 
 export default function PanelLocal() {
   const { user, loading } = useAuth();
@@ -67,8 +68,11 @@ export default function PanelLocal() {
     );
   }
 
+  // El contador viejo se queda de momento: es acumulado de siempre y sirve de
+  // total histórico. Lo que dice cómo va el negocio es el bloque de abajo, que
+  // tiene fechas.
   const stats = [
-    { icon: Eye, label: "Visitas", valor: String(metricas.visitas) },
+    { icon: Eye, label: "Visitas totales", valor: String(metricas.visitas) },
     { icon: Users, label: "Inscritos", valor: String(metricas.inscritos) },
     { icon: TrendingUp, label: "Tardeos", valor: String(misTardeos.length) },
   ];
@@ -114,6 +118,8 @@ export default function PanelLocal() {
             </div>
           ))}
         </section>
+
+        <EstadisticasLocal localId={local.id} />
 
         {/* El calendario va ANTES de la lista: con quince tardeos al mes, la
             lista no deja ver qué findes están cubiertos y cuáles no, que es lo
