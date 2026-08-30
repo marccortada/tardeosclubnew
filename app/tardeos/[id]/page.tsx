@@ -4,7 +4,7 @@ import { getTardeoById } from "@/lib/tardeos";
 import AccionTardeo from "@/components/AccionTardeo";
 import Resenas from "@/components/Resenas";
 import CompartirBtn from "@/components/CompartirBtn";
-import RegistrarVisita from "@/components/RegistrarVisita";
+import RegistrarVista from "@/components/RegistrarVista";
 import MiniMapa from "@/components/MiniMapa";
 import DestacarTardeo from "@/components/DestacarTardeo";
 import { notFound } from "next/navigation";
@@ -73,7 +73,7 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
       {/* Para que Google lo enseñe como evento —con fecha, sitio y precio en
           el propio resultado— y no como un enlace más. */}
       <DatosEstructurados datos={jsonLdEvento(tardeo)} />
-      <RegistrarVisita tardeoId={tardeo.id} />
+      <RegistrarVista tipo="tardeo" id={tardeo.id} />
       <div className="relative px-4 pt-4 md:pt-8">
         <Link
           href="/tardeos"

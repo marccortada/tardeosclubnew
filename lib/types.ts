@@ -36,6 +36,10 @@ export interface Tardeo {
   estilo: string;
   tipoEntrada: TipoEntrada;
   precio?: number;
+  /** Dónde se compra la entrada o se apunta uno a la lista. Se llama
+   *  `fourvenues_url` en la base por la app antigua, pero guarda el enlace de
+   *  cualquier ticketera: hay Entradium, Resident Advisor, CodeTickets… */
+  urlEntradas?: string;
   /** Promoción que pone el local, visible SOLO dentro de esta ficha. */
   promoTitulo?: string;
   promoTexto?: string;

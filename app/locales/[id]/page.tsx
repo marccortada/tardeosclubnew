@@ -12,6 +12,7 @@ import { jsonLdLocal, urlAbsoluta } from "@/lib/seo";
 import { ArrowLeft, MapPin, Phone, BadgeCheck, Store, CalendarDays , Megaphone } from "lucide-react";
 import ReclamarFicha from "@/components/ReclamarFicha";
 import AdnLocalFicha from "@/components/AdnLocalFicha";
+import RegistrarVista from "@/components/RegistrarVista";
 
 export const dynamic = "force-dynamic";
 
@@ -115,6 +116,8 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
         {/* Cómo es el sitio. Antes de los tardeos: quien entra a una ficha de
             local quiere saber a dónde va, y el qué-hay-hoy ya lo tiene en
             /tardeos. */}
+        <RegistrarVista tipo="local" id={local.id} />
+
         <AdnLocalFicha local={local} />
 
         {/* Tardeos del local */}

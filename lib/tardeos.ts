@@ -68,6 +68,7 @@ function mapRow(r: any): Tardeo {
     estilo: r.estilo ?? "",
     tipoEntrada: r.tiene_lista ? "lista" : r.es_de_pago ? "pago" : "gratis",
     precio: r.precio != null ? Number(r.precio) : undefined,
+    urlEntradas: r.fourvenues_url ?? undefined,
     // Columnas del lote 20. Mientras el SQL no esté pegado llegan vacías y se
     // comportan como "sin indicar", sin romper nada.
     promoTitulo: r.promo_titulo ?? undefined,

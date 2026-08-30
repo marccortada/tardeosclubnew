@@ -6,6 +6,7 @@ import { Tardeo } from "@/lib/types";
 import { useAuth } from "@/lib/useAuth";
 import { esFavorito, setFavorito, estaInscrito, inscribir, cancelarInscripcion } from "@/lib/tardeos";
 import { Ticket, ListChecks, Check, Heart, ExternalLink, Loader2 } from "lucide-react";
+import { medir } from "@/lib/metricas";
 
 export default function AccionTardeo({ tardeo }: { tardeo: Tardeo }) {
   const { user } = useAuth();
@@ -27,18 +28,37 @@ export default function AccionTardeo({ tardeo }: { tardeo: Tardeo }) {
     const nuevo = !fav;
     setFav(nuevo);
     await setFavorito(user.id, tardeo.id, nuevo);
+    // Solo al guardar, no al quitar: lo que interesa medir es el interés.
+    if (nuevo) medir("favorito", { tardeoId: tardeo.id });
   };
 
   const toggleApuntar = async () => {
     if (!user) return pedirLogin();
     setOcupado(true);
     if (apuntado) { await cancelarInscripcion(user.id, tardeo.id); setApuntado(false); }
-    else { await inscribir(user.id, tardeo.id); setApuntado(true); }
+    else {
+      await inscribir(user.id, tardeo.id);
+      setApuntado(true);
+      medir("inscripcion", { tardeoId: tardeo.id });
+    }
     setOcupado(false);
   };
 
-  const irFourvenues = () => {
-    alert("Te llevaríamos a Fourvenues para " + (tardeo.tipoEntrada === "lista" ? "apuntarte a la lista" : "comprar la entrada") + " (demo).");
+  /**
+   * Al sitio donde se compra. Esto ERA UN `alert` que decía "(demo)": el botón
+   * principal de todo tardeo de pago no llevaba a ninguna parte, teniendo el
+   * enlace guardado en la base.
+   *
+   * Se apunta el clic ANTES de abrir. Al revés se perdería la mitad: en el
+   * móvil, cuando el navegador cambia de página, lo que quede a medias se
+   * cancela. Y no se espera a que termine de guardarse, que sería hacer esperar
+   * a alguien que quiere comprar.
+   */
+  const irAEntradas = () => {
+    if (!tardeo.urlEntradas) return;
+    medir(tardeo.tipoEntrada === "lista" ? "clic_lista" : "clic_entrada",
+      { tardeoId: tardeo.id, destino: tardeo.urlEntradas });
+    window.open(tardeo.urlEntradas, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -64,14 +84,26 @@ export default function AccionTardeo({ tardeo }: { tardeo: Tardeo }) {
           >
             {ocupado ? <Loader2 size={22} className="animate-spin" /> : apuntado ? (<><Check size={22} /> ¡Apuntado!</>) : "Apuntarme"}
           </button>
-        ) : (
+        ) : tardeo.urlEntradas ? (
           <button
-            onClick={irFourvenues}
+            onClick={irAEntradas}
             className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white transition active:scale-[0.98]"
           >
-            {tardeo.tipoEntrada === "lista" ? (<><ListChecks size={22} /> Apuntarme a la lista</>) : (<><Ticket size={22} /> Comprar entrada {tardeo.precio}€</>)}
+            {tardeo.tipoEntrada === "lista" ? (<><ListChecks size={22} /> Apuntarme a la lista</>) : (<><Ticket size={22} /> Comprar entrada{tardeo.precio ? ` ${tardeo.precio}€` : ""}</>)}
             <ExternalLink size={16} className="opacity-70" />
           </button>
+        ) : (
+          /* Sin enlace de venta no hay botón, y es a propósito: de 779 tardeos
+             solo 60 traen enlace. Un botón que promete "Comprar entrada" y no
+             hace nada al pulsarlo es peor que no tenerlo —era exactamente lo
+             que pasaba antes— y encima ensucia la medición con clics que no
+             llevan a ninguna venta. */
+          <div className="flex flex-1 flex-col items-center justify-center rounded-2xl bg-magenta-50 px-6 py-3 text-center">
+            <span className="text-lg font-extrabold text-magenta">
+              {tardeo.tipoEntrada === "lista" ? "Con lista" : tardeo.precio ? `Entrada ${tardeo.precio} €` : "Con entrada"}
+            </span>
+            <span className="text-xs font-bold text-tinta/55">Consulta en el local</span>
+          </div>
         )}
       </div>
     </div>

@@ -13,6 +13,7 @@ import { jsonLdDj, urlAbsoluta } from "@/lib/seo";
 import { ArrowLeft, BadgeCheck, Star, Music, Disc3, CalendarDays, Instagram, Youtube, Music2, Phone } from "lucide-react";
 import { tieneValoracion, valoracion } from "@/lib/reputacion";
 import ReclamarFicha from "@/components/ReclamarFicha";
+import RegistrarVista from "@/components/RegistrarVista";
 
 export const dynamic = "force-dynamic";
 
@@ -170,6 +171,8 @@ export default async function PaginaDj({ params }: { params: Promise<{ id: strin
         {dj.sinDueno && (
           <ReclamarFicha tipo="dj" objetivoId={dj.id} nombre={dj.nombre_artistico} />
         )}
+
+        <RegistrarVista tipo="dj" id={dj.id} />
 
         <Resenas tipo="dj" objetivoId={dj.id} nombre={dj.nombre_artistico} />
       </div>
