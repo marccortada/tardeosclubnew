@@ -127,8 +127,11 @@ export function encajeDe(t: Tardeo, adn: AdnTardicola | null): Encaje {
     // sin ":" es una familia entera ("remember"), con ":" es un estilo
     // concreto ("electronica:tech house"). Sin esta distinción, el mismo tipo
     // de acierto se explicaba de dos maneras distintas según el caso.
+    // Sin artículo: "Te gusta el Salsa" y "el Electrónica" son femeninos, y
+    // acertar el género obligaría a marcarlo etiqueta por etiqueta en toda la
+    // taxonomía. "Te gusta Salsa" vale para las dos y no chirría.
     const frase = (id: string) =>
-      id.includes(":") ? `Te gusta el ${etiquetaDe(id)}` : `Va de ${etiquetaDe(id).toLowerCase()}`;
+      id.includes(":") ? `Te gusta ${etiquetaDe(id)}` : `Va de ${etiquetaDe(id).toLowerCase()}`;
 
     const exacto = adn.musica.find((m) => estilosT.includes(m));
     if (exacto) {
