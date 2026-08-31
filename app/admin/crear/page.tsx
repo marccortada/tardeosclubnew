@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PanelHeader from "@/components/PanelHeader";
 import AddressSearch, { Direccion } from "@/components/AddressSearch";
@@ -12,9 +13,28 @@ import {
 
 type Modo = "elegir" | "local" | "promotor" | "dj";
 
+/**
+ * El Suspense es obligatorio: useSearchParams() lo exige en una página de
+ * cliente, y sin él Next falla al compilar, no en tiempo de ejecución.
+ */
+export default function AdminCrearPagina() {
+  return <Suspense fallback={null}><AdminCrear /></Suspense>;
+}
+
 // El rol ya lo comprueba app/admin/layout.tsx: aquí solo llegan admins.
-export default function AdminCrear() {
-  const [modo, setModo] = useState<Modo>("elegir");
+function AdminCrear() {
+  /**
+   * Se puede entrar directo con ?tipo=local|promotor|dj desde el panel, para
+   * no pasar por el menú cuando ya se sabe qué se va a crear.
+   *
+   * Se valida contra la lista en vez de confiar en la URL: cualquiera puede
+   * escribir ?tipo=loquesea, y un `modo` que no existe deja la pantalla en
+   * blanco, sin menú y sin formulario.
+   */
+  const tipo = useSearchParams().get("tipo");
+  const [modo, setModo] = useState<Modo>(
+    tipo === "local" || tipo === "promotor" || tipo === "dj" ? tipo : "elegir",
+  );
 
   // Local
   const [nombreLocal, setNombreLocal] = useState("");

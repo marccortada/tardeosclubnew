@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import {
   CalendarDays, Store, Disc3, Euro, BadgeCheck, X, Check, Contact,
   Megaphone, Bell, BellRing, ShieldAlert, ChevronRight, Loader2, Star,
-  Plus, CreditCard, ShieldCheck, Mail,
+  Plus, CreditCard, ShieldCheck, Mail, CalendarPlus,
 } from "lucide-react";
 
 /**
@@ -28,6 +28,20 @@ import {
  * ficha sea una venta a medio hacer: lo que se hace ahí es comprobar que es
  * quien dice ser y darle acceso, y eso se parece a moderar, no a vender.
  */
+/**
+ * Lo primero de la pantalla, porque es lo que más se hace.
+ *
+ * Estaba enterrado como una tarjeta más ("Crear / invitar") entre otras once, y
+ * encima detrás de un menú: tres toques para dar de alta un DJ. Aquí van los
+ * cuatro directos, cada uno a su formulario.
+ */
+const CREAR = [
+  { icon: CalendarPlus, label: "Tardeo", href: "/local/crear" },
+  { icon: Store, label: "Local", href: "/admin/crear?tipo=local" },
+  { icon: Megaphone, label: "Promotor", href: "/admin/crear?tipo=promotor" },
+  { icon: Disc3, label: "DJ", href: "/admin/crear?tipo=dj" },
+];
+
 const GRUPOS = [
   {
     titulo: "Comercial",
@@ -64,9 +78,8 @@ const GRUPOS = [
   },
   {
     titulo: "Fichas",
-    pie: "Locales, DJs y altas",
+    pie: "Locales y DJs dados de alta",
     items: [
-      { icon: Plus, label: "Crear / invitar", sub: "Local, tardeo o invitación", href: "/admin/crear" },
       { icon: Store, label: "Locales", sub: "Gestión de locales", href: "/admin/locales" },
       { icon: Disc3, label: "DJs", sub: "Gestión de DJs", href: "/admin/djs" },
     ],
@@ -139,6 +152,20 @@ export default function PanelAdmin() {
       </PanelHeader>
 
       <div className="mx-auto max-w-5xl px-4 pt-5 md:px-8">
+        <h2 className="mb-3 font-display text-xl font-black md:text-2xl">Crear</h2>
+        <section className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {CREAR.map(({ icon: Icon, label, href }) => (
+            <Link
+              key={label}
+              href={href}
+              className="flex flex-col items-center gap-2 rounded-2xl bg-marca p-4 text-white shadow-tarjeta transition hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98]"
+            >
+              <Icon size={26} />
+              <span className="font-display text-base font-black leading-none">{label}</span>
+            </Link>
+          ))}
+        </section>
+
         {/* Métricas reales */}
         <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {METRICAS.map(({ icon: Icon, label, valor }) => (

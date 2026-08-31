@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import PanelHeader from "@/components/PanelHeader";
 import { useAuth } from "@/lib/useAuth";
 import { getMiLocal, vincularDjsPorNombre, invalidarCacheTardeos } from "@/lib/tardeos";
@@ -17,14 +18,22 @@ import SubirFlyer from "@/components/SubirFlyer";
 import {
   Sparkles, Loader2, Check, AlertTriangle,
   Calendar, Clock, Music, MapPin, Disc3, ArrowRight, Store, Megaphone,
-  ListChecks, FileText,
+  FileText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 
 /** Los mismos tres del admin antiguo, para que nadie tenga que reaprender. */
 const PASOS = ["Básico", "Ubicación y precio", "Categorías"];
-type Estado = "inicio" | "procesando" | "revisar" | "publicado";
+/**
+ * "revisar" es la pantalla del formulario, con flyer o sin él.
+ *
+ * Había un paso previo —"inicio"— donde primero se elegía entre subir flyer o
+ * rellenar a mano. Sobraba: en el admin antiguo el recuadro del flyer está
+ * DENTRO del primer paso, y así no hay que decidir nada antes de empezar. Se
+ * escribe lo que se sepa y, si aparece un flyer, se suelta ahí mismo.
+ */
+type Estado = "procesando" | "revisar" | "publicado";
 
 const EXTRAIDO = {
   titulo: "",
@@ -91,14 +100,16 @@ function CampoLargo({
 }
 
 export default function CrearTardeo() {
+  const router = useRouter();
   const { user } = useAuth();
-  const [estado, setEstado] = useState<Estado>("inicio");
+  const [estado, setEstado] = useState<Estado>("revisar");
   const [form, setForm] = useState(EXTRAIDO);
   // Fuera de `form` porque no son texto: dos son listas y el formulario base
   // solo maneja cadenas.
   const [cuando, setCuando] = useState<Cuando>({ estado: "publicado", publicarEn: "" });
   const [periodicidad, setPeriodicidad] = useState<Periodicidad>(SIN_REPETIR);
   const [creados, setCreados] = useState(1);
+  const [rellenoIA, setRellenoIA] = useState(false);
   const [precio, setPrecio] = useState<Precio>(PRECIO_VACIO);
   const [promo, setPromo] = useState<Promo>(PROMO_VACIA);
   // Ya se eligió qué hacer con el flyer subido (IA o tal cual).
@@ -206,17 +217,22 @@ export default function CrearTardeo() {
         fecha: d.fecha || f.fecha,
         horaInicio: d.horaInicio || f.horaInicio,
         horaFin: d.horaFin || f.horaFin,
-        dj: d.dj || "",
-        estilo: d.estilo || "",
+        // `|| f.dj` y no `|| ""`: si la IA no encuentra el DJ en el flyer, se
+        // queda lo que hubiera escrito la persona. Antes lo vaciaba, así que
+        // analizar un flyer podía BORRAR lo que ya habías puesto a mano.
+        dj: d.dj || f.dj,
+        estilo: d.estilo || f.estilo,
 
         ubicacion: local?.direccion ?? f.ubicacion,
         zona: local?.zona ?? f.zona,
       }));
       setRevisar(new Set(Array.isArray(d.revisar) ? d.revisar : []));
+      setRellenoIA(true);
+      setFlyerDecidido(true);
       setEstado("revisar");
     } catch (e: any) {
       setError(e?.message || "Error al leer el flyer.");
-      setEstado("inicio");
+      setEstado("revisar");
     }
   };
 
@@ -437,59 +453,6 @@ export default function CrearTardeo() {
         )}
 
 
-          {/* Subir flyer: se arrastra o se pega, y DESPUÉS se elige qué hacer
-              con él. Antes había que decidir si lo leía la IA antes siquiera de
-              haber visto la imagen, y el explorador de archivos era el único
-              camino: un paso de más cada vez que alguien acaba de descargarse
-              un flyer y lo tiene ahí mismo. */}
-          {estado === "inicio" && (
-            <section>
-              <SubirFlyer
-                archivo={archivoSubido}
-                onArchivo={(f) => { setArchivoSubido(f); setFlyerDecidido(false); }}
-                onAnalizar={() => archivoSubido && leerFlyer(archivoSubido)}
-                onSoloSubir={() => { setFlyerDecidido(true); setEstado("revisar"); }}
-                decidido={flyerDecidido}
-              />
-
-              {/*
-                La otra puerta, que no existía.
-                El formulario de tres pasos ya estaba entero, pero al único
-                sitio desde el que se llegaba era subiendo un flyer: quien no
-                tiene imagen —o la tiene y prefiere escribir— se quedaba mirando
-                un recuadro de subida sin más salida. En el admin antiguo se
-                podía hacer de las dos maneras, y publicar sin flyer ya
-                funcionaba aquí (se guarda un marcador); lo que faltaba era
-                poder pedirlo.
-              */}
-              <div className="my-5 flex items-center gap-3">
-                <span className="h-px flex-1 bg-black/10" />
-                <span className="text-sm font-black text-tinta/40">o</span>
-                <span className="h-px flex-1 bg-black/10" />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => { setFlyerDecidido(true); setEstado("revisar"); }}
-                className="group flex w-full items-center gap-4 rounded-3xl bg-white p-5 text-left shadow-tarjeta ring-1 ring-magenta-100 transition hover:-translate-y-0.5 hover:shadow-lg"
-              >
-                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-magenta-50 text-magenta">
-                  <ListChecks size={26} />
-                </span>
-                <span className="flex-1">
-                  <span className="block font-display text-xl font-black">Créalo contestando preguntas</span>
-                  <span className="text-sm font-semibold text-tinta/60">
-                    Sin flyer. Puedes subirlo más tarde desde el tardeo.
-                  </span>
-                </span>
-                <ArrowRight className="shrink-0 text-magenta transition group-hover:translate-x-1" />
-              </button>
-
-              {error && <p className="mt-3 text-sm font-bold text-magenta">{error}</p>}
-            </section>
-          )}
-
-
         {/* Procesando */}
         {estado === "procesando" && (
           <section className="flex flex-col items-center gap-4 py-16 text-center">
@@ -531,12 +494,24 @@ export default function CrearTardeo() {
 
               {paso === 0 && (
                 <>
-                  {archivoSubido && (
+                  {/* El flyer, aquí y no en una pantalla anterior. Es opcional:
+                      se puede publicar sin él —se guarda un marcador— y se
+                      puede añadir después de haber escrito medio formulario,
+                      que es como pasa de verdad cuando el diseño llega tarde. */}
+                  <SubirFlyer
+                    archivo={archivoSubido}
+                    onArchivo={(f) => { setArchivoSubido(f); setFlyerDecidido(false); }}
+                    onAnalizar={() => archivoSubido && leerFlyer(archivoSubido)}
+                    onSoloSubir={() => setFlyerDecidido(true)}
+                    decidido={flyerDecidido}
+                  />
+
+                  {archivoSubido && flyerDecidido && (
                     <div className="flex items-center gap-2 rounded-2xl bg-oro/10 p-3 text-sm font-bold text-tinta/80">
                       <Sparkles size={18} className="shrink-0 text-oro-600" />
-                      {flyerDecidido
-                        ? "Flyer subido. Rellena los datos a mano."
-                        : "La IA rellenó los datos. Revisa lo marcado en amarillo."}
+                      {rellenoIA
+                        ? "La IA rellenó lo que pudo. Revisa lo marcado en amarillo."
+                        : "Flyer subido. Rellena los datos a mano."}
                     </div>
                   )}
 
@@ -625,7 +600,7 @@ export default function CrearTardeo() {
 
               <div className="flex gap-2">
                 <button
-                  onClick={() => (paso === 0 ? setEstado("inicio") : setPaso(paso - 1))}
+                  onClick={() => (paso === 0 ? router.push(panelHref) : setPaso(paso - 1))}
                   className="rounded-2xl bg-white px-5 py-4 text-base font-extrabold text-tinta/60 ring-1 ring-magenta-100"
                 >
                   {paso === 0 ? "Cancelar" : "Atrás"}

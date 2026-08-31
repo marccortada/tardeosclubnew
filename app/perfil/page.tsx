@@ -18,7 +18,7 @@ export default function Perfil() {
   const [hasDj, setHasDj] = useState(false);
 
   const [modo, setModo] = useState<"login" | "signup">("login");
-  const [rol, setRol] = useState<"tardicola" | "local" | "dj">("tardicola");
+  const [rol, setRol] = useState<"tardicola" | "local" | "promotor" | "dj">("tardicola");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [mayor, setMayor] = useState(false);
@@ -185,10 +185,19 @@ export default function Perfil() {
           {modo === "signup" && (
             <div className="mb-3">
               <label className="mb-1.5 block text-sm font-black text-tinta/70">¿Cómo te unes?</label>
-              <div className="grid grid-cols-3 gap-2">
+              {/* Cuatro y no tres: faltaba Promotor, que es quien organiza sin
+                  local fijo. La pantalla de /unirse lleva soportándolo desde
+                  siempre —tiene su paso, su ficha y su panel—; lo que no había
+                  era manera de elegirlo al crear la cuenta, así que un promotor
+                  tenía que darse de alta como local y pedir que se lo cambiaran.
+
+                  2x2 en móvil y 4 en fila a partir de ahí: con `grid-cols-3` y
+                  cuatro opciones, la cuarta se queda sola en una fila. */}
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {([
                   { k: "tardicola", label: "Tardícola" },
                   { k: "local", label: "Local" },
+                  { k: "promotor", label: "Promotor" },
                   { k: "dj", label: "DJ" },
                 ] as const).map((o) => (
                   <button key={o.k} type="button" onClick={() => setRol(o.k)}
