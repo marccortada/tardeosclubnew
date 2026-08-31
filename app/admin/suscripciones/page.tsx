@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { plegar, contieneTexto } from "@/lib/texto";
 import { PLANES, ETIQUETA, PRECIO, type Plan } from "@/lib/planes";
 import { CLAVE_PLANES, setAjuste } from "@/lib/ajustes";
+import { consumoDeTodos, type Consumo } from "@/lib/cuotas";
 import { Store, Disc3, Loader2, Euro, AlertTriangle, Check, Power } from "lucide-react";
 
 type Ficha = {
@@ -50,6 +51,7 @@ export default function AdminSuscripciones() {
   const [filtro, setFiltro] = useState<"todas" | "pagando" | "impago" | "sin">("todas");
   const [reglas, setReglas] = useState<boolean | null>(null);
   const [cambiandoReglas, setCambiandoReglas] = useState(false);
+  const [consumos, setConsumos] = useState<Record<string, Consumo>>({});
 
   const cargar = useCallback(async () => {
     setCargando(true); setError("");
@@ -78,11 +80,15 @@ export default function AdminSuscripciones() {
       plan_notas: x.plan_notas ?? null,
       reclamado: Boolean(x.owner_id ?? x.profile_id),
     });
-    setFichas([
-      ...(l.data ?? []).map((x) => map(x, "local")),
-      ...(d.data ?? []).map((x) => map(x, "dj")),
-    ]);
+    const locales = (l.data ?? []).map((x) => map(x, "local"));
+    setFichas([...locales, ...(d.data ?? []).map((x) => map(x, "dj"))]);
     setCargando(false);
+
+    // Los extras del mes, para poder cobrarlos. Va después de pintar: es
+    // información útil, no imprescindible, y no debe retrasar la pantalla.
+    try {
+      setConsumos(await consumoDeTodos(Object.fromEntries(locales.map((f) => [f.id, f.plan]))));
+    } catch { /* si falla, la pantalla sigue valiendo */ }
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
@@ -132,6 +138,7 @@ export default function AdminSuscripciones() {
   const pagando = fichas.filter((f) => f.plan_estado === "activa");
   const impagos = fichas.filter((f) => f.plan_estado === "impago");
   const mrr = pagando.reduce((s, f) => s + PRECIO[f.plan], 0);
+  const extras = pagando.reduce((s, f) => s + (consumos[f.id]?.euros ?? 0), 0);
 
   const lista = fichas
     .filter((f) =>
@@ -179,7 +186,9 @@ export default function AdminSuscripciones() {
           <div className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
             <Euro size={20} className="text-magenta" />
             <p className="mt-1 font-display text-2xl font-black leading-none">{mrr} €</p>
-            <p className="mt-1 text-xs font-bold text-tinta/60">al mes</p>
+            <p className="mt-1 text-xs font-bold text-tinta/60">
+              al mes{extras > 0 && <span className="text-oro-600"> +{extras} € extras</span>}
+            </p>
           </div>
           <div className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
             <Check size={20} className="text-magenta" />
@@ -226,6 +235,16 @@ export default function AdminSuscripciones() {
                       {f.reclamado ? "Perfil reclamado" : "Sin reclamar · ficha nuestra"}
                       {f.pago_referencia && ` · ${f.pago_proveedor ?? "pago"}: ${f.pago_referencia}`}
                     </p>
+                    {consumos[f.id] && (consumos[f.id].eventosMes > 0 || consumos[f.id].promosActivas > 0) && (
+                      <p className="mt-0.5 text-xs font-bold text-tinta/60">
+                        {consumos[f.id].eventosMes} eventos · {consumos[f.id].promosActivas} promos
+                        {consumos[f.id].euros > 0 && (
+                          <span className="ml-1 rounded-full bg-oro/20 px-2 py-0.5 font-black text-oro-700">
+                            +{consumos[f.id].euros} € a cobrar
+                          </span>
+                        )}
+                      </p>
+                    )}
                   </div>
                   {guardando === f.id && <Loader2 size={16} className="animate-spin text-magenta" />}
                 </div>

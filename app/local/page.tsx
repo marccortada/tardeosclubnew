@@ -14,6 +14,8 @@ import { formatFecha, flyerSrc } from "@/lib/mockData";
 import { Tardeo } from "@/lib/types";
 import { Plus, Users, Eye, TrendingUp, CreditCard, Pencil, BadgeCheck, ChevronRight, Sparkles, Store, Loader2, Megaphone } from "lucide-react";
 import EstadisticasLocal from "@/components/EstadisticasLocal";
+import ConsumoDelMes from "@/components/ConsumoDelMes";
+import { planesActivos } from "@/lib/ajustes";
 
 export default function PanelLocal() {
   const { user, loading } = useAuth();
@@ -22,6 +24,7 @@ export default function PanelLocal() {
   const [metricas, setMetricas] = useState<{ visitas: number; inscritos: number }>({ visitas: 0, inscritos: 0 });
   const [inscritos, setInscritos] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [reglas, setReglas] = useState(false);
 
   useEffect(() => {
     if (!user) { setCargando(false); return; }
@@ -32,6 +35,7 @@ export default function PanelLocal() {
         setMisTardeos(await getTardeosDeLocal(l.id));
         setMetricas(await getMetricasLocal(l.id));
         setInscritos(await getInscritosLocal(l.id));
+        setReglas(await planesActivos());
       }
       setCargando(false);
     })();
@@ -118,6 +122,8 @@ export default function PanelLocal() {
             </div>
           ))}
         </section>
+
+        <ConsumoDelMes localId={local.id} plan={local.plan} reglasActivas={reglas} />
 
         <EstadisticasLocal localId={local.id} />
 
