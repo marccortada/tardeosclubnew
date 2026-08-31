@@ -22,6 +22,9 @@ export interface Local {
    * propia y el sitio lo pone cada tardeo.
    */
   tipo: "local" | "promotor";
+  /** Su plan de suscripción. Decide si sale su logo y su sello, pero solo
+   *  cuando las reglas están encendidas (lib/ajustes.ts). */
+  plan?: string;
 }
 
 export interface Tardeo {

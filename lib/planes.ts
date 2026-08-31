@@ -79,6 +79,22 @@ export function planNecesario(capacidad: Capacidad): Plan {
 }
 
 /**
+ * Lo mismo, pero respetando el interruptor general.
+ *
+ * Es la que hay que usar en la app. Mientras las reglas están apagadas devuelve
+ * `true` para todo: la web se comporta exactamente como antes de que existieran
+ * los planes. Así las reglas se pueden escribir, revisar y probar mucho antes
+ * de que le quiten nada a nadie.
+ */
+export function puedeSiActivo(
+  plan: string | null | undefined,
+  capacidad: Capacidad,
+  reglasActivas: boolean
+): boolean {
+  return !reglasActivas || puede(plan, capacidad);
+}
+
+/**
  * ¿Está al corriente de pago?
  *
  * Se mira aparte del plan a propósito: un impago no baja de nivel, deja la

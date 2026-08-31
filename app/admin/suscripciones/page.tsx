@@ -6,7 +6,8 @@ import PanelHeader from "@/components/PanelHeader";
 import { supabase } from "@/lib/supabase";
 import { plegar, contieneTexto } from "@/lib/texto";
 import { PLANES, ETIQUETA, PRECIO, type Plan } from "@/lib/planes";
-import { Store, Disc3, Loader2, Euro, AlertTriangle, Check } from "lucide-react";
+import { CLAVE_PLANES, setAjuste } from "@/lib/ajustes";
+import { Store, Disc3, Loader2, Euro, AlertTriangle, Check, Power } from "lucide-react";
 
 type Ficha = {
   id: string;
@@ -47,6 +48,8 @@ export default function AdminSuscripciones() {
   const [error, setError] = useState("");
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<"todas" | "pagando" | "impago" | "sin">("todas");
+  const [reglas, setReglas] = useState<boolean | null>(null);
+  const [cambiandoReglas, setCambiandoReglas] = useState(false);
 
   const cargar = useCallback(async () => {
     setCargando(true); setError("");
@@ -84,6 +87,32 @@ export default function AdminSuscripciones() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
+  useEffect(() => {
+    supabase.from("ajustes").select("valor").eq("clave", CLAVE_PLANES).maybeSingle()
+      .then(({ data }) => setReglas(data?.valor === "true"));
+  }, []);
+
+  const alternarReglas = async () => {
+    const nuevo = !reglas;
+    if (nuevo && !confirm(
+      "Vas a ACTIVAR las reglas de los planes.\n\n" +
+      "A partir de ese momento, los locales en Basic dejan de enseñar su logo en " +
+      "el mapa y su sello de verificado: llevarán la chincheta de TardeosClub.\n\n" +
+      "Se puede volver a apagar cuando quieras. ¿Seguimos?"
+    )) return;
+    setCambiandoReglas(true); setError("");
+    const { error: e } = await setAjuste(CLAVE_PLANES, nuevo ? "true" : "false");
+    setCambiandoReglas(false);
+    if (e) { setError("No se pudo cambiar: " + e.message); return; }
+    setReglas(nuevo);
+    // La web cachea los ajustes 30 s; se le avisa para que se entere ya.
+    const { data: { session } } = await supabase.auth.getSession();
+    fetch("/api/revalidar", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken: session?.access_token }),
+    }).catch(() => {});
+  };
+
   const guardar = async (f: Ficha, campos: Record<string, unknown>) => {
     setGuardando(f.id); setError("");
     const tabla = f.rol === "local" ? "locales" : "djs";
@@ -116,6 +145,35 @@ export default function AdminSuscripciones() {
     <main className="pb-10">
       <PanelHeader titulo="Suscripciones" volverHref="/admin" />
       <div className="mx-auto max-w-3xl px-4 pt-5 md:px-8">
+
+        {/* El interruptor general.
+            Las reglas nacen APAGADAS: con 68 locales, 64 sin dueño y ninguno
+            pagando, encenderlas hoy solo le quitaría el logo a fichas nuestras
+            sin que nadie gane nada. Están escritas y probadas, esperando. */}
+        {reglas !== null && (
+          <section className={`mb-4 rounded-2xl p-4 ring-1 ${reglas ? "bg-oro/15 ring-oro/40" : "bg-white ring-black/5"}`}>
+            <div className="flex items-center gap-3">
+              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${reglas ? "bg-oro text-tinta" : "bg-magenta-50 text-magenta"}`}>
+                <Power size={20} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-black leading-tight">
+                  Reglas de los planes: {reglas ? "activadas" : "apagadas"}
+                </p>
+                <p className="text-xs font-semibold text-tinta/60">
+                  {reglas
+                    ? "Los Basic no enseñan su logo ni el sello. Los Pro y superiores, sí."
+                    : "Todos los locales enseñan logo y sello, paguen o no. Enciéndelo cuando tengas clientes."}
+                </p>
+              </div>
+              <button onClick={alternarReglas} disabled={cambiandoReglas}
+                className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-extrabold disabled:opacity-50 ${
+                  reglas ? "bg-white text-tinta/70 ring-1 ring-black/10" : "bg-magenta text-white"}`}>
+                {cambiandoReglas ? <Loader2 size={16} className="animate-spin" /> : reglas ? "Apagar" : "Activar"}
+              </button>
+            </div>
+          </section>
+        )}
 
         <section className="mb-4 grid grid-cols-3 gap-3">
           <div className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">

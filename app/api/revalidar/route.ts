@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { invalidarCacheTardeos, invalidarCacheListas } from "@/lib/tardeos";
+import { invalidarAjustes } from "@/lib/ajustes";
 import { autorizarAdmin } from "@/lib/apiAuth";
 
 export const runtime = "nodejs";
@@ -46,6 +47,9 @@ async function handler(req: Request) {
   // leyendo lo de hace un rato y el aviso no serviría de nada.
   invalidarCacheTardeos();
   invalidarCacheListas();
+  // También los ajustes: al encender o apagar las reglas de los planes hay que
+  // verlo YA, no dentro de medio minuto.
+  invalidarAjustes();
   RUTAS.forEach((r) => revalidatePath(r));
 
   return NextResponse.json({ ok: true, rehechas: RUTAS });

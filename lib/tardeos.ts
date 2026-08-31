@@ -2,11 +2,13 @@ import { supabase } from "./supabase";
 import { Tardeo } from "./types";
 import { memo } from "@/lib/memo";
 import { plegar } from "@/lib/texto";
+import { puedeSiActivo } from "@/lib/planes";
+import { planesActivos } from "@/lib/ajustes";
 
 // Acotado a lo que usa mapRow. Con `locales(*)` venían descripción, redes,
 // fotos, horarios y el email de cada local: 42 KB por consulta en vez de 30.
 const SELECT =
-  "*, locales(id,nombre,zona,direccion,verificado,logo_url,tipo)," +
+  "*, locales(id,nombre,zona,direccion,verificado,logo_url,tipo,plan)," +
   "tardeo_djs(djs(id,nombre_artistico,estilos,verificado,reputacion_score,avatar_url))";
 
 /**
@@ -39,6 +41,32 @@ export function invalidarCacheTardeos() {
   memoTardeos.invalidar();
 }
 
+/**
+ * Aplica las reglas del plan a lo que se enseña de un local.
+ *
+ * Vive AQUÍ y no en cada pantalla a propósito. El logo y el sello se pintan en
+ * el mapa, en las tarjetas, en la hoja del mapa, en la ficha del tardeo y en el
+ * directorio: seis sitios. Si la regla estuviera repartida, el día que cambie
+ * se quedaría alguno sin actualizar y un local vería su logo en un sitio y no
+ * en otro sin entender por qué.
+ *
+ * Quitar el logo no deja hueco: el mapa ya cae a la chincheta de TardeosClub,
+ * que es justo lo que llevan las fichas sin dueño.
+ */
+function segunPlan<T extends { plan?: string; logo?: string; logo_url?: string | null; verificado?: boolean }>(
+  x: T,
+  reglasActivas: boolean
+): T {
+  if (!reglasActivas) return x;
+  const conLogo = puedeSiActivo(x.plan, "logoEnElMapa", true);
+  const conSello = puedeSiActivo(x.plan, "selloVerificado", true);
+  return {
+    ...x,
+    ...(conLogo ? {} : { logo: undefined, logo_url: null }),
+    ...(conSello ? {} : { verificado: false }),
+  };
+}
+
 function mapRow(r: any): Tardeo {
   const loc = r.locales ?? {};
   return {
@@ -52,6 +80,7 @@ function mapRow(r: any): Tardeo {
       verificado: loc.verificado ?? false,
       logo: loc.logo_url ?? undefined,
       tipo: loc.tipo === "promotor" ? "promotor" : "local",
+      plan: loc.plan ?? "basic",
     },
     djs: (r.tardeo_djs ?? []).map((td: any) => ({
       id: td.djs?.id,
@@ -131,7 +160,8 @@ async function leerTardeosPublicados(): Promise<Tardeo[]> {
       .lte("fecha", horizonteISO())
       .order("fecha", { ascending: true });
     if (error) throw error;
-    return (data ?? []).map(mapRow);
+    const reglas = await planesActivos();
+    return (data ?? []).map(mapRow).map((t) => ({ ...t, local: segunPlan(t.local, reglas) }));
   } catch (e) {
     console.error("[tardeos] Error cargando tardeos:", e);
     // En build hay que reventar. Devolver [] aquí hornea la portada, /tardeos
@@ -158,13 +188,14 @@ export function getTardeosPublicados(): Promise<Tardeo[]> {
 async function leerLocalesPublicos(): Promise<any[]> {
   const { data, error } = await supabase
     .from("locales")
-    .select("id,nombre,zona,direccion,logo_url,tipo,verificado,destacado_orden")
+    .select("id,nombre,zona,direccion,logo_url,tipo,verificado,destacado_orden,plan")
     .eq("estado", "activo")
     .order("destacado_orden", { ascending: true, nullsFirst: false })
     .order("verificado", { ascending: false })
     .order("nombre", { ascending: true });
   if (error) console.error("[locales] directorio:", error.message);
-  return data ?? [];
+  const reglas = await planesActivos();
+  return (data ?? []).map((l) => segunPlan(l as any, reglas));
 }
 
 /**
@@ -176,13 +207,14 @@ async function leerLocalesPublicos(): Promise<any[]> {
 async function leerLocalesDestacados(limite = 10): Promise<{ locales: any[]; sonDePago: boolean }> {
   const { data, error } = await supabase
     .from("locales")
-    .select("id,nombre,zona,logo_url,tipo,verificado,destacado_orden")
+    .select("id,nombre,zona,logo_url,tipo,verificado,destacado_orden,plan")
     .eq("estado", "activo")
     .not("destacado_orden", "is", null)
     .order("destacado_orden", { ascending: true })
     .limit(limite);
   if (error) console.error("[locales] destacados:", error.message);
-  if (data?.length) return { locales: data, sonDePago: true };
+  const reglas = await planesActivos();
+  if (data?.length) return { locales: data.map((l) => segunPlan(l as any, reglas)), sonDePago: true };
 
   // Nadie destacado todavía: en vez de dejar el hueco, se enseñan los locales
   // que tienen tardeos publicados. Son los que están vivos, que es lo que le
@@ -191,7 +223,7 @@ async function leerLocalesDestacados(limite = 10): Promise<{ locales: any[]; son
   const hoy = hoyISO();
   const { data: conTardeos } = await supabase
     .from("tardeos")
-    .select("locales(id,nombre,zona,logo_url,tipo,verificado)")
+    .select("locales(id,nombre,zona,logo_url,tipo,verificado,plan)")
     .or(A_LA_VISTA())
     .gte("fecha", hoy)
     .lte("fecha", horizonteISO())
@@ -207,7 +239,7 @@ async function leerLocalesDestacados(limite = 10): Promise<{ locales: any[]; son
     locales.push(l);
     if (locales.length >= limite) break;
   }
-  return { locales, sonDePago: false };
+  return { locales: locales.map((l) => segunPlan(l as any, reglas)), sonDePago: false };
 }
 
 /**
@@ -223,12 +255,13 @@ export async function getLocalById(id: string): Promise<any | null> {
     // `owner_id` solo para saber si la ficha tiene dueño, y no baja al
     // navegador: lo que sale de aquí es un booleano, no el identificador de
     // una persona.
-    .select("id,nombre,descripcion,direccion,lat,lng,zona,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,playlist_url,owner_id,tipo_local,aforo,espacios,ambiente,publico,dress_code,musica,horario_habitual")
+    .select("id,nombre,descripcion,direccion,lat,lng,zona,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,playlist_url,owner_id,plan,tipo_local,aforo,espacios,ambiente,publico,dress_code,musica,horario_habitual")
     .eq("id", id)
     .maybeSingle();
   if (!data) return null;
   const { owner_id, ...resto } = data as Record<string, unknown>;
-  return { ...resto, sinDueno: owner_id == null };
+  const reglas = await planesActivos();
+  return { ...segunPlan(resto as any, reglas), sinDueno: owner_id == null };
 }
 
 /** Tardeos publicados y no expirados de un local (para su página pública). */
@@ -269,7 +302,7 @@ export async function getMiLocal(ownerId: string): Promise<any | null> {
   // local. Pasó con `email` al restringirla en el lote 14.
   const { data, error } = await supabase
     .from("locales")
-    .select("id,nombre,descripcion,direccion,lat,lng,zona,codigo_postal,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,owner_id,playlist_url,tipo_local,aforo,espacios,ambiente,publico,dress_code,musica,horario_habitual")
+    .select("id,nombre,descripcion,direccion,lat,lng,zona,codigo_postal,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,owner_id,plan,playlist_url,tipo_local,aforo,espacios,ambiente,publico,dress_code,musica,horario_habitual")
     .eq("owner_id", ownerId)
     .order("created_at", { ascending: true }).limit(1).maybeSingle();
   // Antes el error se tragaba en silencio y devolvía null, que la app
