@@ -1,9 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Tardeo, formatFecha, flyerSrc } from "@/lib/mockData";
-import { MapPin, Clock, Ticket, ListChecks, Gift, ChevronRight, Navigation } from "lucide-react";
+import { MapPin, Clock, Ticket, ListChecks, Gift, ChevronRight, Navigation, Sparkles } from "lucide-react";
 import { formatDistancia } from "@/lib/geo";
 import CompartirBtn from "@/components/CompartirBtn";
+import type { Encaje } from "@/lib/recomendar";
 
 const entrada = {
   gratis: { label: "Gratis", icon: Gift },
@@ -14,10 +15,17 @@ const entrada = {
 export default function TardeoCard({
   tardeo,
   distanciaKm,
+  encaje,
 }: {
   tardeo: Tardeo;
   /** Km hasta el visitante. Solo llega cuando ha dado su ubicación. */
   distanciaKm?: number | null;
+  /**
+   * Por qué este tardeo le encaja a quien lo está mirando. Solo llega desde
+   * "Para ti": en un listado normal no viene a cuento, porque ahí no se ha
+   * elegido nada por gustos y una insignia de compatibilidad sería mentira.
+   */
+  encaje?: Encaje | null;
 }) {
   const e = entrada[tardeo.tipoEntrada];
   const Icon = e.icon;
@@ -54,6 +62,29 @@ export default function TardeoCard({
           <Icon size={15} className="text-magenta" /> {e.label}
           {tardeo.precio ? ` ${tardeo.precio}€` : ""}
         </span>
+        {/*
+          Por qué te lo proponemos. Abajo y no arriba: arriba ya están el precio
+          y el compartir, y una tercera pastilla ahí tapaba media cara del flyer.
+
+          El porcentaje solo si el motor lo da (hacen falta tres criterios
+          comparados). Cuando no lo da pero sí hay motivos, se enseña el motivo
+          a secas: "Te gusta el Deep House" es igual de útil y no se inventa una
+          precisión que no existe.
+        */}
+        {encaje && (encaje.compatibilidad !== null || encaje.motivos.length > 0) && (
+          <span
+            title={encaje.motivos.join(" · ")}
+            className="absolute bottom-3 left-3 z-20 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 rounded-full bg-marca px-3 py-1.5 text-sm font-black text-white shadow-md"
+          >
+            <Sparkles size={14} className="shrink-0" />
+            <span className="truncate">
+              {encaje.compatibilidad !== null
+                ? `${encaje.compatibilidad}% para ti`
+                : encaje.motivos[0]}
+            </span>
+          </span>
+        )}
+
         {/* Compartir */}
         <CompartirBtn
           titulo={tardeo.titulo}

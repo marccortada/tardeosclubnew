@@ -8,7 +8,10 @@ import { planesActivos } from "@/lib/ajustes";
 // Acotado a lo que usa mapRow. Con `locales(*)` venían descripción, redes,
 // fotos, horarios y el email de cada local: 42 KB por consulta en vez de 30.
 const SELECT =
-  "*, locales(id,nombre,zona,direccion,verificado,logo_url,tipo,plan)," +
+  "*, locales(id,nombre,zona,direccion,verificado,logo_url,tipo,plan,"
+  // El ADN del local viaja con el tardeo para poder recomendar cuando el
+  // tardeo no dice nada de sí mismo, que son casi todos.
+  + "ambiente,musica,publico,dress_code,tipo_local)," +
   "tardeo_djs(djs(id,nombre_artistico,estilos,verificado,reputacion_score,avatar_url))";
 
 /**
@@ -81,6 +84,13 @@ function mapRow(r: any): Tardeo {
       logo: loc.logo_url ?? undefined,
       tipo: loc.tipo === "promotor" ? "promotor" : "local",
       plan: loc.plan ?? "basic",
+      adn: {
+        ambiente: Array.isArray(loc.ambiente) ? loc.ambiente : [],
+        musica: Array.isArray(loc.musica) ? loc.musica : [],
+        publico: Array.isArray(loc.publico) ? loc.publico : [],
+        dressCode: loc.dress_code ?? undefined,
+        tipoLocal: loc.tipo_local ?? undefined,
+      },
     },
     djs: (r.tardeo_djs ?? []).map((td: any) => ({
       id: td.djs?.id,

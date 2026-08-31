@@ -70,7 +70,8 @@ export default function ParaTi({ tardeos }: { tardeos: Tardeo[] }) {
   return (
     <CarruselTardeos
       titulo={<>Para ti <Sparkles size={22} className="text-oro" /></>}
-      tardeos={suyos}
+      tardeos={suyos.map((s) => s.tardeo)}
+      encajes={new Map(suyos.map((s) => [s.tardeo.id, s.encaje]))}
     />
   );
 }

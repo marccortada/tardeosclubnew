@@ -286,6 +286,32 @@ export function normalizarEstilo(texto?: string | null): string[] {
   return [...salida].filter((id) => id.includes(":") || !familiasConHoja.has(id));
 }
 
+/**
+ * El "vecindario" de un estilo: hasta dónde llega el parecido.
+ *
+ * Sirve para el "esto se parece a lo tuyo" de las recomendaciones, y la
+ * granularidad no es un capricho. La familia entera es demasiado ancha: en
+ * ELECTRÓNICA conviven el Chill Out y el Hardcore, y a quien pide sunset no se
+ * le puede colar un hardcore diciendo que es lo mismo. El grupo sí vale: Deep
+ * House y Afro House son ambos House, y ahí el parecido es real.
+ *
+ * Las familias sin grupos con nombre (latina, urban, variada...) son ya lo
+ * bastante estrechas, y el vecindario es la familia entera.
+ *
+ * A una familia suelta ("electronica", sin estilo) se le devuelven TODOS sus
+ * vecindarios: quien dijo que le gusta la electrónica sin más aceptó el lote.
+ */
+export function vecindariosDe(id: string): string[] {
+  if (id.includes(":")) {
+    const e = ESTILOS_TODOS.find((x) => x.id === id);
+    if (!e) return [id.split(":")[0]];
+    return [e.grupo ? `${e.familia}/${e.grupo}` : e.familia];
+  }
+  const f = FAMILIAS.find((x) => x.id === id);
+  if (!f) return [id];
+  return [id, ...f.grupos.map((g) => (g.nombre ? `${id}/${g.nombre}` : id))];
+}
+
 /** Las familias a las que pertenece un texto libre. Para el filtro de primer nivel. */
 export function familiasDe(texto?: string | null): string[] {
   return [...new Set(normalizarEstilo(texto).map((id) => id.split(":")[0]))];

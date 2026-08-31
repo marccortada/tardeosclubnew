@@ -2,15 +2,19 @@ import Link from "next/link";
 import { ReactNode } from "react";
 import { Tardeo } from "@/lib/types";
 import TardeoCard from "./TardeoCard";
+import type { Encaje } from "@/lib/recomendar";
 
 export default function CarruselTardeos({
   titulo,
   tardeos,
   href = "/tardeos",
+  encajes,
 }: {
   titulo: ReactNode;
   tardeos: Tardeo[];
   href?: string;
+  /** Por qué encaja cada uno, por id. Solo lo manda "Para ti". */
+  encajes?: Map<string, Encaje>;
 }) {
   if (!tardeos || tardeos.length === 0) return null;
   return (
@@ -27,7 +31,7 @@ export default function CarruselTardeos({
       <div className="no-scrollbar carousel-bleed flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
         {tardeos.map((t) => (
           <div key={t.id} className="w-[62%] shrink-0 snap-start sm:w-64 md:w-72">
-            <TardeoCard tardeo={t} />
+            <TardeoCard tardeo={t} encaje={encajes?.get(t.id)} />
           </div>
         ))}
       </div>

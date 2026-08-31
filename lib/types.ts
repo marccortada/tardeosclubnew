@@ -25,6 +25,18 @@ export interface Local {
   /** Su plan de suscripción. Decide si sale su logo y su sello, pero solo
    *  cuando las reglas están encendidas (lib/ajustes.ts). */
   plan?: string;
+  /**
+   * Cómo es el sitio (lote 31). Sirve para recomendar cuando el tardeo no dice
+   * nada de sí mismo: de los 780 de la cartelera, casi ninguno trae ambiente ni
+   * público, pero su local sí puede haberlo contado una vez.
+   */
+  adn?: {
+    ambiente: string[];
+    musica: string[];
+    publico: string[];
+    dressCode?: string;
+    tipoLocal?: string;
+  };
 }
 
 export interface Tardeo {
