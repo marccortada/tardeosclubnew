@@ -11,9 +11,17 @@ type Ficha = {
   id: string;
   nombre: string;
   tipo?: string;          // solo locales: local | promotor
+  zona?: string | null;
   destacado_orden: number | null;
 };
-type Cual = "locales" | "djs" | "tardeos";
+type Cual = "tardeos" | "locales" | "promotores" | "djs";
+
+/**
+ * Promotores y locales comparten tabla —son la misma ficha con `tipo`
+ * distinto—, pero no comparten pestaña: cuando quieres destacar promotores no
+ * quieres ir buscándolos entre 58 locales.
+ */
+const TABLA = (c: Cual) => (c === "promotores" ? "locales" : c);
 
 /**
  * Quién sale primero, segundo y tercero en la home.
@@ -32,6 +40,7 @@ export default function AdminDestacados() {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [busca, setBusca] = useState("");
+  const [zona, setZona] = useState<string | null>(null);
 
   useEffect(() => {
     let cancel = false;
@@ -42,15 +51,20 @@ export default function AdminDestacados() {
     (async () => {
       // Dos ramas explícitas: las tablas no comparten el nombre de la columna
       // del nombre, y un `select` con una variable rompe los tipos del cliente.
-      const r = cual === "locales"
-        ? await supabase.from("locales").select("id,nombre,tipo,destacado_orden").order("nombre")
-        : await supabase.from("djs").select("id,nombre_artistico,destacado_orden").order("nombre_artistico");
+      const r = cual === "djs"
+        ? await supabase.from("djs").select("id,nombre_artistico,destacado_orden").order("nombre_artistico")
+        : await supabase.from("locales")
+            .select("id,nombre,tipo,zona,destacado_orden")
+            // Promotor o local: la misma tabla, dos pestañas.
+            .eq("tipo", cual === "promotores" ? "promotor" : "local")
+            .order("nombre");
       if (cancel) return;
       if (r.error) { setError(r.error.message); setCargando(false); return; }
       setFichas((r.data ?? []).map((x: Record<string, unknown>) => ({
         id: String(x.id),
         nombre: String(x.nombre ?? x.nombre_artistico ?? ""),
         tipo: x.tipo as string | undefined,
+        zona: (x.zona ?? null) as string | null,
         destacado_orden: (x.destacado_orden ?? null) as number | null,
       })));
       setCargando(false);
@@ -76,7 +90,7 @@ export default function AdminDestacados() {
       return c ? { ...f, destacado_orden: c.destacado_orden } : f;
     }));
     for (const c of cambios) {
-      const { error: e } = await supabase.from(cual).update({ destacado_orden: c.destacado_orden }).eq("id", c.id);
+      const { error: e } = await supabase.from(TABLA(cual)).update({ destacado_orden: c.destacado_orden }).eq("id", c.id);
       if (e) { setError(`No se pudo guardar: ${e.message}`); break; }
     }
     setGuardando(false);
@@ -100,17 +114,24 @@ export default function AdminDestacados() {
 
   // Sin tildes, igual que el buscador público: aquí se busca "Barbera" y el
   // local está fichado como "Barberà".
-  const filtrado = resto.filter((f) => contieneTexto(f.nombre, plegar(busca.trim())));
+  const filtrado = resto
+    .filter((f) => contieneTexto(f.nombre, plegar(busca.trim())))
+    .filter((f) => !zona || f.zona === zona);
+
+  // Solo las zonas que existen de verdad en lo que hay cargado: ofrecer las
+  // seis del catálogo cuando cuatro no tienen ni un local es hacer perder el
+  // tiempo a quien busca.
+  const zonasDisponibles = [...new Set(fichas.map((f) => f.zona).filter(Boolean))].sort() as string[];
 
   return (
     <main className="pb-10">
       <PanelHeader titulo="Destacados" volverHref="/admin" />
       <div className="mx-auto max-w-2xl px-4 pt-5 md:px-8">
         <div className="mb-4 flex gap-2">
-          {(["tardeos", "locales", "djs"] as Cual[]).map((c) => (
-            <button key={c} onClick={() => { setCual(c); setBusca(""); }}
+          {(["tardeos", "locales", "promotores", "djs"] as Cual[]).map((c) => (
+            <button key={c} onClick={() => { setCual(c); setBusca(""); setZona(null); }}
               className={`min-h-[44px] flex-1 rounded-xl px-2 text-sm font-extrabold transition ${cual === c ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100"}`}>
-              {c === "tardeos" ? "Tardeos" : c === "locales" ? "Locales" : "DJs"}
+              {c === "tardeos" ? "Tardeos" : c === "locales" ? "Locales" : c === "promotores" ? "Promotores" : "DJs"}
             </button>
           ))}
         </div>
@@ -168,6 +189,26 @@ export default function AdminDestacados() {
               placeholder={`Buscar entre ${resto.length}…`}
               className="mb-2 w-full rounded-xl border-2 border-magenta-100 px-4 py-3 font-semibold outline-none focus:border-magenta"
             />
+
+            {/* Filtrar por zona antes de elegir. Con 58 locales, buscar por
+                nombre solo sirve si ya sabes a quién quieres; esto sirve
+                cuando lo que quieres es "alguien del Maresme". */}
+            {zonasDisponibles.length > 1 && (
+              <div className="no-scrollbar mb-3 flex gap-1.5 overflow-x-auto">
+                <button
+                  onClick={() => setZona(null)}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-black transition ${
+                    zona === null ? "bg-marca text-white" : "bg-black/5 text-tinta/50"}`}
+                >Todas</button>
+                {zonasDisponibles.map((z) => (
+                  <button
+                    key={z} onClick={() => setZona(zona === z ? null : z)}
+                    className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-black transition ${
+                      zona === z ? "bg-marca text-white" : "bg-black/5 text-tinta/50"}`}
+                  >{z}</button>
+                ))}
+              </div>
+            )}
             <div className="flex max-h-96 flex-col gap-2 overflow-y-auto">
               {filtrado.slice(0, 40).map((f) => (
                 <div key={f.id} className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-tarjeta ring-1 ring-black/5">

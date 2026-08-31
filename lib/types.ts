@@ -70,6 +70,8 @@ export interface Tardeo {
   /** Cómo se va vestido. Texto libre: la lista de lib/adn es una sugerencia. */
   dressCode?: string;
   destacado: boolean;
+  /** En qué orden sale entre los destacados. Lo pone el admin. */
+  destacadoOrden?: number | null;
   estado?: string; // borrador | programado | publicado | finalizado | cancelado
   /** Cuándo sale solo, si está programado (ISO). */
   publicarEn?: string;

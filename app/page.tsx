@@ -55,7 +55,19 @@ export default async function Inicio() {
    * los que salen por ser los siguientes es vender algo que nadie ha elegido.
    * La portada no se queda vacía porque debajo va "Próximos tardeos".
    */
-  const destacados = tardeos.filter((t) => t.destacado);
+  /**
+   * Por el orden que puso el admin, y a igualdad por fecha.
+   *
+   * Antes salían en el orden en que venían de la consulta —por fecha—, así que
+   * el admin podía elegir CUÁLES se destacan pero no cuál va primero, que es
+   * justo lo que se vende cuando esto se cobre. Los que no llevan número van
+   * detrás de los que sí: quien no ha elegido posición no adelanta a quien sí.
+   */
+  const destacados = tardeos
+    .filter((t) => t.destacado)
+    .sort((a, b) =>
+      (a.destacadoOrden ?? Infinity) - (b.destacadoOrden ?? Infinity)
+      || a.fecha.localeCompare(b.fecha));
 
   /**
    * Cada tardeo sale UNA vez en la portada, en la sección de más arriba a la

@@ -118,6 +118,7 @@ function mapRow(r: any): Tardeo {
     publico: Array.isArray(r.publico) ? r.publico : [],
     dressCode: r.dress_code ?? undefined,
     destacado: r.destacado_hasta ? new Date(r.destacado_hasta) > new Date() : false,
+    destacadoOrden: r.destacado_orden ?? null,
     estado: r.estado,
     publicarEn: r.publicar_en ?? undefined,
     lat: r.lat ?? 0,
