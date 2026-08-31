@@ -174,17 +174,31 @@ export async function cargarCrm(): Promise<{ fichas: FichaCrm[]; error: string |
 /**
  * Guarda un cambio del seguimiento.
  *
- * Se comprueba que vuelva la fila y no solo que no haya error: con RLS, un
- * upsert que no alcanza nada devuelve 204 sin haber escrito, y darlo por bueno
- * es cómo se acaba creyendo que quedó apuntado algo que no está.
+ * NUNCA se manda `ultimo_contacto`, y eso no es limpieza: es un fallo que ya
+ * pasó. Mandándolo, cada vez que se tocaban las notas o la fecha de volver, la
+ * de último contacto se movía también, y "último contacto" pasaba a significar
+ * "última vez que toqué esta ficha", que no sirve para nada.
+ *
+ * El motivo es sutil y no se ve leyendo el código. Un upsert de PostgREST es
+ * `insert ... on conflict do update set <las columnas que mandaste>`. El
+ * disparador `before insert` corre ANTES de saber que hay conflicto, sella
+ * `ultimo_contacto` con la hora de ahora, y esa fila sellada es la que el
+ * `do update` copia encima de la buena. La columna la calcula la base a partir
+ * del cambio de estado; el navegador no tiene nada que decir sobre ella.
+ *
+ * Se comprueba además que vuelva la fila y no solo que no haya error: con RLS,
+ * un upsert que no alcanza nada devuelve 204 sin haber escrito, y darlo por
+ * bueno es cómo se acaba creyendo que quedó apuntado algo que no está.
  */
 export async function guardarSeguimiento(
   localId: string,
   cambios: Partial<Seguimiento>,
 ): Promise<string | null> {
+  const guardables = { ...cambios };
+  delete guardables.ultimo_contacto;
   const { data, error } = await supabase
     .from("seguimiento_comercial")
-    .upsert({ local_id: localId, ...cambios }, { onConflict: "local_id" })
+    .upsert({ local_id: localId, ...guardables }, { onConflict: "local_id" })
     .select("local_id");
   if (error) {
     return error.code === "42P01" || error.code === "PGRST205"

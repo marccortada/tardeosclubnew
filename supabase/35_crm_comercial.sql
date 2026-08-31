@@ -82,18 +82,39 @@ drop policy if exists "seg_delete" on public.seguimiento_comercial;
 create policy "seg_delete" on public.seguimiento_comercial
   for delete using (public.is_admin());
 
--- La fecha del último contacto se pone sola al mover el estado.
+-- La fecha del último contacto la pone la base, y SOLO la base.
 --
 -- A mano se olvida, y un "último contacto" que a veces está y a veces no es
 -- peor que no tenerlo: no se puede ordenar por él ni confiar en lo que dice.
+--
+-- La rama de UPDATE ignora a propósito lo que venga en la petición y decide
+-- entre `now()` y el valor que ya había. Sin eso, un upsert lo movía en cada
+-- guardado aunque el estado no cambiara, y esto es difícil de ver leyendo el
+-- código: un upsert es `insert ... on conflict do update`, el disparador de
+-- `before insert` corre ANTES de saber que hay conflicto, sella la hora de
+-- ahora, y esa fila sellada es la que el `do update` copia encima de la buena.
+-- Se arregló también en el cliente (lib/crm.ts no manda la columna), pero la
+-- regla tiene que vivir aquí: si depende de que cada consulta que se escriba
+-- de aquí en adelante se acuerde de omitir un campo, tarde o temprano una no
+-- se acuerda.
 create or replace function public.tocar_seguimiento()
 returns trigger language plpgsql as $$
 begin
   new.actualizado_en := now();
-  if new.estado is distinct from coalesce(old.estado, 'no_contactado')
-     and new.estado <> 'no_contactado' then
-    new.ultimo_contacto := now();
+
+  if tg_op = 'INSERT' then
+    new.ultimo_contacto := case
+      when new.estado <> 'no_contactado' then now()
+      else null
+    end;
+  else
+    new.ultimo_contacto := case
+      when new.estado is distinct from old.estado and new.estado <> 'no_contactado'
+        then now()
+      else old.ultimo_contacto
+    end;
   end if;
+
   return new;
 end;
 $$;
