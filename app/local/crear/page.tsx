@@ -15,6 +15,7 @@ import SubirFlyer from "@/components/SubirFlyer";
 import {
   Sparkles, Loader2, Check, AlertTriangle,
   Calendar, Clock, Music, MapPin, Disc3, ArrowRight, Store, Megaphone,
+  ListChecks, FileText,
 } from "lucide-react";
 
 
@@ -24,6 +25,7 @@ type Estado = "inicio" | "procesando" | "revisar" | "publicado";
 
 const EXTRAIDO = {
   titulo: "",
+  descripcion: "",
   fecha: "",
   horaInicio: "",
   horaFin: "",
@@ -59,6 +61,27 @@ function Campo({
         className={`w-full rounded-xl border-2 bg-white px-4 py-3 text-base font-semibold outline-none transition focus:border-magenta ${
           revisar ? "border-oro/60 bg-oro/5" : "border-magenta-100"
         }`}
+      />
+    </label>
+  );
+}
+
+function CampoLargo({
+  label, icon: Icon, valor, onChange, placeholder,
+}: {
+  label: string; icon: any; valor: string; onChange: (v: string) => void; placeholder?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
+        <Icon size={16} className="text-magenta" /> {label}
+      </span>
+      <textarea
+        value={valor}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        rows={3}
+        className="w-full resize-y rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 text-base font-semibold outline-none transition focus:border-magenta"
       />
     </label>
   );
@@ -232,6 +255,7 @@ export default function CrearTardeo() {
     const { data: nuevo, error } = await supabase.from("tardeos").insert({
       local_id: local.id,
       titulo: form.titulo.trim(),
+      descripcion: form.descripcion.trim() || null,
       fecha: form.fecha,
       hora_inicio: form.horaInicio,
       hora_fin: form.horaFin || null,
@@ -383,6 +407,40 @@ export default function CrearTardeo() {
                 onSoloSubir={() => { setFlyerDecidido(true); setEstado("revisar"); }}
                 decidido={flyerDecidido}
               />
+
+              {/*
+                La otra puerta, que no existía.
+                El formulario de tres pasos ya estaba entero, pero al único
+                sitio desde el que se llegaba era subiendo un flyer: quien no
+                tiene imagen —o la tiene y prefiere escribir— se quedaba mirando
+                un recuadro de subida sin más salida. En el admin antiguo se
+                podía hacer de las dos maneras, y publicar sin flyer ya
+                funcionaba aquí (se guarda un marcador); lo que faltaba era
+                poder pedirlo.
+              */}
+              <div className="my-5 flex items-center gap-3">
+                <span className="h-px flex-1 bg-black/10" />
+                <span className="text-sm font-black text-tinta/40">o</span>
+                <span className="h-px flex-1 bg-black/10" />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => { setFlyerDecidido(true); setEstado("revisar"); }}
+                className="group flex w-full items-center gap-4 rounded-3xl bg-white p-5 text-left shadow-tarjeta ring-1 ring-magenta-100 transition hover:-translate-y-0.5 hover:shadow-lg"
+              >
+                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-magenta-50 text-magenta">
+                  <ListChecks size={26} />
+                </span>
+                <span className="flex-1">
+                  <span className="block font-display text-xl font-black">Créalo contestando preguntas</span>
+                  <span className="text-sm font-semibold text-tinta/60">
+                    Sin flyer. Puedes subirlo más tarde desde el tardeo.
+                  </span>
+                </span>
+                <ArrowRight className="shrink-0 text-magenta transition group-hover:translate-x-1" />
+              </button>
+
               {error && <p className="mt-3 text-sm font-bold text-magenta">{error}</p>}
             </section>
           )}
@@ -439,6 +497,11 @@ export default function CrearTardeo() {
                   )}
 
                   <Campo label="Título" icon={Music} valor={form.titulo} onChange={(v) => set("titulo", v)} />
+                  <CampoLargo
+                    label="Descripción" icon={FileText} valor={form.descripcion}
+                    onChange={(v) => set("descripcion", v)}
+                    placeholder="Qué se va a encontrar quien venga. Opcional."
+                  />
                   <div className="grid grid-cols-2 gap-3">
                     <Campo label="Fecha" icon={Calendar} type="date" valor={form.fecha} onChange={(v) => set("fecha", v)} revisar={revisar.has("fecha")} />
                     <Campo label="Estilo" icon={Music} valor={form.estilo} onChange={(v) => set("estilo", v)} />
