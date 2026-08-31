@@ -9,7 +9,7 @@ import { enlaceInstagram, enlaceWeb, enlaceTelefono } from "@/lib/crm";
 import {
   CalendarDays, Store, Disc3, Euro, BadgeCheck, X, Check, Contact,
   Megaphone, Bell, BellRing, ShieldAlert, ChevronRight, Loader2, Star,
-  Plus, CreditCard, ShieldCheck, Mail, CalendarPlus, LineChart, Phone, Instagram, Globe,
+  Plus, CreditCard, ShieldCheck, Mail, CalendarPlus, LineChart, Phone, Instagram, Globe, Users,
 } from "lucide-react";
 
 /**
@@ -80,10 +80,9 @@ const GRUPOS = [
   },
   {
     titulo: "Fichas",
-    pie: "Locales y DJs dados de alta",
+    pie: "Quién está dado de alta",
     items: [
-      { icon: Store, label: "Locales", sub: "Gestión de locales", href: "/admin/locales" },
-      { icon: Disc3, label: "DJs", sub: "Gestión de DJs", href: "/admin/djs" },
+      { icon: Users, label: "Colaboradores", sub: "Locales, promotores y DJs", href: "/admin/colaboradores" },
     ],
   },
 ];
