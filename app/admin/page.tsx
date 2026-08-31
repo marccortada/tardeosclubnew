@@ -89,7 +89,7 @@ const GRUPOS = [
 export default function PanelAdmin() {
   const { user, loading } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [metricas, setMetricas] = useState({ tardeos: 0, locales: 0, djs: 0 });
+  const [metricas, setMetricas] = useState({ tardeos: 0, pasados: 0, locales: 0, djs: 0 });
   const [verif, setVerif] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
 
@@ -99,13 +99,29 @@ export default function PanelAdmin() {
       const admin = !!data?.is_admin;
       setIsAdmin(admin);
       if (!admin) { setCargando(false); return; }
-      const [t, l, d, pend] = await Promise.all([
-        supabase.from("tardeos").select("*", { count: "exact", head: true }).eq("estado", "publicado"),
+      /**
+       * "Activos" significa lo mismo que en la web: publicado y que aún no ha
+       * pasado. Antes contaba los publicados SIN mirar la fecha, y por eso el
+       * panel decía "26 tardeos activos" mientras el mapa y el listado estaban
+       * vacíos: los 26 eran del 14 de julio al 30 de agosto, todos terminados.
+       *
+       * Un número que no cuadra con lo que se ve en la web no es un número: es
+       * una pregunta. Y los pasados se enseñan aparte, que también es
+       * información —y es justo la que explica el cero—.
+       */
+      const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+      const publicados = () =>
+        supabase.from("tardeos").select("*", { count: "exact", head: true })
+          .or(`estado.eq.publicado,and(estado.eq.programado,publicar_en.lte.${new Date().toISOString()})`);
+
+      const [t, pas, l, d, pend] = await Promise.all([
+        publicados().gte("fecha", hoy),
+        publicados().lt("fecha", hoy),
         supabase.from("locales").select("*", { count: "exact", head: true }).eq("estado", "activo"),
         supabase.from("djs").select("*", { count: "exact", head: true }),
         supabase.from("locales").select("*").neq("estado", "activo").order("created_at", { ascending: false }),
       ]);
-      setMetricas({ tardeos: t.count ?? 0, locales: l.count ?? 0, djs: d.count ?? 0 });
+      setMetricas({ tardeos: t.count ?? 0, pasados: pas.count ?? 0, locales: l.count ?? 0, djs: d.count ?? 0 });
       setVerif(pend.data ?? []);
       setCargando(false);
     });
@@ -137,7 +153,8 @@ export default function PanelAdmin() {
   }
 
   const METRICAS = [
-    { icon: CalendarDays, label: "Tardeos activos", valor: String(metricas.tardeos) },
+    { icon: CalendarDays, label: "Tardeos activos", valor: String(metricas.tardeos),
+      pie: metricas.pasados ? `${metricas.pasados} ya pasados` : undefined },
     { icon: Store, label: "Locales", valor: String(metricas.locales) },
     { icon: Disc3, label: "DJs", valor: String(metricas.djs) },
     { icon: Euro, label: "Ingresos/mes", valor: "—" },
@@ -168,11 +185,12 @@ export default function PanelAdmin() {
 
         {/* Métricas reales */}
         <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {METRICAS.map(({ icon: Icon, label, valor }) => (
+          {METRICAS.map(({ icon: Icon, label, valor, pie }) => (
             <div key={label} className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
               <Icon size={22} className="text-magenta" />
               <p className="mt-2 font-display text-2xl font-black leading-none md:text-3xl">{valor}</p>
               <p className="mt-1 text-xs font-bold text-tinta/60">{label}</p>
+              {pie && <p className="text-xs font-semibold text-tinta/40">{pie}</p>}
             </div>
           ))}
         </section>
