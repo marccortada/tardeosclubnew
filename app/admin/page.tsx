@@ -11,19 +11,66 @@ import {
   Plus, CreditCard, ShieldCheck, Mail,
 } from "lucide-react";
 
-const GESTION = [
-  { icon: Plus, label: "Crear / invitar", sub: "Local, tardeo o invitación", href: "/admin/crear" },
-  { icon: Megaphone, label: "Promociones y precios", sub: "Destacados · packs · combos", href: "/admin/promociones" },
-  { icon: Mail, label: "Ofertas a locales", sub: "Enviar ofertas por email", href: "/admin/ofertas" },
-  { icon: Bell, label: "Popups", sub: "Ofertas y noticias", href: "/admin/popups" },
-  { icon: BellRing, label: "Notificaciones push", sub: "Aviso al móvil de los suscritos", href: "/admin/notificaciones" },
-  { icon: Star, label: "Destacados", sub: "Quién sale primero en la home", href: "/admin/destacados" },
-  { icon: BadgeCheck, label: "Reclamaciones", sub: "Quién pide gestionar su ficha", href: "/admin/reclamaciones" },
-  { icon: ShieldCheck, label: "Moderación", sub: "Reseñas y flyers", href: "/admin/moderacion" },
-  { icon: Contact, label: "CRM comercial", sub: "A quién le toca hoy", href: "/admin/crm" },
-  { icon: CreditCard, label: "Suscripciones", sub: "Pagos e impagos", href: "/admin/suscripciones" },
-  { icon: Store, label: "Locales", sub: "Gestión de locales", href: "/admin/locales" },
-  { icon: Disc3, label: "DJs", sub: "Gestión de DJs", href: "/admin/djs" },
+/**
+ * El panel, por grupos y no en una lista de doce.
+ *
+ * Doce tarjetas seguidas se leen enteras cada vez, porque nada dice dónde mirar:
+ * "Popups" y "Suscripciones" pesaban igual estando una al lado de la otra y sin
+ * tener nada que ver. Agrupadas, se va directo al bloque.
+ *
+ * El criterio es POR TRABAJO, no por parecido de nombre. "Promociones y precios"
+ * suena a marketing y no lo es: es el catálogo con el precio de lo que se vende
+ * (destacados, packs, combos), así que va en Finanzas, al lado de los cobros.
+ * Y "Destacados", que suena a lo mismo, es decidir quién sale primero en la
+ * portada, que es marketing puro.
+ *
+ * Reclamaciones va en Control y no en Comercial aunque un local que reclama su
+ * ficha sea una venta a medio hacer: lo que se hace ahí es comprobar que es
+ * quien dice ser y darle acceso, y eso se parece a moderar, no a vender.
+ */
+const GRUPOS = [
+  {
+    titulo: "Comercial",
+    pie: "Vender a los locales",
+    items: [
+      { icon: Contact, label: "CRM comercial", sub: "A quién le toca hoy", href: "/admin/crm" },
+      { icon: Mail, label: "Ofertas a locales", sub: "Enviar ofertas por email", href: "/admin/ofertas" },
+    ],
+  },
+  {
+    titulo: "Finanzas",
+    pie: "Qué se cobra y quién paga",
+    items: [
+      { icon: CreditCard, label: "Suscripciones", sub: "Pagos e impagos", href: "/admin/suscripciones" },
+      { icon: Megaphone, label: "Promociones y precios", sub: "Destacados · packs · combos", href: "/admin/promociones" },
+    ],
+  },
+  {
+    titulo: "Marketing",
+    pie: "Qué ve la gente y cuándo",
+    items: [
+      { icon: Star, label: "Destacados", sub: "Quién sale primero en la home", href: "/admin/destacados" },
+      { icon: Bell, label: "Popups", sub: "Ofertas y noticias", href: "/admin/popups" },
+      { icon: BellRing, label: "Notificaciones push", sub: "Aviso al móvil de los suscritos", href: "/admin/notificaciones" },
+    ],
+  },
+  {
+    titulo: "Control",
+    pie: "Qué entra y qué se queda",
+    items: [
+      { icon: BadgeCheck, label: "Reclamaciones", sub: "Quién pide gestionar su ficha", href: "/admin/reclamaciones" },
+      { icon: ShieldCheck, label: "Moderación", sub: "Reseñas y flyers", href: "/admin/moderacion" },
+    ],
+  },
+  {
+    titulo: "Fichas",
+    pie: "Locales, DJs y altas",
+    items: [
+      { icon: Plus, label: "Crear / invitar", sub: "Local, tardeo o invitación", href: "/admin/crear" },
+      { icon: Store, label: "Locales", sub: "Gestión de locales", href: "/admin/locales" },
+      { icon: Disc3, label: "DJs", sub: "Gestión de DJs", href: "/admin/djs" },
+    ],
+  },
 ];
 
 export default function PanelAdmin() {
@@ -141,19 +188,26 @@ export default function PanelAdmin() {
             maqueta terminaba justo aquí encima y el borrado se llevó también
             esto. Resultado: las diez pantallas de administración existían y
             ninguna se podía abrir desde el panel. */}
-        <h2 className="mb-3 mt-7 font-display text-xl font-black md:text-2xl">Gestión</h2>
-        <section className="grid gap-3 sm:grid-cols-2">
-          {GESTION.map(({ icon: Icon, label, sub, href }) => (
-            <Link key={label} href={href} className="flex items-center gap-4 rounded-2xl bg-white p-5 text-left shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta"><Icon size={24} /></span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-lg font-black leading-tight">{label}</span>
-                <span className="text-sm font-semibold text-tinta/60">{sub}</span>
-              </span>
-              <ChevronRight size={20} className="text-tinta/30" />
-            </Link>
-          ))}
-        </section>
+        {GRUPOS.map((g) => (
+          <div key={g.titulo}>
+            <h2 className="mb-1 mt-7 font-display text-xl font-black md:text-2xl">{g.titulo}</h2>
+            {/* El pie del grupo dice de qué va, para que nadie tenga que abrir
+                una pantalla para averiguar si es la que buscaba. */}
+            <p className="mb-3 text-sm font-semibold text-tinta/50">{g.pie}</p>
+            <section className="grid gap-3 sm:grid-cols-2">
+              {g.items.map(({ icon: Icon, label, sub, href }) => (
+                <Link key={label} href={href} className="flex items-center gap-4 rounded-2xl bg-white p-5 text-left shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta"><Icon size={24} /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-lg font-black leading-tight">{label}</span>
+                    <span className="text-sm font-semibold text-tinta/60">{sub}</span>
+                  </span>
+                  <ChevronRight size={20} className="text-tinta/30" />
+                </Link>
+              ))}
+            </section>
+          </div>
+        ))}
       </div>
     </main>
   );

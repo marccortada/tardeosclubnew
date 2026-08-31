@@ -9,6 +9,8 @@ import { supabase } from "@/lib/supabase";
 import SelectorAdn from "@/components/SelectorAdn";
 import AddressSearch, { Direccion } from "@/components/AddressSearch";
 import ProgramarPublicacion, { type Cuando } from "@/components/ProgramarPublicacion";
+import PeriodicidadTardeo from "@/components/PeriodicidadTardeo";
+import { fechasDeSerie, SIN_REPETIR, type Periodicidad } from "@/lib/periodicidad";
 import PrecioTardeo, { PRECIO_VACIO, aColumnas, type Precio } from "@/components/PrecioTardeo";
 import PromoTardeo, { PROMO_VACIA, type Promo } from "@/components/PromoTardeo";
 import SubirFlyer from "@/components/SubirFlyer";
@@ -17,6 +19,7 @@ import {
   Calendar, Clock, Music, MapPin, Disc3, ArrowRight, Store, Megaphone,
   ListChecks, FileText,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 
 /** Los mismos tres del admin antiguo, para que nadie tenga que reaprender. */
@@ -40,7 +43,7 @@ const EXTRAIDO = {
 function Campo({
   label, icon: Icon, valor, onChange, revisar, type = "text", placeholder,
 }: {
-  label: string; icon: any; valor: string; onChange: (v: string) => void;
+  label: string; icon: LucideIcon; valor: string; onChange: (v: string) => void;
   revisar?: boolean; type?: string; placeholder?: string;
 }) {
   return (
@@ -69,7 +72,7 @@ function Campo({
 function CampoLargo({
   label, icon: Icon, valor, onChange, placeholder,
 }: {
-  label: string; icon: any; valor: string; onChange: (v: string) => void; placeholder?: string;
+  label: string; icon: LucideIcon; valor: string; onChange: (v: string) => void; placeholder?: string;
 }) {
   return (
     <label className="block">
@@ -94,6 +97,8 @@ export default function CrearTardeo() {
   // Fuera de `form` porque no son texto: dos son listas y el formulario base
   // solo maneja cadenas.
   const [cuando, setCuando] = useState<Cuando>({ estado: "publicado", publicarEn: "" });
+  const [periodicidad, setPeriodicidad] = useState<Periodicidad>(SIN_REPETIR);
+  const [creados, setCreados] = useState(1);
   const [precio, setPrecio] = useState<Precio>(PRECIO_VACIO);
   const [promo, setPromo] = useState<Promo>(PROMO_VACIA);
   // Ya se eligió qué hacer con el flyer subido (IA o tal cual).
@@ -232,6 +237,11 @@ export default function CrearTardeo() {
     if (form.fecha < hoy) { setError("La fecha ya ha pasado. Pon una fecha de hoy en adelante."); return; }
     if (!form.horaInicio) { setError("Falta la hora de inicio."); return; }
     if (form.tipo === "pago" && !(Number(form.precio) > 0)) { setError("Indica el precio de la entrada."); return; }
+    // Sin esto, elegir "cada semana" y no poner el hasta creaba UN tardeo sin
+    // decir nada, que es lo contrario de lo que acaba de pedir.
+    if (periodicidad.cada !== "una" && !periodicidad.hasta) {
+      setError("Dinos hasta cuándo se repite, o elige «No se repite»."); return;
+    }
     // Sin sitio, el tardeo de un promotor entraría sin coordenadas y no saldría
     // en el mapa, que es medio producto.
     if (esPromotor && !dirTardeo) { setError("Busca dónde se hace este tardeo."); return; }
@@ -252,11 +262,15 @@ export default function CrearTardeo() {
       setError("No se pudo subir el flyer. Inténtalo de nuevo."); setPublicando(false); return;
     }
 
-    const { data: nuevo, error } = await supabase.from("tardeos").insert({
+    /**
+     * Una fila por fecha. Un tardeo que no se repite son las mismas líneas con
+     * una sola fecha, así que no hay dos caminos que mantener.
+     */
+    const fechas = fechasDeSerie(form.fecha, periodicidad);
+    const comun = {
       local_id: local.id,
       titulo: form.titulo.trim(),
       descripcion: form.descripcion.trim() || null,
-      fecha: form.fecha,
       hora_inicio: form.horaInicio,
       hora_fin: form.horaFin || null,
       // El promotor pone el sitio en cada tardeo; el local lo hereda del suyo.
@@ -270,18 +284,32 @@ export default function CrearTardeo() {
       etiquetas: promo.etiquetas.length ? promo.etiquetas : null,
       flyer_url,
       flyer_origen: "subido",
-      estado: "publicado",
+      // Lo que dijo ProgramarPublicacion, que hasta ahora se recogía y se
+      // tiraba: el insert ponía "publicado" fijo, así que elegir "Programar" o
+      // "Guardar sin publicar" publicaba igual, en el acto. El botón hasta
+      // cambiaba de nombre. La pantalla de editar sí lo hacía bien.
+      estado: cuando.estado,
+      publicar_en: cuando.estado === "programado" && cuando.publicarEn
+        ? new Date(cuando.publicarEn).toISOString()
+        : null,
       created_by: user.id,
-    }).select("id").single();
+    };
 
-    // Vincular los DJs del flyer (por nombre) para que aparezca en su perfil
-    if (nuevo?.id && form.dj) {
+    const { data: nuevos, error } = await supabase
+      .from("tardeos")
+      .insert(fechas.map((fecha) => ({ ...comun, fecha })))
+      .select("id");
+
+    // Vincular los DJs (por nombre) en TODAS las fechas: si solo se enlazara la
+    // primera, el DJ vería un tardeo suyo de cinco en su perfil.
+    if (form.dj && nuevos?.length) {
       const nombres = form.dj.split(/[,·&]|\sy\s/i);
       try {
-        const { sinFicha } = await vincularDjsPorNombre(nuevo.id, nombres);
-        setDjsSinFicha(sinFicha);
-      } catch { /* no crítico: el tardeo ya está publicado */ }
+        const res = await Promise.all(nuevos.map((n) => vincularDjsPorNombre(n.id, nombres)));
+        setDjsSinFicha(res[0]?.sinFicha ?? []);
+      } catch { /* no crítico: los tardeos ya están creados */ }
     }
+    setCreados(fechas.length);
 
     setPublicando(false);
     if (error) setError(error.message);
@@ -303,9 +331,25 @@ export default function CrearTardeo() {
           <span className="grid h-20 w-20 place-items-center rounded-full bg-oro text-tinta">
             <Check size={44} />
           </span>
-          <h2 className="font-display text-3xl font-black">¡Tardeo publicado!</h2>
+          {/* El texto sigue a lo que ha pasado de verdad: cuántos y en qué
+              estado. Antes decía "¡Tardeo publicado!" siempre, y con la
+              programación arreglada eso sería mentira en dos de los tres
+              caminos, además de contar mal las series. */}
+          <h2 className="font-display text-3xl font-black">
+            {creados > 1
+              ? `¡${creados} tardeos ${cuando.estado === "borrador" ? "guardados" : cuando.estado === "programado" ? "programados" : "publicados"}!`
+              : cuando.estado === "borrador"
+                ? "¡Tardeo guardado!"
+                : cuando.estado === "programado"
+                  ? "¡Tardeo programado!"
+                  : "¡Tardeo publicado!"}
+          </h2>
           <p className="font-semibold text-tinta/70">
-            «{form.titulo}» ya está visible para todos los tardícolas de {form.zona}.
+            {cuando.estado === "borrador"
+              ? <>«{form.titulo}» {creados > 1 ? "queda guardado" : "queda guardado"} sin publicar. Puedes seguir cuando quieras.</>
+              : cuando.estado === "programado"
+                ? <>«{form.titulo}» {creados > 1 ? "saldrán solos" : "saldrá solo"} a la hora que has puesto.</>
+                : <>«{form.titulo}» ya {creados > 1 ? "están visibles" : "está visible"} para todos los tardícolas de {form.zona}.</>}
           </p>
           {esAdmin && local && (
             <p className="-mt-2 text-sm font-semibold text-tinta/50">Publicado en {local.nombre}.</p>
@@ -511,6 +555,7 @@ export default function CrearTardeo() {
                     <Campo label="Acaba" icon={Clock} type="time" valor={form.horaFin} onChange={(v) => set("horaFin", v)} revisar={revisar.has("horaFin")} />
                   </div>
                   <Campo label="DJ" icon={Disc3} valor={form.dj} onChange={(v) => set("dj", v)} />
+                  <PeriodicidadTardeo fecha={form.fecha} valor={periodicidad} onCambio={setPeriodicidad} />
                 </>
               )}
 
