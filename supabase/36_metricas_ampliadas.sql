@@ -78,15 +78,24 @@ create index if not exists idx_em_tipo_detalle
 -- Se agrega EN LA BASE y no en el navegador. Hoy hay dos filas y daría igual,
 -- pero esto crece por cada visita de cada persona: el día que haya cien mil,
 -- traérselas al móvil para contarlas allí no se puede arreglar sin rehacerlo.
-create or replace function public.metricas_resumen(
-  p_desde timestamptz default now() - interval '30 days',
-  p_hasta timestamptz default now()
-)
+-- Se pasan DÍAS, no dos fechas, y la ventana la calcula la base.
+--
+-- La primera versión recibía p_desde y p_hasta, y el navegador mandaba
+-- `new Date()` como tope. Suena inofensivo y no lo es: las filas las sella la
+-- BASE con su reloj, que aquí va hasta 74 ms por delante del mío, así que las
+-- recién escritas caían fuera de la ventana y no se contaban. Se vio metiendo
+-- tres filas y viendo que la función contaba una.
+--
+-- Con el reloj de un móvil cualquiera el desfase puede ser de minutos, y el
+-- síntoma sería el peor posible: un panel que casi acierta.
+drop function if exists public.metricas_resumen(timestamptz, timestamptz);
+
+create or replace function public.metricas_resumen(p_dias int default 30)
 returns json
 language sql stable security definer set search_path = public as $$
   with e as (
     select * from public.eventos_metrica
-     where created_at >= p_desde and created_at <= p_hasta
+     where created_at >= now() - (greatest(p_dias, 1) || ' days')::interval
        -- El filtro va DENTRO porque es security definer: sin esto, cualquiera
        -- con una sesión podría pedir las estadísticas de todo el negocio.
        and public.is_admin()
@@ -165,7 +174,7 @@ language sql stable security definer set search_path = public as $$
   );
 $$;
 
-revoke all on function public.metricas_resumen(timestamptz, timestamptz) from public;
-grant execute on function public.metricas_resumen(timestamptz, timestamptz) to authenticated;
+revoke all on function public.metricas_resumen(int) from public;
+grant execute on function public.metricas_resumen(int) to authenticated;
 
 notify pgrst, 'reload schema';

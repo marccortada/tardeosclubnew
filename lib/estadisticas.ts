@@ -57,11 +57,15 @@ export const ORDEN = [
 ];
 
 export async function cargarResumen(dias: number): Promise<{ datos: Resumen; error: string | null }> {
-  const desde = new Date(Date.now() - dias * 86_400_000).toISOString();
-  const { data, error } = await supabase.rpc("metricas_resumen", {
-    p_desde: desde,
-    p_hasta: new Date().toISOString(),
-  });
+  /**
+   * Se mandan DÍAS y no dos fechas: la ventana la calcula la base con su reloj.
+   *
+   * Antes se mandaba `new Date()` como tope y se perdían las filas más
+   * recientes, porque las sella la base y su reloj va por delante del del
+   * navegador —medí 74 ms contra el mío, y en un móvil desajustado pueden ser
+   * minutos—. El síntoma habría sido el peor: un panel que casi acierta.
+   */
+  const { data, error } = await supabase.rpc("metricas_resumen", { p_dias: dias });
 
   if (error) {
     // 42883 = la función no existe todavía; PGRST202 = PostgREST no la ve.
