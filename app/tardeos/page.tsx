@@ -1,5 +1,6 @@
 import ListaTardeos from "@/components/ListaTardeos";
 import { getTardeosPublicados } from "@/lib/tardeos";
+import RegistrarPantalla from "@/components/RegistrarPantalla";
 
 // Mismo minuto que la portada: un tardeo recién publicado tarda como mucho eso
 // en asomar por aquí.
@@ -17,5 +18,10 @@ export const dynamic = "force-dynamic";
  */
 export default async function Tardeos() {
   const tardeos = await getTardeosPublicados();
-  return <ListaTardeos todos={tardeos} />;
+  return (
+    <>
+      <RegistrarPantalla pantalla="listado" />
+      <ListaTardeos todos={tardeos} />
+    </>
+  );
 }

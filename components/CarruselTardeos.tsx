@@ -9,12 +9,15 @@ export default function CarruselTardeos({
   tardeos,
   href = "/tardeos",
   encajes,
+  onClicTarjeta,
 }: {
   titulo: ReactNode;
   tardeos: Tardeo[];
   href?: string;
   /** Por qué encaja cada uno, por id. Solo lo manda "Para ti". */
   encajes?: Map<string, Encaje>;
+  /** Se llama al pulsar una tarjeta, con su id. Solo lo usa "Para ti". */
+  onClicTarjeta?: (id: string) => void;
 }) {
   if (!tardeos || tardeos.length === 0) return null;
   return (
@@ -31,7 +34,7 @@ export default function CarruselTardeos({
       <div className="no-scrollbar carousel-bleed flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
         {tardeos.map((t) => (
           <div key={t.id} className="w-[62%] shrink-0 snap-start sm:w-64 md:w-72">
-            <TardeoCard tardeo={t} encaje={encajes?.get(t.id)} />
+            <TardeoCard tardeo={t} encaje={encajes?.get(t.id)} onClic={onClicTarjeta ? () => onClicTarjeta(t.id) : undefined} />
           </div>
         ))}
       </div>

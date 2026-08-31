@@ -16,7 +16,13 @@ import { supabase } from "./supabase";
  */
 export type TipoMetrica =
   | "vista_tardeo" | "vista_local" | "vista_dj"
-  | "clic_entrada" | "clic_lista" | "inscripcion" | "favorito";
+  | "clic_entrada" | "clic_lista" | "inscripcion" | "favorito"
+  // Por dónde entra la gente
+  | "vista_home" | "vista_listado" | "vista_mapa"
+  // Qué busca y con qué filtra
+  | "busqueda" | "busqueda_vacia" | "filtro"
+  // Si las recomendaciones sirven
+  | "para_ti_visto" | "para_ti_clic";
 
 /**
  * Identificador de la pestaña. Al azar, sin nada de la persona, y muere al
@@ -57,7 +63,17 @@ function yaContado(clave: string): boolean {
  */
 export async function medir(
   tipo: TipoMetrica,
-  refs: { tardeoId?: string; localId?: string; djId?: string; destino?: string },
+  refs: {
+    tardeoId?: string; localId?: string; djId?: string; destino?: string;
+    /**
+     * El texto de una búsqueda o el nombre de un filtro.
+     *
+     * Se recorta a 80 y se pasa a minúsculas AQUÍ y no en cada sitio que
+     * llama: es texto escrito por personas, y el día que a alguien se le
+     * ocurra medir otro campo libre, el recorte ya estará puesto.
+     */
+    detalle?: string;
+  },
   opciones: { unaVezPorSesion?: boolean } = {}
 ): Promise<void> {
   try {
@@ -73,6 +89,7 @@ export async function medir(
       profile_id: session?.user?.id ?? null,
       sesion: sesion(),
       destino: refs.destino ?? null,
+      detalle: refs.detalle ? refs.detalle.trim().toLowerCase().slice(0, 80) : null,
     });
   } catch {
     /* medir nunca puede romper la página */

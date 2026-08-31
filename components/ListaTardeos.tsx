@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/useAuth";
 import { getAdn, tieneAdn, type AdnTardicola } from "@/lib/tardicola";
 import { ordenarPorEncaje } from "@/lib/recomendar";
@@ -12,6 +12,7 @@ import { plegar, contieneTexto } from "@/lib/texto";
 import { useUbicacion } from "@/lib/ubicacion";
 import { distanciaKm } from "@/lib/geo";
 import { Tardeo } from "@/lib/types";
+import { medir } from "@/lib/metricas";
 import {
   SlidersHorizontal, X, Loader2, Search, Navigation, CalendarDays, Music, ChevronDown, Sparkles, Wand2,
 } from "lucide-react";
@@ -338,6 +339,59 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
     : porEncaje && hayGustos
       ? ordenarPorEncaje(filtrados, adn)
       : filtrados;
+
+  /**
+   * Qué se busca, y sobre todo qué se busca SIN encontrar nada.
+   *
+   * Lo segundo es lo valioso: una búsqueda vacía es alguien diciendo qué
+   * cartelera le falta. "salsa mataró" sin resultados vale más que veinte
+   * visitas a un tardeo que ya funciona.
+   *
+   * Con espera de segundo y medio y a partir de tres letras. Sin la espera se
+   * mediría cada tecla y el informe se llenaría de "s", "sa", "sal"; con menos
+   * de tres letras no se está buscando nada todavía.
+   */
+  const cuantosSalen = useRef(0);
+  // En un efecto y no en el render: tocar un ref mientras se pinta está mal en
+  // React moderno —el render puede repetirse o descartarse— y el linter lo
+  // marca como error, con razón. Aquí se actualiza después de cada pintado, que
+  // es justo antes de que el temporizador de abajo lo lea.
+  useEffect(() => { cuantosSalen.current = lista.length; });
+  useEffect(() => {
+    const texto = q.trim();
+    if (texto.length < 3) return;
+    const t = setTimeout(() => {
+      medir(cuantosSalen.current > 0 ? "busqueda" : "busqueda_vacia", { detalle: texto });
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  /**
+   * Qué filtros se usan de verdad.
+   *
+   * Se mira el conjunto y se avisa solo de los que acaban de aparecer, en vez
+   * de instrumentar cada botón: hay nueve sitios donde se cambia un filtro y
+   * el décimo se olvidaría. Así, el que se añada mañana se mide solo.
+   */
+  const filtrosPuestos = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const activos = [
+      f.zona && `zona:${f.zona}`,
+      (f.estilo || f.familia) && `musica:${f.estilo || f.familia}`,
+      f.precio && `precio:${f.precio}`,
+      f.publico && `publico:${f.publico}`,
+      f.ambiente && `ambiente:${f.ambiente}`,
+      f.tipoEvento && `tipo:${f.tipoEvento}`,
+      f.dressCode && `outfit:${f.dressCode}`,
+      cuando && `cuando:${cuando}`,
+      fechaExacta && "fecha-exacta",
+      cerca && "cerca-de-mi",
+      porEncaje && "por-encaje",
+    ].filter(Boolean) as string[];
+
+    for (const a of activos) if (!filtrosPuestos.current.has(a)) medir("filtro", { detalle: a });
+    filtrosPuestos.current = new Set(activos);
+  }, [f, cuando, fechaExacta, cerca, porEncaje]);
 
   const etiquetaMusica = f.estilo ? etiquetaDe(f.estilo) : f.familia ? etiquetaDe(f.familia) : null;
   const nMas = [f.zona, f.precio, f.publico, f.dressCode, f.tipoEvento].filter(Boolean).length;

@@ -1,5 +1,6 @@
 import MapaFiltrable from "@/components/MapaFiltrable";
 import { getTardeosPublicados } from "@/lib/tardeos";
+import RegistrarPantalla from "@/components/RegistrarPantalla";
 
 // Los mismos 60 s que la portada y el listado.
 // Se pinta en cada visita, no por ISR: ver el porqué en app/page.tsx.
@@ -19,5 +20,10 @@ export const dynamic = "force-dynamic";
  */
 export default async function Mapa() {
   const tardeos = await getTardeosPublicados();
-  return <MapaFiltrable todos={tardeos} />;
+  return (
+    <>
+      <RegistrarPantalla pantalla="mapa" />
+      <MapaFiltrable todos={tardeos} />
+    </>
+  );
 }

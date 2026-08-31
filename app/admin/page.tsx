@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import {
   CalendarDays, Store, Disc3, Euro, BadgeCheck, X, Check, Contact,
   Megaphone, Bell, BellRing, ShieldAlert, ChevronRight, Loader2, Star,
-  Plus, CreditCard, ShieldCheck, Mail, CalendarPlus,
+  Plus, CreditCard, ShieldCheck, Mail, CalendarPlus, LineChart,
 } from "lucide-react";
 
 /**
@@ -63,6 +63,7 @@ const GRUPOS = [
     titulo: "Marketing",
     pie: "Qué ve la gente y cuándo",
     items: [
+      { icon: LineChart, label: "Estadísticas", sub: "Qué hace la gente en la web", href: "/admin/estadisticas" },
       { icon: Star, label: "Destacados", sub: "Quién sale primero en la home", href: "/admin/destacados" },
       { icon: Bell, label: "Popups", sub: "Ofertas y noticias", href: "/admin/popups" },
       { icon: BellRing, label: "Notificaciones push", sub: "Aviso al móvil de los suscritos", href: "/admin/notificaciones" },

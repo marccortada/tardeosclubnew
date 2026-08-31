@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/useAuth";
 import { getAdn, tieneAdn, type AdnTardicola } from "@/lib/tardicola";
 import { paraTi } from "@/lib/recomendar";
 import type { Tardeo } from "@/lib/types";
+import { medir } from "@/lib/metricas";
 import { Sparkles, ArrowRight } from "lucide-react";
 
 /**
@@ -68,10 +69,32 @@ export default function ParaTi({ tardeos }: { tardeos: Tardeo[] }) {
   // que ver con lo que dijo.
   const suyos = paraTi(tardeos, adn);
   return (
-    <CarruselTardeos
-      titulo={<>Para ti <Sparkles size={22} className="text-oro" /></>}
-      tardeos={suyos.map((s) => s.tardeo)}
-      encajes={new Map(suyos.map((s) => [s.tardeo.id, s.encaje]))}
-    />
+    <>
+      {/*
+        Si el "Para ti" sirve o no, hoy no lo sabe nadie. Se mide la pareja:
+        cuántas veces se ENSEÑA y cuántas se PULSA. Uno solo de los dos números
+        no dice nada —diez clics son buenísimos si se enseñó doce veces y
+        malísimos si se enseñó mil—, y sin la pareja no hay forma de saber si
+        el motor acierta o si la gente pasa de largo.
+
+        En el detalle van cuántos se le enseñaron: enseñar tres y enseñar diez
+        no es lo mismo a la hora de esperar un clic.
+      */}
+      {suyos.length > 0 && <ImpresionParaTi cuantos={suyos.length} />}
+      <CarruselTardeos
+        titulo={<>Para ti <Sparkles size={22} className="text-oro" /></>}
+        tardeos={suyos.map((s) => s.tardeo)}
+        encajes={new Map(suyos.map((s) => [s.tardeo.id, s.encaje]))}
+        onClicTarjeta={(id) => medir("para_ti_clic", { tardeoId: id })}
+      />
+    </>
   );
+}
+
+/** Aparte para que el efecto se dispare una vez y no en cada repintado. */
+function ImpresionParaTi({ cuantos }: { cuantos: number }) {
+  useEffect(() => {
+    medir("para_ti_visto", { detalle: String(cuantos) }, { unaVezPorSesion: true });
+  }, [cuantos]);
+  return null;
 }

@@ -15,6 +15,7 @@ import type { Metadata } from "next";
 import { CalendarDays, MapPin, ArrowRight, Flame, Sun, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import MapaClient from "@/components/MapaClient";
+import RegistrarPantalla from "@/components/RegistrarPantalla";
 
 // Con force-dynamic el servidor esperaba a Supabase en CADA visita. Ahora el
 // HTML se reaprovecha un minuto: el mismo margen que la caché de cliente de
@@ -84,6 +85,7 @@ export default async function Inicio() {
 
   return (
     <main>
+      <RegistrarPantalla pantalla="home" />
       <DatosEstructurados datos={jsonLdSitio()} />
       <div className="md:hidden">
         <TopBar />

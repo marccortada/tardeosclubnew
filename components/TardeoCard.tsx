@@ -16,6 +16,7 @@ export default function TardeoCard({
   tardeo,
   distanciaKm,
   encaje,
+  onClic,
 }: {
   tardeo: Tardeo;
   /** Km hasta el visitante. Solo llega cuando ha dado su ubicación. */
@@ -26,6 +27,8 @@ export default function TardeoCard({
    * elegido nada por gustos y una insignia de compatibilidad sería mentira.
    */
   encaje?: Encaje | null;
+  /** Aviso de que se ha pulsado. Solo lo usa "Para ti", para medir si sirve. */
+  onClic?: () => void;
 }) {
   const e = entrada[tardeo.tipoEntrada];
   const Icon = e.icon;
@@ -34,6 +37,7 @@ export default function TardeoCard({
   return (
     <Link
       href={`/tardeos/${tardeo.id}`}
+      onClick={onClic}
       aria-label={`${tardeo.titulo}, ${formatFecha(tardeo.fecha)} en ${tardeo.local.nombre}`}
       className="group flex flex-col overflow-hidden rounded-3xl bg-white shadow-tarjeta ring-1 ring-black/5 transition duration-200 active:scale-[0.99] md:hover:-translate-y-1 md:hover:shadow-xl"
     >
