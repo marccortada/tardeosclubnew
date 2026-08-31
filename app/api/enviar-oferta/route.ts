@@ -14,14 +14,14 @@ export async function POST(req: Request) {
   if (!RESEND_API_KEY) return NextResponse.json({ error: "Falta RESEND_API_KEY en el servidor." }, { status: 500 });
   if (!SERVICE_ROLE || !URL) return NextResponse.json({ error: "Falta SUPABASE_SERVICE_ROLE_KEY en el servidor." }, { status: 500 });
 
-  let body: { titulo?: string; mensaje?: string; accessToken?: string };
+  let body: { titulo?: string; mensaje?: string; accessToken?: string; localIds?: string[]; soloContar?: boolean };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Cuerpo inválido." }, { status: 400 });
   }
-  const { titulo = "", mensaje = "", accessToken } = body;
-  if (!titulo.trim()) return NextResponse.json({ error: "Falta el título de la oferta." }, { status: 400 });
+  const { titulo = "", mensaje = "", accessToken, localIds, soloContar } = body;
+  if (!titulo.trim() && !soloContar) return NextResponse.json({ error: "Falta el título de la oferta." }, { status: 400 });
   if (!accessToken) return NextResponse.json({ error: "No autenticado." }, { status: 401 });
 
   // Cliente con service role (bypassa RLS) — solo en el servidor
@@ -34,14 +34,53 @@ export async function POST(req: Request) {
   const { data: prof } = await admin.from("profiles").select("is_admin").eq("id", uid).maybeSingle();
   if (!prof?.is_admin) return NextResponse.json({ error: "Solo administradores." }, { status: 403 });
 
-  // 2) Emails de los dueños de locales
-  const { data: locs } = await admin.from("locales").select("owner_id");
+  /**
+   * 2) A quién se le puede escribir, que no es lo mismo que a quién se querría.
+   *
+   * Dos filtros, y el segundo es el importante:
+   *
+   *   - `localIds`: si el admin ha elegido unos cuantos, solo esos. Antes solo
+   *     existía "a todos", que con una lista de verdad no se usa nunca.
+   *   - `acepta_ofertas`: SOLO quien lo haya marcado. La política de privacidad
+   *     dice que estos emails van "con tu consentimiento", y hasta ahora no
+   *     había dónde guardarlo, así que la promesa no se podía cumplir.
+   *
+   * Ojo con lo que NO se hace: los 59 locales que tienen email en su ficha
+   * pero no se han registrado no reciben nada. Ese email lo trajimos de la app
+   * antigua y no viene con ningún permiso detrás; escribirles en masa
+   * contradiría lo que dice nuestra propia política.
+   */
+  let q = admin.from("locales").select("id,nombre,owner_id");
+  if (localIds?.length) q = q.in("id", localIds);
+  const { data: locs } = await q;
   const ownerIds = Array.from(new Set((locs ?? []).map((l: any) => l.owner_id).filter(Boolean)));
-  if (ownerIds.length === 0) return NextResponse.json({ enviados: 0, total: 0, aviso: "No hay locales registrados." });
 
-  const { data: profs } = await admin.from("profiles").select("email").in("id", ownerIds);
-  const emails = Array.from(new Set((profs ?? []).map((p: any) => p.email).filter(Boolean)));
-  if (emails.length === 0) return NextResponse.json({ enviados: 0, total: 0, aviso: "Los locales no tienen email." });
+  const { data: profs } = ownerIds.length
+    ? await admin.from("profiles").select("email,acepta_ofertas").in("id", ownerIds)
+    : { data: [] as { email: string | null; acepta_ofertas: boolean | null }[] };
+
+  const conPermiso = (profs ?? []).filter((p: any) => p.acepta_ofertas);
+  const emails = Array.from(new Set(conPermiso.map((p: any) => p.email).filter(Boolean)));
+
+  const cuentas = {
+    locales: locs?.length ?? 0,
+    registrados: ownerIds.length,
+    conPermiso: emails.length,
+    sinPermiso: ownerIds.length - conPermiso.length,
+  };
+
+  // Contar antes de enviar: quien manda un email a terceros tiene derecho a
+  // ver a cuántos va y cuántos se quedan fuera, y por qué.
+  if (soloContar) return NextResponse.json(cuentas);
+
+  if (emails.length === 0) {
+    return NextResponse.json({
+      enviados: 0, ...cuentas,
+      aviso: ownerIds.length === 0
+        ? "Ninguno de esos locales tiene cuenta registrada."
+        : "Ninguno ha aceptado recibir ofertas.",
+    });
+  }
 
   // 3) Enviar con Resend (en lotes de 100)
   const resend = new Resend(RESEND_API_KEY);
@@ -75,7 +114,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 
-  return NextResponse.json({ enviados, total: emails.length });
+  return NextResponse.json({ enviados, total: emails.length, ...cuentas });
 }
 
 function escapeHtml(s: string) {

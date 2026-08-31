@@ -1,5 +1,6 @@
 "use client";
 import ActivarNotificaciones from "@/components/ActivarNotificaciones";
+import PermisoOfertas from "@/components/PermisoOfertas";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -19,6 +20,7 @@ export default function Perfil() {
 
   const [modo, setModo] = useState<"login" | "signup">("login");
   const [rol, setRol] = useState<"tardicola" | "local" | "promotor" | "dj">("tardicola");
+  const [ofertas, setOfertas] = useState(false);
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [mayor, setMayor] = useState(false);
@@ -63,7 +65,19 @@ export default function Perfil() {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password: pass,
-        options: { emailRedirectTo: `${window.location.origin}/unirse?rol=${rol}` },
+        options: {
+          emailRedirectTo: `${window.location.origin}/unirse?rol=${rol}`,
+          /**
+           * El permiso viaja EN EL ALTA, no en un update después.
+           *
+           * La fila de `profiles` la crea un disparador en cuanto nace la
+           * cuenta, así que si esto se guardara con una segunda llamada habría
+           * un hueco en el que el perfil existe sin el permiso, y si esa
+           * segunda llamada falla —red, pestaña cerrada— la casilla se marcó y
+           * no quedó registrada en ninguna parte.
+           */
+          data: { acepta_ofertas: ofertas },
+        },
       });
       if (error) { setEstado("error"); setMsg(error.message); }
       else if (!data.session) setEstado("confirmar"); // requiere confirmar email
@@ -98,6 +112,13 @@ export default function Perfil() {
 
           <div className="mt-4">
             <ActivarNotificaciones />
+          </div>
+
+          {/* Justo debajo de las notificaciones: los dos son "cómo quieres que
+              te avisemos", y tenerlos juntos evita que alguien busque uno en
+              ajustes y el otro aquí. */}
+          <div className="mt-3">
+            <PermisoOfertas userId={user.id} />
           </div>
 
           <div className="mt-4 flex flex-col gap-3">
@@ -218,10 +239,32 @@ export default function Perfil() {
             className="w-full rounded-xl border-2 border-magenta-100 px-4 py-3 text-base font-semibold outline-none focus:border-magenta" />
 
           {modo === "signup" && (
+            <>
             <label className="mt-3 flex items-center gap-2 text-sm font-bold text-tinta/70">
               <input type="checkbox" checked={mayor} onChange={(e) => setMayor(e.target.checked)} className="h-5 w-5 accent-magenta" />
               Soy mayor de 18 años
             </label>
+            {/*
+              Desmarcada de serie, y así se queda.
+              Una casilla de consentimiento que viene marcada no es un
+              consentimiento: es un descuido de quien no la vio. Y sin esto, la
+              pantalla de ofertas del admin solo puede escribir a todos o a
+              nadie, que es justo donde estábamos.
+            */}
+            <label className="mt-2 flex items-start gap-2 text-sm font-bold text-tinta/70">
+              <input
+                type="checkbox" checked={ofertas}
+                onChange={(e) => setOfertas(e.target.checked)}
+                className="mt-0.5 h-5 w-5 shrink-0 accent-magenta"
+              />
+              <span>
+                Quiero recibir ofertas y novedades por email.
+                <span className="block text-xs font-semibold text-tinta/45">
+                  Opcional. Puedes cambiarlo cuando quieras desde tu perfil.
+                </span>
+              </span>
+            </label>
+            </>
           )}
 
           {estado === "error" && <p className="mt-2 text-sm font-bold text-magenta">{msg}</p>}
