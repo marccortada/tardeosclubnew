@@ -99,13 +99,29 @@ export function encajeDe(t: Tardeo, adn: AdnTardicola | null): Encaje {
   // quien le guste Tech House no le saldría un tardeo que puso "Techouse".
   // La música del tardeo si la trae; si no, la habitual del sitio.
   const musicaLocal = t.local?.adn?.musica ?? [];
-  const musicaDe = t.estilo ? t.estilo : musicaLocal.join(" · ");
   const deLocal = !t.estilo && musicaLocal.length > 0;
-  if (adn.musica.length && musicaDe) {
+  const hayMusica = Boolean(t.estilo) || musicaLocal.length > 0;
+  if (adn.musica.length && hayMusica) {
     comparados++;
     maximo += PESOS.estiloExacto;
-    const estilosT = normalizarEstilo(musicaDe);
-    const familiasT = familiasDe(musicaDe);
+
+    /**
+     * La del local se normaliza etiqueta a etiqueta, NO uniéndolas en un texto.
+     *
+     * Unirlas con " · " parecía lo natural y no funcionaba: normalizarEstilo()
+     * trocea por "+ / , ; &" y por la palabra "y", pero no por el punto medio,
+     * así que "House · Remember · Techno" entraba como una sola etiqueta que no
+     * existe y no reconocía ninguna. Callado, y peor en los locales con más
+     * datos: los de una sola sí funcionaban. Aquí no hace falta trocear nada
+     * porque ya vienen separadas; convertirlas a texto para volver a partirlo
+     * era el error.
+     */
+    const estilosT = t.estilo
+      ? normalizarEstilo(t.estilo)
+      : [...new Set(musicaLocal.flatMap((m) => normalizarEstilo(m)))];
+    const familiasT = t.estilo
+      ? familiasDe(t.estilo)
+      : [...new Set(musicaLocal.flatMap((m) => familiasDe(m)))];
 
     // El texto depende de QUÉ se ha acertado, no de por qué rama entró: un id
     // sin ":" es una familia entera ("remember"), con ":" es un estilo
