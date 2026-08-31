@@ -6,7 +6,7 @@ import PanelHeader from "@/components/PanelHeader";
 import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
 import {
-  CalendarDays, Store, Disc3, Euro, BadgeCheck, X, Check,
+  CalendarDays, Store, Disc3, Euro, BadgeCheck, X, Check, Contact,
   Megaphone, Bell, BellRing, ShieldAlert, ChevronRight, Loader2, Star,
   Plus, CreditCard, ShieldCheck, Mail,
 } from "lucide-react";
@@ -20,6 +20,7 @@ const GESTION = [
   { icon: Star, label: "Destacados", sub: "Quién sale primero en la home", href: "/admin/destacados" },
   { icon: BadgeCheck, label: "Reclamaciones", sub: "Quién pide gestionar su ficha", href: "/admin/reclamaciones" },
   { icon: ShieldCheck, label: "Moderación", sub: "Reseñas y flyers", href: "/admin/moderacion" },
+  { icon: Contact, label: "CRM comercial", sub: "A quién le toca hoy", href: "/admin/crm" },
   { icon: CreditCard, label: "Suscripciones", sub: "Pagos e impagos", href: "/admin/suscripciones" },
   { icon: Store, label: "Locales", sub: "Gestión de locales", href: "/admin/locales" },
   { icon: Disc3, label: "DJs", sub: "Gestión de DJs", href: "/admin/djs" },
