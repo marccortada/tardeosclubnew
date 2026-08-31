@@ -13,7 +13,9 @@ export const runtime = "nodejs";
  * DJs...) puede venir después: la tabla ya guarda profile_id para eso.
  */
 export async function POST(req: Request) {
-  let body: { titulo?: string; mensaje?: string; url?: string; accessToken?: string };
+  let body: {
+    segmento?: { musica?: string[]; tiposEvento?: string[]; edades?: string[]; zonas?: string[] };
+    soloContar?: boolean; titulo?: string; mensaje?: string; url?: string; accessToken?: string };
   try {
     body = await req.json();
   } catch {
@@ -47,9 +49,58 @@ export async function POST(req: Request) {
   const admin = createClient(URL_SB, SERVICE_ROLE);
   const { data: subs, error } = await admin
     .from("push_suscripciones")
-    .select("id,endpoint,p256dh,auth");
+    .select("id,endpoint,p256dh,auth,profile_id");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!subs?.length) return NextResponse.json({ enviadas: 0, caducadas: 0 });
+
+  /**
+   * A quién le toca, según su ADN.
+   *
+   * Un tardeo de Mataró no le interesa a alguien de Girona, y el que recibe
+   * tres avisos que no van con él desactiva el cuarto. El aviso sin segmentar
+   * no es "más alcance": es gastarse la lista.
+   *
+   * Se decide AQUÍ y no en el navegador, al revés que los pop-ups: la
+   * notificación se manda desde el servidor, así que es el servidor quien tiene
+   * que saber a qué endpoints. Los gustos no salen de aquí: se leen, se filtra
+   * y no se devuelven.
+   *
+   * Un criterio vacío no restringe, y los puestos se exigen TODOS. Y sin gustos
+   * rellenados NO se recibe un aviso segmentado, igual que con los pop-ups:
+   * mandárselo "por si acaso" es exactamente lo que hace que la gente desactive.
+   */
+  const seg = body.segmento ?? {};
+  const hayCriterios = Object.values(seg).some((v) => Array.isArray(v) && v.length > 0);
+
+  let destinatarias = subs ?? [];
+  if (hayCriterios) {
+    const ids = [...new Set(destinatarias.map((s) => s.profile_id).filter(Boolean))] as string[];
+    const { data: perfiles } = ids.length
+      ? await admin.from("profiles").select("id,musica,tipos_evento,publico,zonas").in("id", ids)
+      : { data: [] as { id: string; musica: string[] | null; tipos_evento: string[] | null; publico: string | null; zonas: string[] | null }[] };
+    const porId = new Map((perfiles ?? []).map((p) => [p.id, p]));
+
+    const cruza = (pedido: string[] | undefined, suyo: string[]) =>
+      !pedido?.length || suyo.some((x) => pedido.includes(x));
+
+    destinatarias = destinatarias.filter((s) => {
+      if (!s.profile_id) return false;            // sin cuenta no hay gustos que mirar
+      const p = porId.get(s.profile_id);
+      if (!p) return false;
+      return cruza(seg.musica, p.musica ?? [])
+        && cruza(seg.tiposEvento, p.tipos_evento ?? [])
+        && cruza(seg.edades, p.publico ? [p.publico] : [])
+        && cruza(seg.zonas, p.zonas ?? []);
+    });
+  }
+
+  // Contar antes de enviar: quien manda un aviso a miles de móviles tiene
+  // derecho a saber a cuántos va ANTES de darle al botón.
+  if (body.soloContar) {
+    return NextResponse.json({ destinatarias: destinatarias.length, total: subs?.length ?? 0 });
+  }
+
+  if (!destinatarias.length) return NextResponse.json({ enviadas: 0, caducadas: 0, destinatarias: 0 });
+  const listaEnvio = destinatarias;
 
   const payload = JSON.stringify({ titulo, mensaje, url });
 
@@ -58,9 +109,9 @@ export async function POST(req: Request) {
   // suscripción: se borran y la tabla se poda sola.
   let enviadas = 0;
   const muertas: string[] = [];
-  for (let i = 0; i < subs.length; i += 10) {
+  for (let i = 0; i < listaEnvio.length; i += 10) {
     await Promise.all(
-      subs.slice(i, i + 10).map(async (s) => {
+      listaEnvio.slice(i, i + 10).map(async (s) => {
         try {
           await webpush.sendNotification(
             { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
@@ -76,5 +127,5 @@ export async function POST(req: Request) {
   }
   if (muertas.length) await admin.from("push_suscripciones").delete().in("id", muertas);
 
-  return NextResponse.json({ enviadas, caducadas: muertas.length });
+  return NextResponse.json({ enviadas, caducadas: muertas.length, destinatarias: listaEnvio.length });
 }

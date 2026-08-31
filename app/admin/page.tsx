@@ -5,10 +5,11 @@ import Link from "next/link";
 import PanelHeader from "@/components/PanelHeader";
 import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
+import { enlaceInstagram, enlaceWeb, enlaceTelefono } from "@/lib/crm";
 import {
   CalendarDays, Store, Disc3, Euro, BadgeCheck, X, Check, Contact,
   Megaphone, Bell, BellRing, ShieldAlert, ChevronRight, Loader2, Star,
-  Plus, CreditCard, ShieldCheck, Mail, CalendarPlus, LineChart,
+  Plus, CreditCard, ShieldCheck, Mail, CalendarPlus, LineChart, Phone, Instagram, Globe,
 } from "lucide-react";
 
 /**
@@ -92,6 +93,7 @@ export default function PanelAdmin() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [metricas, setMetricas] = useState({ tardeos: 0, pasados: 0, locales: 0, djs: 0 });
   const [verif, setVerif] = useState<any[]>([]);
+  const [porBorrar, setPorBorrar] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -123,7 +125,22 @@ export default function PanelAdmin() {
         supabase.from("locales").select("*").neq("estado", "activo").order("created_at", { ascending: false }),
       ]);
       setMetricas({ tardeos: t.count ?? 0, pasados: pas.count ?? 0, locales: l.count ?? 0, djs: d.count ?? 0 });
-      setVerif(pend.data ?? []);
+
+      /**
+       * El email de quien lo registró, en una consulta aparte.
+       *
+       * Sin esto había que aprobar o BORRAR a ciegas: la tarjeta solo enseñaba
+       * el nombre y la dirección. No se puede decidir sobre una ficha sin ver
+       * quién la ha pedido ni por dónde escribirle.
+       */
+      const filas = pend.data ?? [];
+      const ids = [...new Set(filas.map((x) => x.owner_id).filter(Boolean))] as string[];
+      const correos = new Map<string, string>();
+      if (ids.length) {
+        const { data: perfiles } = await supabase.from("profiles").select("id,email").in("id", ids);
+        (perfiles ?? []).forEach((p) => correos.set(p.id, p.email ?? ""));
+      }
+      setVerif(filas.map((x) => ({ ...x, duenoEmail: x.owner_id ? correos.get(x.owner_id) ?? null : null })));
       setCargando(false);
     });
   }, [user]);
@@ -208,19 +225,46 @@ export default function PanelAdmin() {
               <div key={v.id} className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="font-display text-lg font-black leading-tight">{v.nombre}</p>
+                    <p className="font-display text-lg fontetc-black leading-tight">{v.nombre}</p>
                     <p className="truncate text-sm font-semibold text-tinta/60">{v.direccion || "Sin dirección"}</p>
                   </div>
                   {v.zona && <span className="shrink-0 rounded-full bg-magenta-50 px-2.5 py-1 text-xs font-black text-magenta-700">{v.zona}</span>}
                 </div>
+
+                {/* Con quién estás hablando y desde cuándo espera. */}
+                <p className="mt-1 text-xs font-semibold text-tinta/45">
+                  {v.tipo === "promotor" ? "Promotor" : "Local"}
+                  {v.estado === "oculto_impago" ? " · oculto por impago" : ""}
+                  {v.created_at ? ` · pedido el ${new Date(v.created_at).toLocaleDateString("es-ES")}` : ""}
+                  {v.duenoEmail ? ` · lo registró ${v.duenoEmail}` : " · sin cuenta asociada"}
+                </p>
+
+                <ContactoLocal local={v} />
+
                 <div className="mt-3 flex gap-2">
                   <button onClick={() => aprobar(v.id)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-magenta py-3 text-sm font-extrabold text-white active:scale-[0.98]">
                     <Check size={18} /> Aprobar
                   </button>
-                  <button onClick={() => rechazar(v.id)} className="flex items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-tinta/70 ring-1 ring-black/10 active:scale-[0.98]">
-                    <X size={18} /> Rechazar
+                  {/* Dos toques, porque esto BORRA la ficha para siempre. Antes
+                      era un botón normal al lado de "Aprobar", del mismo tamaño
+                      y sin avisar de nada. */}
+                  <button
+                    onClick={() => (porBorrar === v.id ? rechazar(v.id) : setPorBorrar(v.id))}
+                    onBlur={() => setPorBorrar((p) => (p === v.id ? null : p))}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl px-4 py-3 text-sm font-extrabold active:scale-[0.98] ${
+                      porBorrar === v.id
+                        ? "bg-red-600 text-white"
+                        : "bg-white text-tinta/70 ring-1 ring-black/10"}`}
+                  >
+                    <X size={18} /> {porBorrar === v.id ? "Sí, borrar" : "Rechazar"}
                   </button>
                 </div>
+                {porBorrar === v.id && (
+                  <p className="mt-2 text-xs font-bold text-red-700">
+                    Se borra la ficha entera y no se puede deshacer. Si solo quieres que no se vea,
+                    déjala sin aprobar.
+                  </p>
+                )}
               </div>
             ))}
             {verif.length === 0 && (
@@ -256,5 +300,38 @@ export default function PanelAdmin() {
         ))}
       </div>
     </main>
+  );
+}
+
+/**
+ * Por dónde escribir a un local que pide verificación.
+ *
+ * Los datos ya estaban en su ficha; lo que no había era manera de verlos antes
+ * de decidir. Se enseña lo que haya y, si no hay nada, se dice: que un local no
+ * haya dejado forma de contacto también es información para decidir.
+ */
+function ContactoLocal({ local }: { local: any }) {
+  const redes = (local.redes ?? {}) as Record<string, string>;
+  const canales = [
+    local.email && { icono: Mail, url: `mailto:${local.email}`, texto: local.email },
+    local.telefono && { icono: Phone, url: enlaceTelefono(local.telefono) ?? "#", texto: local.telefono },
+    redes.instagram && { icono: Instagram, url: enlaceInstagram(redes.instagram) ?? "#", texto: "Instagram" },
+    redes.web && { icono: Globe, url: enlaceWeb(redes.web) ?? "#", texto: "Web" },
+  ].filter(Boolean) as { icono: typeof Mail; url: string; texto: string }[];
+
+  if (canales.length === 0) {
+    return <p className="mt-2 text-sm font-bold text-tinta/40">Sin forma de contacto en la ficha</p>;
+  }
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {canales.map((c) => (
+        <a
+          key={c.url} href={c.url} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-full bg-black/5 px-3 py-1.5 text-xs font-black text-tinta/70 transition hover:bg-magenta hover:text-white"
+        >
+          <c.icono size={14} /> <span className="max-w-[13rem] truncate">{c.texto}</span>
+        </a>
+      ))}
+    </div>
   );
 }
