@@ -45,6 +45,22 @@ export default function Cookies() {
               <td>Que una misma visita a una ficha no se cuente dos veces</td>
               <td>Hasta que cierras la pestaña</td>
             </tr>
+            <tr>
+              <td>Número de pestaña</td>
+              <td>
+                Un número al azar, sin nada tuyo, para no contarte diez veces si recargas. No te
+                sigue entre visitas: al cerrar la pestaña se pierde y la próxima vez es otro
+              </td>
+              <td>Hasta que cierras la pestaña</td>
+            </tr>
+            <tr>
+              <td>Tu ubicación, si la das</td>
+              <td>
+                No volver a pedirte permiso cada vez que usas «Cerca de mí». No sale de tu
+                navegador: no la guardamos en ningún servidor
+              </td>
+              <td>Hasta que cierras la pestaña</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -57,9 +73,15 @@ export default function Cookies() {
 
       <h2>2. Analítica</h2>
       <p>
-        Cuando midamos visitas usaremos una herramienta <strong>sin cookies</strong> y sin perfiles
-        de usuario, para no tener que ponerte un banner de aceptación. Si algún día eso cambiara,
-        te lo pediríamos antes y lo actualizaríamos aquí.
+        Medimos qué se usa de la web <strong>sin cookies, sin Google Analytics y sin perfiles de
+        usuario</strong>, y por eso no te ponemos un banner de aceptación. La medición es nuestra y
+        no se la cedemos a nadie: guardamos qué pantalla se abrió, qué se buscó y qué se pulsó,{" "}
+        <strong>sin tu IP y sin saber qué navegador usas</strong>.
+      </p>
+      <p>
+        Está contado con detalle en el punto 3 de la{" "}
+        <a href="/legal/privacidad">política de privacidad</a>. Si algún día eso cambiara, te lo
+        pediríamos antes y lo actualizaríamos aquí.
       </p>
 
       <h2>3. Webs de terceros</h2>

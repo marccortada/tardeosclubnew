@@ -23,6 +23,7 @@ export const ULTIMA_ACTUALIZACION = "31 de julio de 2026";
 /** Proveedores que tratan datos por cuenta de TardeosClub (ANALISIS.md §17.8). */
 export const SUBENCARGADOS = [
   { nombre: "Supabase", uso: "Base de datos y acceso a la cuenta", donde: "Unión Europea" },
+  { nombre: "Google", uso: "Entrar con tu cuenta de Google, si eliges esa opción", donde: "EE. UU. (con garantías RGPD)" },
   { nombre: "DigitalOcean", uso: "Alojamiento de la web", donde: "Unión Europea" },
   { nombre: "Cloudflare", uso: "Red de distribución y seguridad", donde: "Global (con garantías RGPD)" },
   { nombre: "Anthropic (Claude)", uso: "Leer los flyers que sube el local", donde: "EE. UU." },
