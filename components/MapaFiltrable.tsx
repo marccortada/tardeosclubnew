@@ -62,6 +62,20 @@ export default function MapaFiltrable({ todos }: { todos: Tardeo[] }) {
         <span className="ml-auto text-sm font-bold text-tinta/50">{lista.length} {lista.length === 1 ? "tardeo" : "tardeos"}</span>
       </div>
 
+      {/* Sin cartelera no se enseña un mapa vacío con filtros que responden:
+          se dice que no hay nada. Mismo motivo que en el listado — un mapa en
+          blanco bajo una fila de filtros se lee como "el mapa está roto". */}
+      {todos.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center rounded-2xl bg-white p-8 text-center ring-1 ring-magenta-100">
+          <div>
+            <p className="font-display text-xl font-black">Todavía no hay tardeos que poner en el mapa</p>
+            <p className="mx-auto mt-2 max-w-sm font-semibold text-tinta/60">
+              No es el mapa ni los filtros: no hay ningún tardeo con fecha de hoy en adelante.
+            </p>
+          </div>
+        </div>
+      ) : (
+      <>
       {/* Filtros. Aquí el carrusel sí toca: son todas las zonas y no caben de
           ninguna manera. Lo que faltaba era el degradado del borde, que es lo
           único que delata que la fila sigue más allá del canto de la pantalla. */}
@@ -93,6 +107,8 @@ export default function MapaFiltrable({ todos }: { todos: Tardeo[] }) {
       <div className="flex-1 overflow-hidden rounded-2xl ring-1 ring-magenta-100">
         <MapaClient tardeos={lista} />
       </div>
+      </>
+      )}
     </main>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/useAuth";
 import { getAdn, tieneAdn, type AdnTardicola } from "@/lib/tardicola";
 import { ordenarPorEncaje } from "@/lib/recomendar";
@@ -427,6 +428,36 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
         </h1>
       </div>
 
+      {/*
+        Si NO HAY NADA que filtrar, no se enseña la maquinaria de filtrar.
+
+        Esto no es un adorno. En la primera revisión del dueño, las métricas
+        registraron 27 usos de filtro y cero búsquedas: se recorrió las seis
+        familias de música, los tres filtros de fecha, "cerca de mí" y "para
+        ti", y las once veces le salió una lista vacía. El mensaje de "aún no
+        hay tardeos publicados" ya estaba, pero debajo de una barra con nueve
+        filtros que responden: quien ve eso no concluye "no hay contenido",
+        concluye "los filtros no funcionan". Y se fue con esa sensación.
+
+        Con la cartelera vacía, lo único honesto es decirlo y no ofrecer nada
+        que tocar.
+      */}
+      {todos.length === 0 ? (
+        <div className="rounded-3xl bg-white p-8 text-center shadow-tarjeta ring-1 ring-magenta-100">
+          <p className="font-display text-2xl font-black">Todavía no hay tardeos publicados</p>
+          <p className="mx-auto mt-2 max-w-md font-semibold text-tinta/60">
+            No es cosa tuya ni de los filtros: ahora mismo no hay ningún tardeo con fecha de hoy en
+            adelante. En cuanto los locales publiquen los suyos, aparecerán aquí.
+          </p>
+          <Link
+            href="/colaboradores"
+            className="mt-5 inline-block rounded-2xl bg-magenta px-6 py-3.5 text-base font-extrabold text-white active:scale-[0.98]"
+          >
+            Ver los locales y DJs
+          </Link>
+        </div>
+      ) : (
+      <>
       {/* Buscador */}
       <div className="relative mb-3">
         <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-tinta/40" />
@@ -685,8 +716,10 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
 
       {lista.length === 0 && (
         <p className="rounded-2xl bg-white p-6 text-center font-bold text-tinta/60 ring-1 ring-magenta-100">
-          {todos.length === 0 ? "Aún no hay tardeos publicados. ¡Vuelve pronto! 🎉" : "No hay tardeos con esos filtros 😅"}
+          No hay tardeos con esos filtros 😅
         </p>
+      )}
+      </>
       )}
     </main>
   );
