@@ -160,7 +160,7 @@ export default async function Inicio() {
                 <div className="pointer-events-none absolute inset-0">
                   {/* Le pasamos los tardeos que ya trajo el servidor: sin esto
                       el mapa los volvía a pedir por su cuenta al montarse. */}
-                  <MapaClient tardeos={tardeos} />
+                  <MapaClient tardeos={tardeos} conZoom={false} />
                 </div>
                 {/* Arriba y no abajo: Leaflet pone su atribución obligatoria
                     en la esquina inferior derecha, y esta barra se le montaba

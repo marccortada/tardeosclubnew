@@ -47,7 +47,19 @@ function porPoblaciones(tardeos: Tardeo[]): Tardeo[][] {
   return grupos.map((g) => g.items);
 }
 
-export default function MapaClient({ tardeos: tardeosProp }: { tardeos?: Tardeo[] }) {
+export default function MapaClient({
+  tardeos: tardeosProp,
+  conZoom = true,
+}: {
+  tardeos?: Tardeo[];
+  /**
+   * Los botones de + y −. Se apagan en la vista previa de la portada, que va
+   * dentro de un contenedor `pointer-events-none`: allí no se pueden pulsar,
+   * así que solo estorban —y encima quedaban debajo del rótulo "Tardeos cerca
+   * de ti"—.
+   */
+  conZoom?: boolean;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const capasRef = useRef<MarkerClusterGroup[]>([]); // un cluster por población
@@ -111,7 +123,7 @@ export default function MapaClient({ tardeos: tardeosProp }: { tardeos?: Tardeo[
       if (cancel || !ref.current || mapRef.current) return;
       LRef.current = L;
 
-      const map = L.map(ref.current, { zoomControl: true }).setView([41.55, 2.3], 9);
+      const map = L.map(ref.current, { zoomControl: conZoom }).setView([41.55, 2.3], 9);
       mapRef.current = map;
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
