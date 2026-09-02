@@ -109,7 +109,10 @@ export default function TardeoCard({
           {/* Dos líneas, no puntos suspensivos. En el listado son dos columnas de
               104 px de texto: ahí no cabe ni "NOSE tardeo", y TODOS los títulos
               salían cortados a mitad de palabra ("NOSE tar…", "Sunset Da…"). */}
-          <h3 className="line-clamp-2 font-display text-lg font-black leading-tight">{tardeo.titulo}</h3>
+          {/* min-h de dos líneas: con `line-clamp-2` los títulos de una línea
+              dejaban la tarjeta 22 px más baja, y en una rejilla eso hace que
+              cada fila mida distinto y los bordes no cuadren. */}
+          <h3 className="line-clamp-2 min-h-[2.5rem] font-display text-lg font-black leading-tight">{tardeo.titulo}</h3>
           <div className="mt-1 flex flex-col gap-0.5 text-sm font-semibold text-tinta/80">
             <span className="inline-flex items-center gap-1.5 truncate">
               {/* Se unen solo las partes que existen. Con `nombre · zona` fijo,

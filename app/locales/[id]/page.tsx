@@ -52,8 +52,20 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
       <DatosEstructurados datos={jsonLdLocal(local, tardeos)} />
       {/* Portada */}
       <div className="relative h-44 overflow-hidden bg-marca md:h-60">
+        {/*
+          Orden: foto de galería, y si no hay, EL LOGO difuminado de fondo.
+          Antes solo se miraba `fotos`, y resulta que ningún local tiene fotos
+          mientras que 57 de los 65 activos sí tienen logo: las 65 fichas
+          enseñaban un icono genérico teniendo su marca guardada. La de DJ sí
+          usaba su avatar, así que además no se parecían entre ellas.
+        */}
         {fotos[0] ? (
           <Image src={fotos[0]} alt="" fill sizes="(max-width: 768px) 100vw, 768px" className="object-cover" />
+        ) : local.logo_url ? (
+          <Image
+            src={local.logo_url} alt="" fill sizes="(max-width: 768px) 100vw, 768px"
+            className="scale-110 object-cover opacity-60 blur-xl"
+          />
         ) : (
           <div className="grid h-full w-full place-items-center bg-marca text-white/30"><Store size={72} /></div>
         )}
@@ -70,9 +82,18 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
 
       <div className="px-4 md:px-8">
         {/* Cabecera */}
-        <span className="-mt-10 grid h-20 w-20 place-items-center rounded-3xl bg-white text-magenta shadow-tarjeta ring-1 ring-black/5">
-          <Store size={38} />
-        </span>
+        {/* Su marca, si la tiene. Es lo primero que mira quien abre la ficha
+            para saber si ha llegado al sitio correcto. */}
+        {local.logo_url ? (
+          <Image
+            src={local.logo_url} alt={local.nombre} width={80} height={80}
+            className="-mt-10 h-20 w-20 rounded-3xl bg-white object-cover shadow-tarjeta ring-1 ring-black/5"
+          />
+        ) : (
+          <span className="-mt-10 grid h-20 w-20 place-items-center rounded-3xl bg-white text-magenta shadow-tarjeta ring-1 ring-black/5">
+            <Store size={38} />
+          </span>
+        )}
         <h1 className="mt-3 flex items-center gap-2 font-display text-2xl font-black leading-tight md:text-3xl">
           {local.nombre}
           {local.verificado && <BadgeCheck size={22} className="shrink-0 text-oro-600" />}
