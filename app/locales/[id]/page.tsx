@@ -13,6 +13,7 @@ import { ArrowLeft, MapPin, Phone, BadgeCheck, Store, CalendarDays , Megaphone }
 import ReclamarFicha from "@/components/ReclamarFicha";
 import AdnLocalFicha from "@/components/AdnLocalFicha";
 import RegistrarVista from "@/components/RegistrarVista";
+import { sinMarcas } from "@/lib/texto";
 
 export const dynamic = "force-dynamic";
 
@@ -108,7 +109,7 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
           local.zona && <p className="text-sm font-bold text-tinta/60">{local.zona}</p>
         )}
 
-        {local.descripcion && <p className="mt-4 font-semibold text-tinta/80">{local.descripcion}</p>}
+        {local.descripcion && <p className="mt-4 whitespace-pre-line font-semibold text-tinta/80">{sinMarcas(local.descripcion)}</p>}
 
         {/* Datos de contacto */}
         <div className="mt-4 flex flex-wrap gap-2">

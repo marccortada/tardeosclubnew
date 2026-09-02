@@ -14,6 +14,7 @@ import { ArrowLeft, BadgeCheck, Star, Music, Disc3, CalendarDays, Instagram, You
 import { tieneValoracion, valoracion } from "@/lib/reputacion";
 import ReclamarFicha from "@/components/ReclamarFicha";
 import RegistrarVista from "@/components/RegistrarVista";
+import { sinMarcas } from "@/lib/texto";
 
 export const dynamic = "force-dynamic";
 
@@ -87,16 +88,16 @@ export default async function PaginaDj({ params }: { params: Promise<{ id: strin
             <span className="grid h-20 w-20 place-items-center rounded-3xl bg-white/15 font-display text-3xl font-black text-oro">{inicial}</span>
           )}
           <div>
-            <h1 className="inline-flex items-center gap-2 font-display text-2xl font-black leading-tight md:text-3xl">
+            <h1 className="flex w-fit items-center gap-2 font-display text-2xl font-black leading-tight md:text-3xl">
               {dj.nombre_artistico}
               {dj.verificado && <BadgeCheck size={22} className="text-oro-400" />}
             </h1>
             {tieneValoracion(dj.reputacion_score) ? (
-              <p className="mt-1 inline-flex items-center gap-1 font-bold text-oro-400">
+              <p className="mt-1 flex w-fit items-center gap-1 font-bold text-oro-400">
                 <Star size={16} fill="currentColor" /> {valoracion(dj.reputacion_score)} de reputación
               </p>
             ) : (
-              <p className="mt-1 inline-flex items-center gap-1 font-bold text-white/70">Nuevo en TardeosClub</p>
+              <p className="mt-1 flex w-fit items-center gap-1 font-bold text-white/70">Nuevo en TardeosClub</p>
             )}
             {socials.length > 0 && (
               <div className="mt-2 flex gap-2">
@@ -127,7 +128,7 @@ export default async function PaginaDj({ params }: { params: Promise<{ id: strin
         {/* Bio */}
         {dj.bio && (
           <section className="mt-4 rounded-2xl bg-white p-5 shadow-tarjeta ring-1 ring-black/5">
-            <p className="font-semibold text-tinta/80">{dj.bio}</p>
+            <p className="whitespace-pre-line font-semibold text-tinta/80">{sinMarcas(dj.bio)}</p>
           </section>
         )}
 
