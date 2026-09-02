@@ -47,12 +47,26 @@ export function contieneTexto(pajar: string | null | undefined, aguja: string): 
 export function sinMarcas(texto?: string | null): string {
   if (!texto) return "";
   return texto
-    .replace(/^#{1,6}\s+/gm, "")              // ## títulos
-    .replace(/\*\*(.+?)\*\*/g, "$1")          // **negrita**
-    .replace(/__(.+?)__/g, "$1")              // __negrita__
-    .replace(/(^|\s)\*(\S(?:.*?\S)?)\*(?=\s|$)/g, "$1$2")   // *cursiva*
-    .replace(/(^|\s)_(\S(?:.*?\S)?)_(?=\s|$)/g, "$1$2")       // _cursiva_
-    .replace(/\[(.+?)\]\((.+?)\)/g, "$1")     // [texto](enlace)
-    .replace(/^\s*[-*+]\s+/gm, "· ")          // - viñetas
+    .replace(/^#{1,6}\s+/gm, "")                       // ## títulos
+    .replace(/\[(.+?)\]\((.+?)\)/g, "$1")              // [texto](enlace)
+    .replace(/^\s*[-*+]\s+/gm, "· ")                   // - viñetas
+    .replace(/\*\*(.+?)\*\*/g, "$1")                   // **negrita**
+    .replace(/__(.+?)__/g, "$1")                       // __negrita__
+    // Cursiva: el cierre puede llevar puntuación detrás («*Melodic*,»), que es
+    // justo como se escribe de verdad. Exigir espacio o fin de línea dejaba
+    // fuera la mitad de los casos.
+    .replace(/(^|[\s(])\*(\S(?:.*?\S)?)\*(?=[\s).,;:!?]|$)/g, "$1$2")
+    .replace(/(^|[\s(])_(\S(?:.*?\S)?)_(?=[\s).,;:!?]|$)/g, "$1$2")
+    /**
+     * Y al final, los asteriscos dobles que queden sueltos.
+     *
+     * El texto real no viene bien formado: la bio publicada dice
+     * "**Afro House, **Minimal**, **Tech House**", con los pares cruzados. Una
+     * regla que solo entienda markdown correcto limpia la mitad y deja la otra
+     * mitad a la vista, que es peor que no tocar nada. Un "**" nunca es texto
+     * que alguien quisiera escribir.
+     */
+    .replace(/\*\*/g, "")
+    .replace(/[ \t]{2,}/g, " ")
     .trim();
 }
