@@ -62,7 +62,9 @@ export default function TardeoCard({
           className="relative z-10 object-contain"
         />
         {/* badge de entrada: blanco + texto oscuro = contraste alto sobre cualquier flyer */}
-        <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-sm font-black text-tinta shadow-md backdrop-blur">
+        {/* Con tope de ancho: "Entrada 10€" crecía hasta meterse debajo del
+            botón de compartir, y se leía "Entrada 10" con un círculo encima. */}
+        <span className="absolute left-3 top-3 z-20 inline-flex max-w-[calc(100%-4.25rem)] items-center gap-1.5 truncate rounded-full bg-white/95 px-3 py-1.5 text-sm font-black text-tinta shadow-md backdrop-blur">
           <Icon size={15} className="text-magenta" /> {e.label}
           {tardeo.precio ? ` ${tardeo.precio}€` : ""}
         </span>
@@ -104,10 +106,18 @@ export default function TardeoCard({
           <p className="font-script text-lg leading-none text-magenta-600">
             {formatFecha(tardeo.fecha)}
           </p>
-          <h3 className="truncate font-display text-lg font-black leading-tight">{tardeo.titulo}</h3>
+          {/* Dos líneas, no puntos suspensivos. En el listado son dos columnas de
+              104 px de texto: ahí no cabe ni "NOSE tardeo", y TODOS los títulos
+              salían cortados a mitad de palabra ("NOSE tar…", "Sunset Da…"). */}
+          <h3 className="line-clamp-2 font-display text-lg font-black leading-tight">{tardeo.titulo}</h3>
           <div className="mt-1 flex flex-col gap-0.5 text-sm font-semibold text-tinta/80">
             <span className="inline-flex items-center gap-1.5 truncate">
-              <MapPin size={15} className="shrink-0 text-magenta" /> {tardeo.local.nombre} · {tardeo.zona}
+              {/* Se unen solo las partes que existen. Con `nombre · zona` fijo,
+                  un local sin nombre —o uno que la consulta pública no puede
+                  leer porque está en borrador— dejaba un "· Mataró" huérfano
+                  en la tarjeta, que es de las cosas que más cantan. */}
+              <MapPin size={15} className="shrink-0 text-magenta" />{" "}
+              {[tardeo.local.nombre, tardeo.zona].filter(Boolean).join(" · ") || "Sin ubicación"}
             </span>
             {distanciaKm != null && (
               <span className="inline-flex items-center gap-1.5 font-black text-magenta">

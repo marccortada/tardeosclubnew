@@ -162,7 +162,10 @@ export default async function Inicio() {
                       el mapa los volvía a pedir por su cuenta al montarse. */}
                   <MapaClient tardeos={tardeos} />
                 </div>
-                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/70 to-transparent px-4 py-3">
+                {/* Arriba y no abajo: Leaflet pone su atribución obligatoria
+                    en la esquina inferior derecha, y esta barra se le montaba
+                    encima. Quedaban "Ver mapa →" y "© OpenStreetMap" pisándose. */}
+                <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent px-4 py-3">
                   <span className="inline-flex items-center gap-1.5 font-extrabold text-white">
                     <MapPin size={18} className="text-oro-400" /> Tardeos cerca de ti
                   </span>

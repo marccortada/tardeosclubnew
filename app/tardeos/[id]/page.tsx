@@ -119,14 +119,38 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
           <span className="inline-flex items-center gap-2">
             <Clock size={20} className="text-magenta" /> {formatFecha(tardeo.fecha)} · {tardeo.horaInicio}–{tardeo.horaFin}
           </span>
-          <Link href={`/locales/${tardeo.local.id}`} className="inline-flex items-center gap-2 transition hover:text-magenta">
-            <MapPin size={20} className="text-magenta" /> {tardeo.local.nombre}
-            {tardeo.local.verificado && <BadgeCheck size={18} className="text-oro-600" />}
-          </Link>
-          <span className="pl-7 text-sm text-tinta/60">{tardeo.local.direccion}</span>
-          <span className="inline-flex items-center gap-2">
-            <Music size={20} className="text-magenta" /> {tardeo.estilo}
-          </span>
+          {/*
+            Sin nombre de local no se pinta el enlace: se pinta la dirección con
+            su icono y ya.
+
+            Pasa de verdad, y no por un dato mal metido: si el local está en
+            borrador, la consulta pública NO puede leerlo —lo filtra la política
+            de la base— y llega vacío. Antes eso dejaba un icono de ubicación
+            solo, en una línea, enlazando a una ficha que tampoco se puede ver.
+          */}
+          {tardeo.local.nombre ? (
+            <>
+              <Link href={`/locales/${tardeo.local.id}`} className="inline-flex items-center gap-2 transition hover:text-magenta">
+                <MapPin size={20} className="text-magenta" /> {tardeo.local.nombre}
+                {tardeo.local.verificado && <BadgeCheck size={18} className="text-oro-600" />}
+              </Link>
+              {tardeo.local.direccion && (
+                <span className="pl-7 text-sm text-tinta/60">{tardeo.local.direccion}</span>
+              )}
+            </>
+          ) : tardeo.local.direccion ? (
+            <span className="inline-flex items-start gap-2">
+              <MapPin size={20} className="mt-0.5 shrink-0 text-magenta" /> {tardeo.local.direccion}
+            </span>
+          ) : null}
+          {/* Solo si hay estilo. Sin esta condición, un tardeo sin música
+              dejaba el icono solo, ocupando una línea entera sin nada al lado:
+              parece que falta cargar algo. */}
+          {tardeo.estilo && (
+            <span className="inline-flex items-center gap-2">
+              <Music size={20} className="text-magenta" /> {tardeo.estilo}
+            </span>
+          )}
         </div>
 
         {/* Ambiente, público y outfit. Solo se pinta lo que esté puesto: los 662

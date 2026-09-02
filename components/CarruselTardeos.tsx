@@ -24,7 +24,9 @@ export default function CarruselTardeos({
     <section className="pt-7 md:pt-12">
       <div className="mx-auto mb-4 flex max-w-6xl items-end justify-between px-4 md:px-8">
         <h2 className="flex items-center gap-2 font-display text-2xl font-black md:text-4xl">{titulo}</h2>
-        <Link href={href} className="text-sm font-extrabold text-magenta transition hover:text-magenta-700 md:text-base">
+        {/* Con padding: era un enlace de 20 px de alto, la mitad del mínimo
+            que se puede tocar con el pulgar sin fallar. */}
+        <Link href={href} className="-mr-2 rounded-lg px-2 py-2.5 text-sm font-extrabold text-magenta transition hover:text-magenta-700 md:text-base">
           Ver todos
         </Link>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Ticket, Link2 } from "lucide-react";
+import { Ticket, Link2, AlertTriangle } from "lucide-react";
 
 /**
  * Cómo se cobra la entrada.
@@ -85,12 +85,27 @@ export default function PrecioTardeo({ valor, onCambio }: { valor: Precio; onCam
         <label className="mt-3 block">
           <span className="mb-1 block text-sm font-black text-tinta/70">Precio (€) *</span>
           <input
-            type="number" min="0" step="0.5" inputMode="decimal"
+            type="number" min="0" max="500" step="0.5" inputMode="decimal"
             value={valor.importe}
             onChange={(e) => onCambio({ ...valor, importe: e.target.value })}
             placeholder="Ej: 12"
             className="w-full rounded-xl border-2 border-magenta-100 px-4 py-3 font-semibold outline-none focus:border-magenta"
           />
+          {/*
+            Aviso, no bloqueo. Hay 163 tardeos con precio en la cartelera: la
+            mediana son 10 € y solo tres pasan de 100. Ahora mismo hay uno
+            publicado y en portada a 10.000 €, que es un dedo de más y nadie lo
+            vio hasta que rompió la tarjeta.
+
+            No se impide guardarlo —un festival caro existe— pero se dice, que
+            es lo que hace falta para que quien lo escribió lo mire otra vez.
+          */}
+          {Number(valor.importe) > 100 && (
+            <span className="mt-1 flex items-start gap-1.5 text-xs font-bold text-amber-700">
+              <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+              {Number(valor.importe)} € es mucho para un tardeo. Compruébalo antes de publicar.
+            </span>
+          )}
         </label>
       )}
 
