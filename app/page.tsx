@@ -165,7 +165,10 @@ export default async function Inicio() {
                 {/* Arriba y no abajo: Leaflet pone su atribución obligatoria
                     en la esquina inferior derecha, y esta barra se le montaba
                     encima. Quedaban "Ver mapa →" y "© OpenStreetMap" pisándose. */}
-                <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent px-4 py-3">
+                {/* z-[900] porque Leaflet apila sus capas con z-index propio
+                    —teselas 200, marcadores 600, controles 800— y sin esto la
+                    barra se pintaba DEBAJO del mapa y no se veía. */}
+                <div className="absolute inset-x-0 top-0 z-[900] flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent px-4 py-3">
                   <span className="inline-flex items-center gap-1.5 font-extrabold text-white">
                     <MapPin size={18} className="text-oro-400" /> Tardeos cerca de ti
                   </span>
