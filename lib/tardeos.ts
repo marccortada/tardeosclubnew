@@ -313,7 +313,7 @@ export async function getMiLocal(ownerId: string): Promise<any | null> {
   // local. Pasó con `email` al restringirla en el lote 14.
   const { data, error } = await supabase
     .from("locales")
-    .select("id,nombre,descripcion,direccion,lat,lng,zona,codigo_postal,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,owner_id,plan,playlist_url,tipo_local,aforo,espacios,ambiente,publico,dress_code,musica,horario_habitual")
+    .select("id,nombre,descripcion,direccion,lat,lng,zona,codigo_postal,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,owner_id,plan,plan_estado,plan_hasta,playlist_url,tipo_local,aforo,espacios,ambiente,publico,dress_code,musica,horario_habitual")
     .eq("owner_id", ownerId)
     .order("created_at", { ascending: true }).limit(1).maybeSingle();
   // Antes el error se tragaba en silencio y devolvía null, que la app

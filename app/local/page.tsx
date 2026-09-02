@@ -12,10 +12,13 @@ import { getMiLocal, getTardeosDeLocal, getMetricasLocal, getInscritosLocal } fr
 import CalendarioLocal from "@/components/CalendarioLocal";
 import { formatFecha, flyerSrc } from "@/lib/mockData";
 import { Tardeo } from "@/lib/types";
-import { Plus, Users, Eye, TrendingUp, CreditCard, Pencil, BadgeCheck, ChevronRight, Sparkles, Store, Loader2, Megaphone } from "lucide-react";
+import {
+  Plus, Users, CreditCard, Pencil, BadgeCheck, Sparkles, Store, Loader2, Eye, TrendingUp,
+} from "lucide-react";
 import EstadisticasLocal from "@/components/EstadisticasLocal";
 import ConsumoDelMes from "@/components/ConsumoDelMes";
 import { planesActivos } from "@/lib/ajustes";
+import { ETIQUETA, alCorriente, type Plan } from "@/lib/planes";
 
 export default function PanelLocal() {
   const { user, loading } = useAuth();
@@ -211,11 +214,35 @@ export default function PanelLocal() {
 
         <section className="mt-7 grid gap-3 md:grid-cols-2">
           <PromocionModal />
-          <div className="flex items-center gap-4 rounded-2xl bg-white p-5 shadow-tarjeta ring-1 ring-black/5">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-oro/20 text-oro-600"><CreditCard size={24} /></span>
-            <div className="flex-1"><p className="text-lg font-black leading-tight">Tu suscripción</p><p className="text-sm font-semibold text-tinta/60">Plan Fundador · activa</p></div>
-            <ChevronRight size={20} className="text-tinta/30" />
-          </div>
+          {/*
+            La suscripción de verdad, y solo cuando hay suscripciones.
+
+            Aquí ponía "Plan Fundador · activa" ESCRITO A PELO, igual para
+            todos, cuando ninguno de los 69 locales paga nada. Y con una flecha
+            de "pulsa aquí" en un div que no lleva a ningún sitio. Un panel que
+            le dice a un local que tiene el plan más caro contratado es peor que
+            no tener panel.
+
+            Mientras las reglas están apagadas no se enseña: no hay ninguna
+            suscripción de la que informar, y un "sin plan" tampoco aporta nada
+            cuando nadie puede contratarlo todavía.
+          */}
+          {reglas && (
+            <div className="flex items-center gap-4 rounded-2xl bg-white p-5 shadow-tarjeta ring-1 ring-black/5">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-oro/20 text-oro-600"><CreditCard size={24} /></span>
+              <div className="flex-1">
+                <p className="text-lg font-black leading-tight">Tu suscripción</p>
+                <p className="text-sm font-semibold text-tinta/60">
+                  Plan {ETIQUETA[(local.plan ?? "basic") as Plan]}
+                  {alCorriente(local.plan_estado)
+                    ? " · al corriente"
+                    : local.plan_estado === "impago"
+                      ? " · pago pendiente"
+                      : " · sin activar"}
+                </p>
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="mt-7 flex items-center gap-3 rounded-2xl bg-tinta p-5 text-white">

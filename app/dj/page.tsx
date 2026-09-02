@@ -30,6 +30,7 @@ export default function PanelDj() {
   const [avatar, setAvatar] = useState<string | null>(null);
   const [subiendo, setSubiendo] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -74,13 +75,22 @@ export default function PanelDj() {
       redes: redesLimpias,
       avatar_url: avatar,
     };
-    const { error } = await updateMiDj(dj.id, fields);
+    const { error: e } = await updateMiDj(dj.id, fields);
     setGuardando(false);
-    if (!error) {
+    if (!e) {
       setDj({ ...dj, ...fields });
       setEditando(false);
+      setError("");
     } else {
-      alert("No se pudo guardar. ¿Has aplicado el SQL del avatar? " + error.message);
+      /**
+       * En la pantalla y en cristiano, no en un cuadro del navegador.
+       *
+       * Aquí había un alert() que decía "No se pudo guardar. ¿Has aplicado el
+       * SQL del avatar?" con el error técnico detrás. Eso lo veía el DJ, no
+       * nosotros: un diálogo del sistema preguntándole por un SQL que no sabe
+       * ni que existe.
+       */
+      setError("No se pudieron guardar los cambios. Inténtalo de nuevo en un momento.");
     }
   };
 
@@ -250,6 +260,10 @@ export default function PanelDj() {
 
         {/* Botones de edición */}
         {editando && (
+          <>
+          {error && (
+            <p className="mt-5 rounded-xl bg-magenta-50 p-3 text-sm font-bold text-magenta">{error}</p>
+          )}
           <div className="mt-5 flex gap-3">
             <button
               onClick={() => setEditando(false)}
@@ -265,6 +279,7 @@ export default function PanelDj() {
               {guardando ? <Loader2 size={20} className="animate-spin" /> : <><Check size={20} /> Guardar cambios</>}
             </button>
           </div>
+          </>
         )}
 
         {!editando && <ServiciosExternos tipo="dj" />}
