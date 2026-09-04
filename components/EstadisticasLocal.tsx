@@ -15,8 +15,9 @@ const DIAS = [7, 30, 90] as const;
  * sube y no dice nada. No se podía comparar un mes con otro ni ver si algo va a
  * mejor, que es justo lo que un local paga por saber.
  *
- * Los datos salen de `metricas_local` (lote 34), que agrupa por día y solo
- * responde al dueño o a un admin: las métricas de un local son suyas.
+ * Los datos salen de `metricas_local` (lote 34, ventana rehecha en el 39), que
+ * agrupa por día y solo responde al dueño o a un admin: las métricas de un
+ * local son suyas.
  */
 export default function EstadisticasLocal({ localId }: { localId: string }) {
   const [dias, setDias] = useState<(typeof DIAS)[number]>(30);
@@ -27,12 +28,19 @@ export default function EstadisticasLocal({ localId }: { localId: string }) {
   useEffect(() => {
     let cancel = false;
     setCargando(true);
-    const desde = new Date(); desde.setDate(desde.getDate() - dias);
+    /**
+     * Se mandan DÍAS, no dos fechas. La ventana la calcula la base con su reloj.
+     *
+     * Antes se mandaba `new Date()` como tope y se perdían las filas más
+     * recientes: las sella la base, cuyo reloj va por delante del navegador
+     * —74 ms medidos contra el mío, minutos en un móvil desajustado—, así que
+     * caían fuera de la ventana. El panel no daba error: daba de menos.
+     */
     supabase
-      .rpc("metricas_local", { p_local: localId, p_desde: desde.toISOString(), p_hasta: new Date().toISOString() })
+      .rpc("metricas_local", { p_local: localId, p_dias: dias })
       .then(({ data, error }) => {
         if (cancel) return;
-        // 42883/PGRST202 = la función aún no existe (lote 34 sin pegar).
+        // 42883/PGRST202 = la función aún no existe (lote 39 sin pegar).
         if (error) setSinTabla(error.code === "42883" || error.code === "PGRST202");
         setFilas((data as Fila[]) ?? []);
         setCargando(false);
@@ -49,6 +57,12 @@ export default function EstadisticasLocal({ localId }: { localId: string }) {
   const inscripciones = suma("inscripcion");
   // Cuántos de los que miran acaban pulsando para comprar. Es EL número: sin
   // esto solo sabes que te ven, no que te sirva de algo.
+  //
+  // `null` SOLO cuando no hay visitas, porque entonces la división no existe.
+  // Con visitas y cero clics el resultado es 0, y es un dato: significa que la
+  // gente llega y no pulsa. Antes esa frase se escondía justo en ese caso
+  // —se pedía `clics > 0`— y el panel quedaba mudo precisamente cuando más
+  // tenía que decir.
   const ctr = vistas > 0 ? Math.round((clics / vistas) * 1000) / 10 : null;
 
   const tarjetas = [
@@ -97,9 +111,13 @@ export default function EstadisticasLocal({ localId }: { localId: string }) {
               </div>
             ))}
           </div>
-          {ctr !== null && clics > 0 && (
+          {ctr !== null && (
             <p className="mt-2 text-sm font-semibold text-tinta/60">
-              De cada 100 personas que te miran, <b className="text-magenta">{ctr}</b> pulsan para comprar.
+              De cada 100 personas que te miran, <b className="text-magenta">{ctr}</b>{" "}
+              {ctr === 1 ? "pulsa" : "pulsan"} para comprar.
+              {clics === 0 && (
+                <> Nadie ha pulsado todavía en estos {dias} días: mira si el enlace de entradas está puesto.</>
+              )}
             </p>
           )}
         </>

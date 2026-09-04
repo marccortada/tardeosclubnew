@@ -11,14 +11,14 @@ import SelectorAdn from "@/components/SelectorAdn";
 import AddressSearch, { Direccion } from "@/components/AddressSearch";
 import ProgramarPublicacion, { type Cuando } from "@/components/ProgramarPublicacion";
 import PeriodicidadTardeo from "@/components/PeriodicidadTardeo";
-import { fechasDeSerie, SIN_REPETIR, type Periodicidad } from "@/lib/periodicidad";
+import { fechasDeSerie, fechaCorta, SIN_REPETIR, type Periodicidad } from "@/lib/periodicidad";
 import PrecioTardeo, { PRECIO_VACIO, aColumnas, type Precio } from "@/components/PrecioTardeo";
 import PromoTardeo, { PROMO_VACIA, type Promo } from "@/components/PromoTardeo";
 import SubirFlyer from "@/components/SubirFlyer";
 import {
   Sparkles, Loader2, Check, AlertTriangle,
   Calendar, Clock, Music, MapPin, Disc3, ArrowRight, Store, Megaphone,
-  FileText,
+  FileText, Repeat,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -338,6 +338,21 @@ export default function CrearTardeo() {
   // El admin llega desde /admin/crear, así que ahí debe volver.
   const panelHref = esAdmin ? "/admin" : "/local";
 
+  /**
+   * Cuántos tardeos va a crear el botón.
+   *
+   * La previsualización de la serie está en el paso 1, y publicar es en el 3:
+   * quien elige "cada semana hasta diciembre" ve las fechas, cruza dos
+   * pantallas más y llega a un botón que pone «Publicar». Nada le recuerda
+   * que son dieciséis, y dieciséis tardeos mal creados se borran uno a uno.
+   *
+   * Se recalcula aquí en vez de arrastrar el número desde el paso 1 porque el
+   * usuario puede volver atrás y cambiar la fecha: un número guardado se
+   * quedaría viejo y mentiría justo en el momento de pulsar.
+   */
+  const fechasSerie = fechasDeSerie(form.fecha, periodicidad);
+  const enSerie = periodicidad.cada !== "una" && fechasSerie.length > 1;
+
   // ---------- Publicado ----------
   if (estado === "publicado") {
     return (
@@ -593,6 +608,25 @@ export default function CrearTardeo() {
                     onPublico={setPublico} onDressCode={setDressCode}
                   />
                   <ProgramarPublicacion valor={cuando} onCambio={setCuando} />
+
+                  {/* Lo que va a pasar al pulsar, en el paso en el que se
+                      pulsa. No sustituye a la previsualización del paso 1:
+                      allí se eligen las fechas, aquí se confirma el bulto. */}
+                  {enSerie && (
+                    <div className="rounded-2xl bg-oro/10 p-4 ring-1 ring-oro/30">
+                      <p className="flex items-center gap-2 font-display text-lg font-black">
+                        <Repeat size={18} className="shrink-0 text-oro-600" />
+                        Se crearán {fechasSerie.length} tardeos
+                      </p>
+                      <p className="mt-1 text-sm font-semibold leading-relaxed text-tinta/70">
+                        {fechasSerie.map(fechaCorta).join(" · ")}
+                      </p>
+                      <p className="mt-2 text-xs font-semibold text-tinta/55">
+                        Cada uno se crea por separado. Si no es lo que quieres, vuelve al
+                        primer paso y cambia la repetición.
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -620,6 +654,7 @@ export default function CrearTardeo() {
                   >
                     {publicando ? <Loader2 size={22} className="animate-spin" /> : <Check size={22} />}
                     {cuando.estado === "programado" ? "Programar" : cuando.estado === "borrador" ? "Guardar" : "Publicar"}
+                    {enSerie && ` ${fechasSerie.length} tardeos`}
                   </button>
                 )}
               </div>

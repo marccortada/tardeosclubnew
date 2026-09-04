@@ -109,6 +109,26 @@ export function fechasDeSerie(inicio: string, p: Periodicidad): string[] {
   return fechas;
 }
 
+/**
+ * ¿Es una fecha que se pueda usar? "2026-09-07" sí; "07/09/2026" y "" no.
+ *
+ * Hace falta fuera porque un `<input type="date">` puede quedarse con un valor
+ * que no cumple el formato —lo rellenó la IA leyendo un flyer, o el navegador
+ * no lo validó— y entonces `fechasDeSerie` devuelve la lista vacía. Sin poder
+ * distinguir "todavía no hay fecha" de "la fecha no vale", la pantalla enseña
+ * «Se crearán 0 tardeos», que no explica nada.
+ */
+export const esFecha = (f: string): boolean => partes(f) !== null;
+
+/**
+ * La misma fecha, N meses después. Para los atajos de «hasta cuándo».
+ *
+ * Reutiliza `sumarMeses`, así que hereda su regla: conserva el día original y
+ * no lo arrastra recortado. Del 31 de enero, +1 mes es el 28 de febrero, y +2
+ * el 31 de marzo.
+ */
+export const masMeses = (fecha: string, meses: number): string => sumarMeses(fecha, meses);
+
 /** `true` si la serie se ha cortado por el tope y hay que decirlo. */
 export function llegaAlTope(inicio: string, p: Periodicidad): boolean {
   return fechasDeSerie(inicio, p).length >= MAXIMO;

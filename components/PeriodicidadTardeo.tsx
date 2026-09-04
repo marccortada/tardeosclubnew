@@ -2,9 +2,23 @@
 
 import { Repeat, CalendarRange, AlertTriangle } from "lucide-react";
 import {
-  FRECUENCIAS, fechasDeSerie, fechaCorta, llegaAlTope, MAXIMO,
+  FRECUENCIAS, fechasDeSerie, fechaCorta, llegaAlTope, MAXIMO, esFecha, masMeses,
   type Periodicidad,
 } from "@/lib/periodicidad";
+
+/**
+ * Atajos para el «hasta cuándo».
+ *
+ * La previsualización no puede calcularse sin fecha de fin, así que hasta que
+ * no se elegía una el recuadro solo decía «elige hasta cuándo». Quien viene a
+ * repetir un tardeo de los sábados no tiene una fecha de fin en la cabeza:
+ * tiene un "hasta el verano". Con esto la previsualización aparece de un toque.
+ */
+const ATAJOS = [
+  { meses: 1, label: "1 mes" },
+  { meses: 3, label: "3 meses" },
+  { meses: 6, label: "6 meses" },
+];
 
 /**
  * Cada cuánto se repite el tardeo.
@@ -27,6 +41,10 @@ export default function PeriodicidadTardeo({
   const fechas = fechasDeSerie(fecha, valor);
   const repite = valor.cada !== "una";
   const tope = llegaAlTope(fecha, valor);
+  // Con fecha puesta pero ilegible no se puede calcular nada, y hay que
+  // decirlo con esas palabras. Pasa cuando la IA lee un flyer y escribe
+  // "07/09/2026": el campo se queda vacío en pantalla pero el estado no.
+  const fechaMala = Boolean(fecha) && !esFecha(fecha);
 
   return (
     <div className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
@@ -73,10 +91,27 @@ export default function PeriodicidadTardeo({
               <p className="text-sm font-bold text-tinta/60">
                 Pon primero la fecha del tardeo y aquí verás los días que se crean.
               </p>
-            ) : !valor.hasta ? (
-              <p className="text-sm font-bold text-tinta/60">
-                Elige hasta cuándo y aquí verás los días que se crean.
+            ) : fechaMala ? (
+              <p className="flex items-start gap-1.5 text-sm font-bold text-magenta">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                La fecha del tardeo no se entiende. Vuelve a ponerla arriba y aquí
+                verás los días que se crean.
               </p>
+            ) : !valor.hasta ? (
+              <>
+                <p className="text-sm font-bold text-tinta/60">
+                  Elige hasta cuándo y aquí verás los días que se crean.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {ATAJOS.map((a) => (
+                    <button
+                      key={a.meses} type="button"
+                      onClick={() => onCambio({ ...valor, hasta: masMeses(fecha, a.meses) })}
+                      className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-magenta ring-1 ring-magenta-100 transition hover:bg-magenta-50"
+                    >{a.label}</button>
+                  ))}
+                </div>
+              </>
             ) : (
               <>
                 <p className="text-sm font-black text-tinta">

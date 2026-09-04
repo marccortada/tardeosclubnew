@@ -5,6 +5,7 @@ import PanelHeader from "@/components/PanelHeader";
 import { supabase } from "@/lib/supabase";
 import { Store, Disc3, Megaphone, ArrowUp, ArrowDown, Star, X, Plus, Loader2 } from "lucide-react";
 import { plegar, contieneTexto } from "@/lib/texto";
+import { mismaZona, zonasDe } from "@/lib/zonas";
 import DestacadosTardeos from "@/components/DestacadosTardeos";
 
 type Ficha = {
@@ -116,12 +117,28 @@ export default function AdminDestacados() {
   // local está fichado como "Barberà".
   const filtrado = resto
     .filter((f) => contieneTexto(f.nombre, plegar(busca.trim())))
-    .filter((f) => !zona || f.zona === zona);
+    .filter((f) => !zona || mismaZona(f.zona, zona));
 
-  // Solo las zonas que existen de verdad en lo que hay cargado: ofrecer las
-  // seis del catálogo cuando cuatro no tienen ni un local es hacer perder el
-  // tiempo a quien busca.
-  const zonasDisponibles = [...new Set(fichas.map((f) => f.zona).filter(Boolean))].sort() as string[];
+  /**
+   * Solo las zonas que existen de verdad en lo que hay cargado: ofrecer las
+   * seis del catálogo cuando cuatro no tienen ni un local es hacer perder el
+   * tiempo a quien busca.
+   *
+   * Va por `zonasDe` y no por un Set de `f.zona`, que es lo que había. Un Set
+   * agrupa por el texto exacto, y en la base el mismo sitio está escrito de
+   * varias formas —"Mataró", "Mataro", "mataro"— porque unos registros vienen
+   * de la app vieja y otros se teclearon a mano. Salían tres botones para el
+   * mismo pueblo y cada uno enseñaba solo su parte de los locales.
+   *
+   * `zonasDe` agrupa por el nombre normalizado, se queda con la grafía buena
+   * (la que trae acentos y mayúsculas, que es la que escribió una persona) y
+   * además devuelve el recuento, que aquí sirve: dice cuántos hay antes de
+   * pulsar. Es el mismo criterio del filtro público, así que admin y web
+   * enseñan las mismas zonas.
+   */
+  const zonasDisponibles = zonasDe(
+    fichas.filter((f) => f.zona?.trim()).map((f) => ({ zona: f.zona as string }))
+  );
 
   return (
     <main className="pb-10">
@@ -200,12 +217,12 @@ export default function AdminDestacados() {
                   className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-black transition ${
                     zona === null ? "bg-marca text-white" : "bg-black/5 text-tinta/50"}`}
                 >Todas</button>
-                {zonasDisponibles.map((z) => (
+                {zonasDisponibles.map(({ zona: z, n }) => (
                   <button
                     key={z} onClick={() => setZona(zona === z ? null : z)}
                     className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-black transition ${
                       zona === z ? "bg-marca text-white" : "bg-black/5 text-tinta/50"}`}
-                  >{z}</button>
+                  >{z} <span className="opacity-60">{n}</span></button>
                 ))}
               </div>
             )}

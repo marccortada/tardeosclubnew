@@ -18,7 +18,7 @@ import {
 import EstadisticasLocal from "@/components/EstadisticasLocal";
 import ConsumoDelMes from "@/components/ConsumoDelMes";
 import { planesActivos } from "@/lib/ajustes";
-import { ETIQUETA, alCorriente, type Plan } from "@/lib/planes";
+import { ETIQUETA, precioTexto, alCorriente, type Plan } from "@/lib/planes";
 
 export default function PanelLocal() {
   const { user, loading } = useAuth();
@@ -239,6 +239,12 @@ export default function PanelLocal() {
                     : local.plan_estado === "impago"
                       ? " · pago pendiente"
                       : " · sin activar"}
+                </p>
+                {/* Cuánto y CADA CUÁNTO. Un importe sin periodo no dice lo que
+                    cuesta: el Fundador se cobra cada dos meses y el resto
+                    cada uno, y por el número suelto parecían lo mismo. */}
+                <p className="text-sm font-black text-tinta/80">
+                  {precioTexto((local.plan ?? "basic") as Plan)}
                 </p>
               </div>
             </div>
