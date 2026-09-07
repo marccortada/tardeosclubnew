@@ -10,7 +10,7 @@ import GestionFotosLocal from "@/components/GestionFotosLocal";
 import { useAuth } from "@/lib/useAuth";
 import { getMiLocal, getTardeosDeLocal, getMetricasLocal, getInscritosLocal } from "@/lib/tardeos";
 import CalendarioLocal from "@/components/CalendarioLocal";
-import { formatFecha, flyerSrc } from "@/lib/mockData";
+import { formatFecha, flyerSrc } from "@/lib/formato";
 import { Tardeo } from "@/lib/types";
 import {
   Plus, Users, CreditCard, Pencil, BadgeCheck, Sparkles, Store, Loader2, Eye, TrendingUp,

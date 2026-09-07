@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { formatFecha, flyerSrc } from "@/lib/mockData";
+import { formatFecha, flyerSrc } from "@/lib/formato";
 import { getTardeoById } from "@/lib/tardeos";
 import AccionTardeo from "@/components/AccionTardeo";
 import Resenas from "@/components/Resenas";
@@ -21,9 +21,22 @@ export const dynamic = "force-dynamic";
 function fmtCal(fecha: string, hora: string) {
   return fecha.replace(/-/g, "") + "T" + (hora || "00:00").replace(":", "") + "00";
 }
+/**
+ * El día siguiente, para los tardeos que acaban de madrugada.
+ *
+ * TODO EN UTC, y no es purismo. Antes decía `new Date(f + "T00:00:00")`, que el
+ * navegador entiende como medianoche LOCAL: en Madrid son las 22:00 UTC del día
+ * anterior. Al sumar un día y volver a `toISOString()` se recuperaba la fecha
+ * de partida, así que el +1 no se aplicaba nunca.
+ *
+ * El síntoma era serio y silencioso: un tardeo de 22:00 a 02:00 le mandaba a
+ * Google Calendar `…T220000 / …T020000` del MISMO día, con el fin antes que el
+ * inicio. Google descarta el evento o lo crea de cero minutos, y el que lo
+ * añadió no se entera hasta que no le suena la alarma.
+ */
 function sumarDia(fechaISO: string) {
-  const d = new Date(fechaISO + "T00:00:00");
-  d.setDate(d.getDate() + 1);
+  const d = new Date(fechaISO + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + 1);
   return d.toISOString().slice(0, 10);
 }
 
@@ -63,10 +76,18 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
   if (!tardeo) notFound();
   const promos = await getPromosDeTardeo(id);
 
+  /**
+   * Las horas van SIN zona y con `ctz=Europe/Madrid` aparte, que es como lo
+   * espera Google: la hora es la del tardeo y la zona se declara una vez.
+   *
+   * Sin `ctz`, Google las interpretaba en la zona de quien mira. Un tardeo de
+   * Mataró a las 18:00 le salía a las 17:00 a alguien en Londres y a las 19:00
+   * a alguien en Atenas, sin ningún aviso.
+   */
   const ini = fmtCal(tardeo.fecha, tardeo.horaInicio || "18:00");
   const fechaFin = tardeo.horaFin && tardeo.horaFin < (tardeo.horaInicio || "18:00") ? sumarDia(tardeo.fecha) : tardeo.fecha;
   const fin = fmtCal(fechaFin, tardeo.horaFin || tardeo.horaInicio || "20:00");
-  const calUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(tardeo.titulo)}&dates=${ini}/${fin}&location=${encodeURIComponent(tardeo.local.direccion || "")}&details=${encodeURIComponent(`Tardeo en ${tardeo.local.nombre} · TardeosClub`)}`;
+  const calUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(tardeo.titulo)}&dates=${ini}/${fin}&location=${encodeURIComponent(tardeo.local.direccion || "")}&details=${encodeURIComponent(`Tardeo en ${tardeo.local.nombre} · TardeosClub`)}&ctz=Europe/Madrid`;
 
   return (
     <main className="mx-auto max-w-3xl pb-28 md:pb-12">

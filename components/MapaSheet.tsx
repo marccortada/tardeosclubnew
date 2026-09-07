@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Tardeo } from "@/lib/types";
 import { useAuth } from "@/lib/useAuth";
 import { esFavorito, setFavorito, estaInscrito, inscribir, cancelarInscripcion } from "@/lib/tardeos";
-import { flyerSrc, formatFecha } from "@/lib/mockData";
+import { flyerSrc, formatFecha } from "@/lib/formato";
 import { X, Heart, Check, Loader2, Ticket, ListChecks, MapPin, Clock, ArrowRight, BadgeCheck } from "lucide-react";
 
 export default function MapaSheet({ tardeo, onClose }: { tardeo: Tardeo; onClose: () => void }) {

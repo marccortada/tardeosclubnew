@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Tardeo, formatFecha, flyerSrc } from "@/lib/mockData";
+import type { Tardeo } from "@/lib/types";
+import { formatFecha, flyerSrc } from "@/lib/formato";
 import { MapPin, Clock, Ticket, ListChecks, Gift, ChevronRight, Navigation, Sparkles } from "lucide-react";
 import { formatDistancia } from "@/lib/geo";
 import CompartirBtn from "@/components/CompartirBtn";

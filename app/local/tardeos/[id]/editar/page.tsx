@@ -10,7 +10,7 @@ import { getTardeoById, updateTardeo, setDjsDeTardeo, borrarTardeo, setEstadoTar
 import SelectorAdn from "@/components/SelectorAdn";
 import ProgramarPublicacion, { paraInput, type Cuando } from "@/components/ProgramarPublicacion";
 import PromoTardeo, { PROMO_VACIA, type Promo } from "@/components/PromoTardeo";
-import { flyerSrc } from "@/lib/mockData";
+import { flyerSrc } from "@/lib/formato";
 import { Tardeo } from "@/lib/types";
 import { Music, Calendar, Clock, Disc3, MapPin, Ticket, Check, Loader2, Trash2, EyeOff, Eye } from "lucide-react";
 import PromocionesDeTardeo from "@/components/PromocionesDeTardeo";
