@@ -8,7 +8,7 @@
  *
  * Se corresponde con la oferta comercial acordada:
  *   basic 10 € al mes · pro 20 € al mes · premium 30 € al mes
- *   fundador 40 € al mes los dos primeros meses, luego 30 € al mes
+ *   fundador 40 € los dos primeros meses en total, luego 30 € al mes
  *
  * OJO con lo que NO está aquí: aftermovies, visitas al local, colaboraciones en
  * Instagram, emisiones con Nexo Radio. Eso son promesas humanas sujetas a
@@ -52,8 +52,9 @@ export const PRECIO: Record<Plan, {
   basic:    { euros: 10, meses: 1 },
   pro:      { euros: 20, meses: 1 },
   premium:  { euros: 30, meses: 1 },
-  // El Fundador entra pagando más y se queda en Premium: 40 € al mes los dos
-  // primeros meses, 30 € al mes a partir del tercero.
+  // El Fundador es Premium con precio de entrada: 40 € por los dos primeros
+  // meses ENTEROS —dos meses de Premium valen 60— y 30 € al mes a partir del
+  // tercero. Los 40 NO son mensuales: es el importe del bloque de dos meses.
   fundador: { euros: 30, meses: 1, alta: { euros: 40, meses: 2 } },
 };
 
@@ -64,20 +65,37 @@ export const periodoDe = (plan: Plan): string =>
 /**
  * El precio entero, para pintarlo de una pieza.
  *
- * "30 € al mes" para los normales; "40 € al mes los 2 primeros meses, luego
- * 30 € al mes" para el Fundador. Largo a propósito: el importe corto es justo
- * el que no se entiende, y esto se enseña donde alguien decide pagar.
+ * "30 € al mes" para los normales; "40 € los 2 primeros meses, luego 30 € al
+ * mes" para el Fundador. Largo a propósito: el importe corto es justo el que
+ * no se entiende, y esto se enseña donde alguien decide pagar.
+ *
+ * OJO con la redacción del alta: dice «40 € los 2 primeros meses» y no «40 €
+ * al mes los 2 primeros meses». Son cosas distintas —40 contra 80— y la
+ * segunda además sería absurda, porque el Fundador entra pagando MENOS que el
+ * Premium, no más: dos meses de Premium valen 60 y aquí valen 40.
  */
 export const precioTexto = (plan: Plan): string => {
   const p = PRECIO[plan];
   const base = `${p.euros} € ${periodoDe(plan)}`;
   if (!p.alta) return base;
-  return `${p.alta.euros} € al mes los ${p.alta.meses} primeros meses, luego ${base}`;
+  return `${p.alta.euros} € los ${p.alta.meses} primeros meses, luego ${base}`;
 };
 
 /** Sin la condición de entrada. Para sitios estrechos, como un desplegable. */
 export const precioCorto = (plan: Plan): string =>
   `${PRECIO[plan].euros} € ${periodoDe(plan)}${PRECIO[plan].alta ? " (alta aparte)" : ""}`;
+
+/**
+ * Lo que se le cobra a un Fundador en su primer recibo, y lo que se ahorra.
+ *
+ * Se calcula y no se escribe a mano para que no se desincronice el día que
+ * cambie el precio del Premium: el descuento es la diferencia entre pagar el
+ * plan de siempre esos meses y pagar el alta.
+ */
+export const ahorroDeAlta = (plan: Plan): number => {
+  const p = PRECIO[plan];
+  return p.alta ? p.euros * p.alta.meses - p.alta.euros : 0;
+};
 
 /**
  * El importe llevado a un mes, para poder SUMAR planes con periodos distintos.
