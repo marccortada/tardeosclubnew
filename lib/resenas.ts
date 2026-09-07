@@ -47,6 +47,28 @@ export async function crearResena(uid: string, tipo: "local" | "dj", id: string,
  * que además dice en qué estado está.
  */
 
+/**
+ * Motivos de rechazo. Lista cerrada y no texto libre.
+ *
+ * Dos razones: se puede contar cuántas hay de cada tipo, y sobre todo se le
+ * enseña a quien escribió la reseña. Un motivo tecleado a las once de la noche
+ * después de moderar treinta acaba siendo «no procede», y eso a quien lo
+ * recibe no le dice nada.
+ */
+export const MOTIVOS_RECHAZO = [
+  { k: "insultos", label: "Insultos o falta de respeto" },
+  { k: "falso", label: "No parece una visita real" },
+  { k: "personal", label: "Datos personales de alguien" },
+  { k: "fuera", label: "No habla del local ni del DJ" },
+  { k: "spam", label: "Publicidad o enlaces" },
+  { k: "otro", label: "Otro motivo" },
+] as const;
+
+export type MotivoRechazo = (typeof MOTIVOS_RECHAZO)[number]["k"];
+
+export const etiquetaMotivo = (k?: string | null) =>
+  MOTIVOS_RECHAZO.find((m) => m.k === k)?.label ?? k ?? "Sin motivo";
+
 // --- Admin ---
 
 /**
