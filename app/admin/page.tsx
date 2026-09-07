@@ -6,6 +6,7 @@ import PanelHeader from "@/components/PanelHeader";
 import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
 import { enlaceInstagram, enlaceWeb, enlaceTelefono } from "@/lib/crm";
+import { etiquetaPublicacion } from "@/lib/estados";
 import {
   CalendarDays, Store, Disc3, Euro, BadgeCheck, X, Check, Contact,
   Megaphone, Bell, BellRing, ShieldAlert, ChevronRight, Loader2, Star,
@@ -233,7 +234,7 @@ export default function PanelAdmin() {
                 {/* Con quién estás hablando y desde cuándo espera. */}
                 <p className="mt-1 text-xs font-semibold text-tinta/45">
                   {v.tipo === "promotor" ? "Promotor" : "Local"}
-                  {v.estado === "oculto_impago" ? " · oculto por impago" : ""}
+                  {String(v.estado ?? "").startsWith("oculto") ? ` · ${etiquetaPublicacion(v.estado).toLowerCase()}` : ""}
                   {v.created_at ? ` · pedido el ${new Date(v.created_at).toLocaleDateString("es-ES")}` : ""}
                   {v.duenoEmail ? ` · lo registró ${v.duenoEmail}` : " · sin cuenta asociada"}
                 </p>

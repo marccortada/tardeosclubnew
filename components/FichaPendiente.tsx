@@ -32,6 +32,8 @@ export default function FichaPendiente({
 
   const esPromotor = local.tipo === "promotor";
   const impago = estado === "oculto_impago";
+  // Retirada por otro motivo: ni es un impago ni es "pendiente de revisar".
+  const retirada = estado === "oculto";
 
   const puntos = [
     { ok: Boolean(local.nombre?.trim()), texto: "Nombre" },
@@ -59,6 +61,11 @@ export default function FichaPendiente({
             pagar. En cuanto se regularice vuelve a salir con todos sus tardeos, tal y como
             estaba.
           </>
+        ) : retirada ? (
+          <>
+            La hemos <b>retirado de la web</b>. No es por ningún pago. Escríbenos y te
+            contamos por qué: tus tardeos siguen guardados.
+          </>
         ) : (
           <>
             Está <b>{etiquetaPublicacion(estado).toLowerCase()}</b>: la hemos recibido y la
@@ -68,7 +75,7 @@ export default function FichaPendiente({
         )}
       </p>
 
-      {!impago && (
+      {!impago && !retirada && (
         <>
           <p className="mt-4 text-sm font-black text-tinta/70">
             {faltan === 0

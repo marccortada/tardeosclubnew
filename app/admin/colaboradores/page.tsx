@@ -70,7 +70,9 @@ export default function AdminColaboradores() {
         nombre: String(x.nombre ?? x.nombre_artistico ?? ""),
         zona: (x.zona ?? null) as string | null,
         verificado: Boolean(x.verificado),
-        oculto: c === "djs" ? Boolean(x.oculto) : x.estado === "oculto_impago",
+        // Cualquier estado que no sea 'activo' —salvo el borrador, que es
+        // "todavía no publicada"— cuenta como oculta a efectos de este botón.
+        oculto: c === "djs" ? Boolean(x.oculto) : String(x.estado ?? "").startsWith("oculto"),
         duenoEmail: dueno ? correos.get(dueno) ?? "—" : null,
       };
     }));
@@ -89,9 +91,20 @@ export default function AdminColaboradores() {
   const setOculto = async (f: Ficha) => {
     const v = !f.oculto;
     setFichas((p) => p.map((x) => (x.id === f.id ? { ...x, oculto: v } : x)));
-    // La diferencia entre tablas, en un solo sitio.
+    /**
+     * La diferencia entre tablas, en un solo sitio.
+     *
+     * Se escribe 'oculto' y NO 'oculto_impago', que es lo que hacía antes.
+     * Hay muchas razones para retirar una ficha —un duplicado, una prueba, un
+     * local cerrado, que lo pida el propio local— y solo una es un impago.
+     * Escribir siempre la del impago dejaba en la base fichas «ocultas por no
+     * pagar» que nunca habían contratado nada: se encontró una, «miraclee».
+     *
+     * El estado de impago lo pone la pantalla de Suscripciones, que es donde
+     * se sabe si alguien debe dinero.
+     */
     await supabase.from(tabla)
-      .update(cual === "djs" ? { oculto: v } : { estado: v ? "oculto_impago" : "activo" })
+      .update(cual === "djs" ? { oculto: v } : { estado: v ? "oculto" : "activo" })
       .eq("id", f.id);
   };
 
