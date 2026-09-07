@@ -18,7 +18,9 @@ import {
 import EstadisticasLocal from "@/components/EstadisticasLocal";
 import ConsumoDelMes from "@/components/ConsumoDelMes";
 import { planesActivos } from "@/lib/ajustes";
-import { ETIQUETA, precioTexto, alCorriente, type Plan } from "@/lib/planes";
+import { ETIQUETA, precioTexto, type Plan } from "@/lib/planes";
+import { etiquetaSuscripcion } from "@/lib/estados";
+import FichaPendiente from "@/components/FichaPendiente";
 
 export default function PanelLocal() {
   const { user, loading } = useAuth();
@@ -115,6 +117,10 @@ export default function PanelLocal() {
             </div>
           </div>
         </section>
+
+        {/* Por qué no se ve la ficha. Va lo primero después de la bienvenida:
+            si tu local no sale en la web, es lo único que te importa. */}
+        <FichaPendiente estado={local.estado} local={local} />
 
         <section className="mt-5 grid grid-cols-3 gap-3">
           {stats.map(({ icon: Icon, label, valor }) => (
@@ -233,12 +239,10 @@ export default function PanelLocal() {
               <div className="flex-1">
                 <p className="text-lg font-black leading-tight">Tu suscripción</p>
                 <p className="text-sm font-semibold text-tinta/60">
-                  Plan {ETIQUETA[(local.plan ?? "basic") as Plan]}
-                  {alCorriente(local.plan_estado)
-                    ? " · al corriente"
-                    : local.plan_estado === "impago"
-                      ? " · pago pendiente"
-                      : " · sin activar"}
+                  {/* La misma redacción que en el panel del admin: se lee de
+                      `lib/estados.ts` en vez de escribirla otra vez aquí. */}
+                  Plan {ETIQUETA[(local.plan ?? "basic") as Plan]} ·{" "}
+                  {etiquetaSuscripcion(local.plan_estado).toLowerCase()}
                 </p>
                 {/* Cuánto y CADA CUÁNTO. Un importe sin periodo no dice lo que
                     cuesta: el Fundador se cobra cada dos meses y el resto

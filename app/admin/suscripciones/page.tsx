@@ -6,6 +6,7 @@ import PanelHeader from "@/components/PanelHeader";
 import { supabase } from "@/lib/supabase";
 import { plegar, contieneTexto } from "@/lib/texto";
 import { PLANES, ETIQUETA, precioCorto, euroMes, type Plan } from "@/lib/planes";
+import { SUSCRIPCION, combinacionInvalida } from "@/lib/estados";
 import { CLAVE_PLANES, setAjuste } from "@/lib/ajustes";
 import { consumoDeTodos, type Consumo } from "@/lib/cuotas";
 import { Store, Disc3, Loader2, Euro, AlertTriangle, Check, Power } from "lucide-react";
@@ -20,15 +21,14 @@ type Ficha = {
   pago_proveedor: string | null;
   pago_referencia: string | null;
   plan_notas: string | null;
+  /** Solo los locales tienen estado de publicación; en un DJ es null. */
+  estado: string | null;
   reclamado: boolean;
 };
 
-const ESTADOS = [
-  { k: "sin_suscripcion", label: "Sin suscripción" },
-  { k: "activa", label: "Al corriente" },
-  { k: "impago", label: "Impago" },
-  { k: "cancelada", label: "Cancelada" },
-];
+// Los estados salen de `lib/estados.ts` y no de una lista propia: esta pantalla
+// decía «Impago», el panel del local «pago pendiente» y colaboradores «oculto».
+// Tres nombres para lo mismo hacen creer que son tres cosas distintas.
 
 /**
  * Quién paga qué.
@@ -56,8 +56,10 @@ export default function AdminSuscripciones() {
   const cargar = useCallback(async () => {
     setCargando(true); setError("");
     const cols = "id,plan,plan_estado,plan_hasta,pago_proveedor,pago_referencia,plan_notas";
+    // `estado` solo lo tienen los locales; en DJs no existe y llega undefined.
+    const colsLocal = `${cols},estado`;
     const [l, d] = await Promise.all([
-      supabase.from("locales").select(`${cols},nombre,owner_id`).order("nombre"),
+      supabase.from("locales").select(`${colsLocal},nombre,owner_id`).order("nombre"),
       supabase.from("djs").select(`${cols},nombre_artistico,profile_id`).order("nombre_artistico"),
     ]);
     if (l.error || d.error) {
@@ -78,6 +80,7 @@ export default function AdminSuscripciones() {
       pago_proveedor: x.pago_proveedor ?? null,
       pago_referencia: x.pago_referencia ?? null,
       plan_notas: x.plan_notas ?? null,
+      estado: x.estado ?? null,
       reclamado: Boolean(x.owner_id ?? x.profile_id),
     });
     const locales = (l.data ?? []).map((x) => map(x, "local"));
@@ -120,6 +123,14 @@ export default function AdminSuscripciones() {
   };
 
   const guardar = async (f: Ficha, campos: Record<string, unknown>) => {
+    // Se comprueba ANTES de mandarlo. El lote 41 también lo rechaza en la base
+    // —que es quien manda—, pero un error de Postgres en pantalla no explica
+    // qué hacer, y aquí sí se puede decir cuál de las dos casillas mover.
+    const choque = combinacionInvalida(
+      (campos.estado as string) ?? f.estado,
+      (campos.plan_estado as string) ?? f.plan_estado
+    );
+    if (choque) { setError(choque); return; }
     setGuardando(f.id); setError("");
     const tabla = f.rol === "local" ? "locales" : "djs";
     const { data, error: e } = await supabase.from(tabla).update(campos).eq("id", f.id).select("id,plan,plan_estado");
@@ -263,7 +274,7 @@ export default function AdminSuscripciones() {
                   <select value={f.plan_estado} onChange={(e) => guardar(f, { plan_estado: e.target.value })}
                     className={`min-h-[44px] rounded-xl border-2 px-3 text-sm font-extrabold outline-none ${
                       f.plan_estado === "impago" ? "border-oro/60 bg-oro/10" : "border-magenta-100 bg-white"}`}>
-                    {ESTADOS.map((e) => <option key={e.k} value={e.k}>{e.label}</option>)}
+                    {SUSCRIPCION.map((e) => <option key={e.k} value={e.k}>{e.label}</option>)}
                   </select>
                 </div>
               </div>
