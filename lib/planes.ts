@@ -83,10 +83,6 @@ export const precioTexto = (plan: Plan): string => {
   return `${p.alta.euros} € los ${p.alta.meses} primeros meses, luego ${base}`;
 };
 
-/** Sin la condición de entrada. Para sitios estrechos, como un desplegable. */
-export const precioCorto = (plan: Plan): string =>
-  `${PRECIO[plan].euros} € ${periodoDe(plan)}${PRECIO[plan].alta ? " (alta aparte)" : ""}`;
-
 /**
  * Lo que se le cobra a un Fundador en su primer recibo, y lo que se ahorra.
  *

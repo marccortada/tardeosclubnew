@@ -5,7 +5,7 @@ import Link from "next/link";
 import PanelHeader from "@/components/PanelHeader";
 import { supabase } from "@/lib/supabase";
 import { plegar, contieneTexto } from "@/lib/texto";
-import { PLANES, ETIQUETA, precioCorto, euroMes, vigente, diasRestantes, type Plan } from "@/lib/planes";
+import { PLANES, ETIQUETA, precioTexto, euroMes, vigente, diasRestantes, type Plan } from "@/lib/planes";
 import { SUSCRIPCION, combinacionInvalida } from "@/lib/estados";
 import { CLAVE_PLANES, setAjuste } from "@/lib/ajustes";
 import { consumoDeTodos, type Consumo } from "@/lib/cuotas";
@@ -303,7 +303,11 @@ export default function AdminSuscripciones() {
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <select value={f.plan} onChange={(e) => guardar(f, { plan: e.target.value })}
                     className="min-h-[44px] rounded-xl border-2 border-magenta-100 bg-white px-3 text-sm font-extrabold outline-none focus:border-magenta">
-                    {PLANES.map((p) => <option key={p} value={p}>{ETIQUETA[p]} · {precioCorto(p)}</option>)}
+                    {/* La frase ENTERA, no el importe recurrente.
+                        Aquí es donde alguien elige un plan, así que tiene que
+                        leer lo que cuesta: «Fundador · 30 € al mes (alta
+                        aparte)» no dice que los dos primeros meses son 40. */}
+                    {PLANES.map((p) => <option key={p} value={p}>{ETIQUETA[p]} · {precioTexto(p)}</option>)}
                   </select>
                   <select value={f.plan_estado} onChange={(e) => guardar(f, { plan_estado: e.target.value })}
                     className={`min-h-[44px] rounded-xl border-2 px-3 text-sm font-extrabold outline-none ${
