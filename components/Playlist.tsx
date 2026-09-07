@@ -1,5 +1,6 @@
 import { urlIncrustada, altoDelReproductor } from "@/lib/djs";
 import { Music2, ExternalLink } from "lucide-react";
+import { urlSegura } from "@/lib/enlaces";
 
 /**
  * La playlist de un local, promotor o DJ.
@@ -31,9 +32,11 @@ export default function Playlist({ url, titulo = "Su música" }: { url?: string 
         />
       ) : (
         <a
-          href={u}
+          /* La playlist la escribe el local en su editor: se valida el destino
+             igual que las redes, por lo mismo. */
+          href={urlSegura(u) ?? "#"}
           target="_blank"
-          rel="noopener noreferrer"
+          rel="noopener noreferrer nofollow"
           className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3.5 font-extrabold text-magenta shadow-tarjeta ring-1 ring-magenta-100"
         >
           <Music2 size={18} /> Escuchar <ExternalLink size={14} />

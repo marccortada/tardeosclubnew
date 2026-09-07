@@ -108,6 +108,8 @@ function mapRow(r: any): Tardeo {
     tipoEntrada: r.tiene_lista ? "lista" : r.es_de_pago ? "pago" : "gratis",
     precio: r.precio != null ? Number(r.precio) : undefined,
     urlEntradas: r.fourvenues_url ?? undefined,
+    urlPromos: r.promo_url ?? undefined,
+    descripcion: r.descripcion ?? undefined,
     // Columnas del lote 20. Mientras el SQL no esté pegado llegan vacías y se
     // comportan como "sin indicar", sin romper nada.
     promoTitulo: r.promo_titulo ?? undefined,
@@ -313,7 +315,10 @@ export async function getMiLocal(ownerId: string): Promise<any | null> {
   // local. Pasó con `email` al restringirla en el lote 14.
   const { data, error } = await supabase
     .from("locales")
-    .select("id,nombre,descripcion,direccion,lat,lng,zona,codigo_postal,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,owner_id,plan,plan_estado,plan_hasta,playlist_url,tipo_local,aforo,espacios,ambiente,publico,dress_code,musica,horario_habitual")
+    // `email` va aquí y NO en la ficha pública: el lote 14 se lo quitó a `anon`,
+    // pero el dueño entra como `authenticated` y sí puede leer el suyo. Es su
+    // contacto y tiene que poder cambiarlo desde el editor.
+    .select("id,nombre,descripcion,direccion,lat,lng,zona,codigo_postal,telefono,email,redes,fotos,horarios,verificado,estado,logo_url,tipo,owner_id,plan,plan_estado,plan_hasta,playlist_url,tipo_local,aforo,espacios,ambiente,publico,dress_code,musica,horario_habitual")
     .eq("owner_id", ownerId)
     .order("created_at", { ascending: true }).limit(1).maybeSingle();
   // Antes el error se tragaba en silencio y devolvía null, que la app

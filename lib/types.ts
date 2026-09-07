@@ -55,6 +55,10 @@ export interface Tardeo {
    *  `fourvenues_url` en la base por la app antigua, pero guarda el enlace de
    *  cualquier ticketera: hay Entradium, Resident Advisor, CodeTickets… */
   urlEntradas?: string;
+  /** El segundo enlace del tardeo: promociones, reservas o lista. */
+  urlPromos?: string;
+  /** Texto libre del local. Estaba en la base y no llegaba al formulario. */
+  descripcion?: string;
   /** Promoción que pone el local, visible SOLO dentro de esta ficha. */
   promoTitulo?: string;
   promoTexto?: string;

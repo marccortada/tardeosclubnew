@@ -8,7 +8,9 @@ import AddressSearch, { Direccion } from "@/components/AddressSearch";
 import { useAuth } from "@/lib/useAuth";
 import { getMiLocal, updateMiLocal, subirLogoLocal } from "@/lib/tardeos";
 import CampoPlaylist from "@/components/CampoPlaylist";
-import { Store, Phone, MapPin, FileText, Check, Loader2, ImagePlus, Megaphone } from "lucide-react";
+import { Store, Phone, MapPin, FileText, Check, Loader2, ImagePlus, Megaphone,
+  Instagram, Globe, Mail, CalendarCheck } from "lucide-react";
+import { redesParaGuardar, handleInstagram, urlSegura } from "@/lib/redes";
 import SelectorAdnLocal, { type AdnLocal, ADN_LOCAL_VACIO } from "@/components/SelectorAdnLocal";
 
 export default function EditarLocal() {
@@ -30,6 +32,12 @@ export default function EditarLocal() {
   const [playlist, setPlaylist] = useState("");
   const [logo, setLogo] = useState<string | null>(null);
   const [adn, setAdn] = useState<AdnLocal>(ADN_LOCAL_VACIO);
+  // Las redes viven en una sola columna jsonb, pero se editan por separado.
+  const [instagram, setInstagram] = useState("");
+  const [web, setWeb] = useState("");
+  const [reservas, setReservas] = useState("");
+  const [facebook, setFacebook] = useState("");
+  const [email, setEmail] = useState("");
   const [subiendoLogo, setSubiendoLogo] = useState(false);
 
   const esPromotor = local?.tipo === "promotor";
@@ -46,6 +54,12 @@ export default function EditarLocal() {
         setDireccion(l.direccion || "");
         setZona(l.zona || "");
         setLogo(l.logo_url || null);
+        setEmail(l.email || "");
+        const r = (l.redes ?? {}) as Record<string, string>;
+        setInstagram(r.instagram || "");
+        setWeb(r.web || "");
+        setReservas(r.reservas || "");
+        setFacebook(r.facebook || "");
         setAdn({
           tipoLocal: l.tipo_local || "",
           aforo: l.aforo != null ? String(l.aforo) : "",
@@ -102,6 +116,13 @@ export default function EditarLocal() {
       publico: adn.publico.length ? adn.publico : null,
       dress_code: adn.dressCode.trim() || null,
       horario_habitual: adn.horarioHabitual.trim() || null,
+      // El email del local NO es público: el lote 14 le quitó a `anon` el
+      // permiso sobre esa columna porque los 59 correos se cosechaban en una
+      // sola petición. Se guarda aquí porque es el contacto del negocio y hay
+      // que poder cambiarlo, no porque vaya a salir en la ficha.
+      email: email.trim() || null,
+      // Las cuatro redes en la misma columna, sin las claves vacías.
+      redes: redesParaGuardar({ instagram, web, reservas, facebook }),
     };
     // Al promotor no se le tocan dirección ni coordenadas: no tiene ninguna, y
     // guardarle cadenas vacías le sobreescribiría lo que ya hubiera.
@@ -183,6 +204,44 @@ export default function EditarLocal() {
             <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={3} placeholder="Cuenta qué ofrece tu local…" className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 text-base font-semibold outline-none focus:border-magenta" />
           </label>
 
+          {/* Dónde te encuentran fuera de aquí.
+              46 de los 60 locales activos ya traían esto guardado de la
+              migración —45 con Instagram— y no había ninguna pantalla para
+              verlo ni corregirlo. Ahora sale en la ficha pública. */}
+          <div className="rounded-2xl bg-crema/60 p-4 ring-1 ring-magenta-100">
+            <p className="font-display text-lg font-black">Dónde te encuentran</p>
+            <p className="mb-3 text-sm font-semibold text-tinta/60">
+              Sale en tu ficha, debajo de la dirección. El email no: ese es para que
+              podamos avisarte a ti.
+            </p>
+            <div className="flex flex-col gap-3">
+              <CampoRed
+                icon={Instagram} label="Instagram" valor={instagram} onCambio={setInstagram}
+                placeholder="@tulocal"
+                pista={instagram && !handleInstagram(instagram)
+                  ? "No se entiende. Pon tu nombre de usuario, como @tulocal."
+                  : handleInstagram(instagram) ? `Se abrirá instagram.com/${handleInstagram(instagram)}` : undefined}
+                mal={Boolean(instagram) && !handleInstagram(instagram)}
+              />
+              <CampoRed
+                icon={Globe} label="Página web" valor={web} onCambio={setWeb}
+                placeholder="tulocal.com"
+                pista={web && !urlSegura(web) ? "Esa dirección no se puede abrir." : undefined}
+                mal={Boolean(web) && !urlSegura(web)}
+              />
+              <CampoRed
+                icon={CalendarCheck} label="Reservas" valor={reservas} onCambio={setReservas}
+                placeholder="Enlace para reservar mesa o entrada"
+                pista={reservas && !urlSegura(reservas) ? "Esa dirección no se puede abrir." : undefined}
+                mal={Boolean(reservas) && !urlSegura(reservas)}
+              />
+              <CampoRed
+                icon={Mail} label="Email de contacto" valor={email} onCambio={setEmail}
+                placeholder="hola@tulocal.com"
+              />
+            </div>
+          </div>
+
           <CampoPlaylist valor={playlist} onCambio={setPlaylist} />
 
           {/* El promotor no tiene dirección fija: la pone en cada tardeo. */}
@@ -227,5 +286,40 @@ export default function EditarLocal() {
         </div>
       </div>
     </main>
+  );
+}
+
+/**
+ * Un campo de red social con su aviso.
+ *
+ * El aviso se enseña MIENTRAS se escribe y no al guardar: si «@tu local» con
+ * espacio se descubre al pulsar Guardar, ya te has ido de la página. Y no
+ * bloquea el guardado, solo avisa: un enlace que no funciona es un problema
+ * menor que perder los otros tres campos por no dejar guardar.
+ */
+function CampoRed({
+  icon: Icon, label, valor, onCambio, placeholder, pista, mal,
+}: {
+  icon: typeof Instagram; label: string; valor: string;
+  onCambio: (v: string) => void; placeholder?: string; pista?: string; mal?: boolean;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
+        <Icon size={16} className="text-magenta" /> {label}
+      </span>
+      <input
+        value={valor}
+        onChange={(e) => onCambio(e.target.value)}
+        placeholder={placeholder}
+        className={`w-full rounded-xl border-2 bg-white px-4 py-3 text-base font-semibold outline-none transition ${
+          mal ? "border-magenta" : "border-magenta-100 focus:border-magenta"}`}
+      />
+      {pista && (
+        <span className={`mt-1 block text-xs font-semibold ${mal ? "text-magenta" : "text-tinta/50"}`}>
+          {pista}
+        </span>
+      )}
+    </label>
   );
 }

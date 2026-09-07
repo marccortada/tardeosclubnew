@@ -6,10 +6,11 @@ import Playlist from "@/components/Playlist";
 import CompartirBtn from "@/components/CompartirBtn";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { enlacesDe } from "@/lib/redes";
 import type { Metadata } from "next";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import { jsonLdLocal, urlAbsoluta } from "@/lib/seo";
-import { ArrowLeft, MapPin, Phone, BadgeCheck, Store, CalendarDays , Megaphone } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, BadgeCheck, Store, CalendarDays , Megaphone, Instagram, Globe, CalendarCheck } from "lucide-react";
 import ReclamarFicha from "@/components/ReclamarFicha";
 import AdnLocalFicha from "@/components/AdnLocalFicha";
 import RegistrarVista from "@/components/RegistrarVista";
@@ -45,6 +46,14 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
   const tardeos = await getTardeosPublicadosDeLocal(id);
   const fotos: string[] = Array.isArray(local.fotos) ? local.fotos : [];
   const tel = (local.telefono || "").replace(/\s+/g, "");
+  /**
+   * Instagram, web y reservas, que estaban guardados y no se veían.
+   *
+   * 46 de los 60 locales activos traen algo en `redes` desde la migración —45
+   * con Instagram— y hasta ahora ninguna pantalla los enseñaba. Era el dato más
+   * útil de la ficha después de la dirección, y estaba en la base sin usar.
+   */
+  const redes = enlacesDe(local.redes);
 
   return (
     <main className="mx-auto max-w-4xl pb-12">
@@ -133,6 +142,20 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
               <Phone size={16} /> WhatsApp
             </a>
           )}
+          {redes.map((r) => {
+            const Icono = r.k === "instagram" ? Instagram : r.k === "reservas" ? CalendarCheck : Globe;
+            return (
+              <a
+                key={r.url}
+                href={r.url}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-extrabold text-tinta shadow-tarjeta ring-1 ring-black/5 transition hover:ring-magenta"
+              >
+                <Icono size={16} className="text-magenta" /> {r.label}
+              </a>
+            );
+          })}
         </div>
 
         {/* Cómo es el sitio. Antes de los tardeos: quien entra a una ficha de

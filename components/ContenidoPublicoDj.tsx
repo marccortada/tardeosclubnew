@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { urlSegura } from "@/lib/enlaces";
 import { getContenidos, urlIncrustada, type Contenido } from "@/lib/djs";
 import { Music2, Video, ExternalLink } from "lucide-react";
 
@@ -42,7 +43,10 @@ export default async function ContenidoPublicoDj({ djId }: { djId: string }) {
                       className={`w-full ${c.tipo === "video" ? "aspect-video" : "h-[166px]"}`}
                     />
                   ) : (
-                    <a href={c.url} target="_blank" rel="noopener noreferrer"
+                    /* El destino lo escribe el DJ en su panel, así que se
+                       comprueba antes de pintarlo: un `javascript:` guardado en
+                       la base sería un enlace ejecutable en una ficha pública. */
+                    <a href={urlSegura(c.url) ?? "#"} target="_blank" rel="noopener noreferrer nofollow"
                       className="flex items-center gap-2 p-4 font-extrabold text-magenta">
                       {c.tipo === "video" ? <Video size={18} /> : <Music2 size={18} />}
                       Escuchar / ver <ExternalLink size={14} />
@@ -60,7 +64,12 @@ export default async function ContenidoPublicoDj({ djId }: { djId: string }) {
           <h2 className="mb-3 font-display text-xl font-black md:text-2xl">Galería</h2>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             {imagenes.map((c) => (
-              <a key={c.id} href={c.url} target="_blank" rel="noopener noreferrer"
+              /* `aria-label` porque dentro solo hay una imagen, y su `alt` se
+                 queda vacío cuando el DJ no le puso título: entonces el enlace
+                 no tiene NINGÚN nombre y un lector de pantalla solo dice
+                 "enlace". Con título se usa el título. */
+              <a key={c.id} href={urlSegura(c.url) ?? "#"} target="_blank" rel="noopener noreferrer nofollow"
+                aria-label={c.titulo ? `Ver «${c.titulo}» a tamaño completo` : "Ver la foto a tamaño completo"}
                 className="relative aspect-square overflow-hidden rounded-xl ring-1 ring-black/5">
                 <Image src={c.url} alt={c.titulo ?? ""} fill sizes="(max-width: 640px) 33vw, 200px"
                   className="object-cover transition hover:scale-105" />

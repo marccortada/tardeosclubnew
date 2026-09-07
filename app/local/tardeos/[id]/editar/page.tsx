@@ -10,9 +10,10 @@ import { getTardeoById, updateTardeo, setDjsDeTardeo, borrarTardeo, setEstadoTar
 import SelectorAdn from "@/components/SelectorAdn";
 import ProgramarPublicacion, { paraInput, type Cuando } from "@/components/ProgramarPublicacion";
 import PromoTardeo, { PROMO_VACIA, type Promo } from "@/components/PromoTardeo";
+import PrecioTardeo, { aColumnas, desdeColumnas, type Precio } from "@/components/PrecioTardeo";
 import { flyerSrc } from "@/lib/formato";
 import { Tardeo } from "@/lib/types";
-import { Music, Calendar, Clock, Disc3, MapPin, Ticket, Check, Loader2, Trash2, EyeOff, Eye } from "lucide-react";
+import { Music, Calendar, Clock, Disc3, MapPin, Check, Loader2, Trash2, EyeOff, Eye, FileText } from "lucide-react";
 import PromocionesDeTardeo from "@/components/PromocionesDeTardeo";
 
 export default function EditarTardeo({ params }: { params: Promise<{ id: string }> }) {
@@ -42,8 +43,20 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
   const [dressCode, setDressCode] = useState("");
   const [dj, setDj] = useState("");
   const [direccion, setDireccion] = useState("");
-  const [tipo, setTipo] = useState("gratis");
-  const [precio, setPrecio] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  /**
+   * La entrada entera, con el mismo componente que al crear.
+   *
+   * Antes aquí había un `tipo` y un `precio` sueltos, y el guardado escribía
+   * solo esas dos columnas. Consecuencia: **el enlace de entradas no se podía
+   * editar ni añadir después de crear el tardeo.** Un local que publica el
+   * cartel el lunes y recibe el enlace de la ticketera el miércoles no tenía
+   * ninguna forma de meterlo, y ése es justo el enlace que da dinero.
+   *
+   * `desdeColumnas` y `aColumnas` ya existían —la segunda con el comentario
+   * «y de vuelta, para el formulario de editar»— y nadie las había conectado.
+   */
+  const [precio, setPrecio] = useState<Precio>({ modo: "gratis", importe: "", urlEntradas: "", urlPromos: "" });
 
   useEffect(() => {
     getTardeoById(id).then((t) => {
@@ -67,8 +80,13 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
         setDressCode(t.dressCode ?? "");
         setDj(t.djs.map((d) => d.nombre).join(" · "));
         setDireccion(t.local.direccion);
-        setTipo(t.tipoEntrada);
-        setPrecio(t.precio ? String(t.precio) : "");
+        setDescripcion(t.descripcion ?? "");
+        setPrecio(desdeColumnas({
+          tipoEntrada: t.tipoEntrada,
+          precio: t.precio,
+          fourvenues_url: t.urlEntradas ?? null,
+          promo_url: t.urlPromos ?? null,
+        }));
       }
       setCargando(false);
     });
@@ -79,7 +97,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
     if (!titulo.trim()) { setError("Ponle un título."); return; }
     if (!fecha) { setError("Falta la fecha."); return; }
     if (fecha < hoy) { setError("La fecha ya ha pasado."); return; }
-    if (tipo === "pago" && !(Number(precio) > 0)) { setError("Indica el precio."); return; }
+    if (precio.modo === "conprecio" && !(Number(precio.importe) > 0)) { setError("Indica el precio de la entrada."); return; }
 
     setGuardando(true); setError("");
     const { data, error: e } = await updateTardeo(id, {
@@ -100,9 +118,10 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
       publico: publico.length ? publico : null,
       dress_code: dressCode || null,
       direccion,
-      es_de_pago: tipo === "pago",
-      tiene_lista: tipo === "lista",
-      precio: tipo === "pago" ? Number(precio) || null : null,
+      descripcion: descripcion.trim() || null,
+      // Las cinco columnas de la entrada salen del componente, igual que al
+      // crear: tipo, importe, enlace de entradas y enlace de promociones.
+      ...aColumnas(precio),
     });
     if (e) { setGuardando(false); setError(e.message); return; }
     if (!data || data.length === 0) { setGuardando(false); setError("No se guardó: este tardeo no es de tu local (permisos)."); return; }
@@ -177,6 +196,17 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
             </label>
           </div>
 
+          <label className="block">
+            <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
+              <FileText size={16} className="text-magenta" /> Descripción
+            </span>
+            <textarea
+              value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={3}
+              placeholder="Qué se va a encontrar quien venga. Opcional."
+              className="w-full resize-y rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 text-base font-semibold outline-none transition focus:border-magenta"
+            />
+          </label>
+
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70"><Clock size={16} className="text-magenta" /> Empieza</span>
@@ -217,19 +247,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
             onPublico={setPublico} onDressCode={setDressCode}
           />
 
-          <div>
-            <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70"><Ticket size={16} className="text-magenta" /> Entrada</span>
-            <div className="grid grid-cols-3 gap-2">
-              {[{ k: "gratis", label: "Gratis" }, { k: "pago", label: "Entrada" }, { k: "lista", label: "Por lista" }].map((o) => (
-                <button key={o.k} onClick={() => setTipo(o.k)} className={`min-h-[44px] rounded-xl py-3 text-sm font-extrabold transition ${tipo === o.k ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100"}`}>
-                  {o.label}
-                </button>
-              ))}
-            </div>
-            {tipo === "pago" && (
-              <input type="number" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio en €" className="mt-2 w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 text-base font-semibold outline-none focus:border-magenta" />
-            )}
-          </div>
+          <PrecioTardeo valor={precio} onCambio={setPrecio} />
 
           {error && <p className="text-sm font-bold text-magenta">{error}</p>}
 

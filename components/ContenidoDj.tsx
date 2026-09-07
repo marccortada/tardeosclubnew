@@ -7,6 +7,7 @@ import {
   TIPOS_CONTENIDO, type Contenido,
 } from "@/lib/djs";
 import { Loader2, Plus, Trash2, Upload, Music2, Video, ImageIcon, ExternalLink } from "lucide-react";
+import { urlSegura } from "@/lib/enlaces";
 
 const ICONO = { sesion: Music2, video: Video, foto: ImageIcon, flyer: ImageIcon };
 
@@ -141,7 +142,7 @@ export default function ContenidoDj({ djId }: { djId: string }) {
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-black leading-tight">{c.titulo || TIPOS_CONTENIDO.find((t) => t.k === c.tipo)?.label}</p>
-                  <a href={c.url} target="_blank" rel="noopener noreferrer"
+                  <a href={urlSegura(c.url) ?? "#"} target="_blank" rel="noopener noreferrer nofollow"
                     className="inline-flex items-center gap-1 truncate text-xs font-semibold text-magenta">
                     Ver <ExternalLink size={11} />
                   </a>
