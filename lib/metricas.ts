@@ -22,7 +22,18 @@ export type TipoMetrica =
   // Qué busca y con qué filtra
   | "busqueda" | "busqueda_vacia" | "filtro"
   // Si las recomendaciones sirven
-  | "para_ti_visto" | "para_ti_clic";
+  | "para_ti_visto" | "para_ti_clic"
+  /**
+   * Contacto con el local por cualquier vía: el canal va en `detalle`
+   * ('whatsapp', 'instagram', 'web', 'reservas', 'mapa', 'taxi').
+   *
+   * Un tipo y no seis: añadir un canal nuevo no debe obligar a tocar la
+   * restricción de la base ni las consultas que agrupan por tipo.
+   */
+  | "clic_contacto";
+
+/** Los canales que se miden dentro de `clic_contacto`. */
+export type Canal = "whatsapp" | "instagram" | "web" | "reservas" | "mapa" | "taxi";
 
 /**
  * Identificador de la pestaña. Al azar, sin nada de la persona, y muere al

@@ -7,6 +7,7 @@ import CompartirBtn from "@/components/CompartirBtn";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { enlacesDe } from "@/lib/redes";
+import EnlaceExterno from "@/components/EnlaceExterno";
 import type { Metadata } from "next";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import { jsonLdLocal, urlAbsoluta } from "@/lib/seo";
@@ -123,37 +124,32 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
         {/* Datos de contacto */}
         <div className="mt-4 flex flex-wrap gap-2">
           {local.direccion && (
-            <a
+            <EnlaceExterno
               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(local.direccion)}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              canal="mapa" localId={local.id}
               className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-extrabold text-tinta shadow-tarjeta ring-1 ring-black/5 transition hover:ring-magenta"
             >
               <MapPin size={16} className="text-magenta" /> Cómo llegar
-            </a>
+            </EnlaceExterno>
           )}
           {tel && (
-            <a
+            <EnlaceExterno
               href={`https://wa.me/${tel.startsWith("34") || tel.startsWith("+") ? tel.replace("+", "") : "34" + tel}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              canal="whatsapp" localId={local.id}
               className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-2.5 text-sm font-extrabold text-white shadow-tarjeta transition hover:brightness-105"
             >
               <Phone size={16} /> WhatsApp
-            </a>
+            </EnlaceExterno>
           )}
           {redes.map((r) => {
             const Icono = r.k === "instagram" ? Instagram : r.k === "reservas" ? CalendarCheck : Globe;
             return (
-              <a
-                key={r.url}
-                href={r.url}
-                target="_blank"
-                rel="noopener noreferrer nofollow"
+              <EnlaceExterno
+                key={r.url} href={r.url} canal={r.k === "facebook" ? "web" : r.k} localId={local.id}
                 className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-extrabold text-tinta shadow-tarjeta ring-1 ring-black/5 transition hover:ring-magenta"
               >
                 <Icono size={16} className="text-magenta" /> {r.label}
-              </a>
+              </EnlaceExterno>
             );
           })}
         </div>

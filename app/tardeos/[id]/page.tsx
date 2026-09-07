@@ -9,11 +9,12 @@ import MiniMapa from "@/components/MiniMapa";
 import DestacarTardeo from "@/components/DestacarTardeo";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import EnlaceExterno from "@/components/EnlaceExterno";
 import type { Metadata } from "next";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import { jsonLdEvento, urlAbsoluta } from "@/lib/seo";
 import { getPromosDeTardeo } from "@/lib/promociones";
-import { ArrowLeft, MapPin, Clock, Music, BadgeCheck, Star, CalendarPlus, Sparkles, Users, Shirt, PartyPopper, Tag } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Music, BadgeCheck, Star, CalendarPlus, Sparkles, Users, Shirt, PartyPopper, Tag, Car, ShieldCheck } from "lucide-react";
 import { tieneValoracion, valoracion } from "@/lib/reputacion";
 
 export const dynamic = "force-dynamic";
@@ -291,17 +292,52 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
                 <MapPin size={38} fill="#E10A5A" className="text-white" />
               </div>
             )}
-            <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                tardeo.local.direccion || `${tardeo.lat},${tardeo.lng}`
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 bg-white py-3 text-sm font-extrabold text-magenta transition hover:bg-magenta-50"
-            >
-              <MapPin size={16} /> Cómo llegar
-            </a>
+            <div className="grid grid-cols-2 divide-x divide-black/5 border-t border-black/5">
+              <EnlaceExterno
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                  tardeo.local.direccion || `${tardeo.lat},${tardeo.lng}`
+                )}`}
+                canal="mapa" localId={tardeo.local.id} tardeoId={tardeo.id}
+                className="flex items-center justify-center gap-2 bg-white py-3 text-sm font-extrabold text-magenta transition hover:bg-magenta-50"
+              >
+                <MapPin size={16} /> Cómo llegar
+              </EnlaceExterno>
+              {/*
+                Pedir taxi.
+                Busca taxis CERCA DEL SITIO, no en una aplicación concreta. Es
+                deliberado: elegir Uber, Free Now o Cabify es una decisión
+                comercial de Tardeos Club, no técnica, y mientras no haya
+                acuerdo con ninguna, mandar a la gente a una es hacerle
+                publicidad gratis. Esto funciona en toda Cataluña, con o sin
+                aplicación instalada, y el día que haya acuerdo se cambia la
+                dirección de una línea.
+              */}
+              <EnlaceExterno
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                  `taxi ${tardeo.lat},${tardeo.lng}`
+                )}`}
+                canal="taxi" localId={tardeo.local.id} tardeoId={tardeo.id}
+                className="flex items-center justify-center gap-2 bg-white py-3 text-sm font-extrabold text-magenta transition hover:bg-magenta-50"
+              >
+                <Car size={16} /> Pedir taxi
+              </EnlaceExterno>
+            </div>
           </div>
+
+          {/*
+            Vuelve seguro.
+            Va DESPUÉS del mapa y del taxi, que es donde tiene sentido: cuando
+            alguien mira cómo se va. Y va en un tono tranquilo a propósito: un
+            aviso con signos de exclamación en una página de fiesta se salta,
+            y este es el único texto de la web que habla de volver a casa.
+          */}
+          <p className="mt-3 flex items-start gap-2 rounded-2xl bg-crema/70 p-3 text-sm font-semibold text-tinta/70 ring-1 ring-black/5">
+            <ShieldCheck size={17} className="mt-0.5 shrink-0 text-magenta" />
+            <span>
+              <b className="font-black text-tinta">Vuelve seguro.</b> Si has bebido, no cojas el
+              coche: pide un taxi ahí arriba o vuelve acompañado.
+            </span>
+          </p>
         </section>
 
         <DestacarTardeo localId={tardeo.local.id} tardeoId={tardeo.id} titulo={tardeo.titulo} />

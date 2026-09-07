@@ -163,6 +163,24 @@ export function horizonteISO(): string {
  * Cachea un minuto y comparte la petición en vuelo, para que dos componentes
  * que la piden a la vez no hagan dos viajes.
  */
+/**
+ * ¿Este tardeo trae su local, o se lo ha comido la seguridad de fila?
+ *
+ * Un local que no está `activo` desaparece de las consultas públicas: la fila
+ * del tardeo llega, pero `locales` viene a null y `mapRow` lo convierte en un
+ * local con nombre vacío. Resultado: una tarjeta sin nombre de sitio, sin logo
+ * y con un enlace a una ficha que para quien no ha entrado no existe.
+ *
+ * Pasó de verdad. Un solo local en borrador dejaba así CUATRO de las cinco
+ * tarjetas de la portada, y desde fuera no parecía un local sin aprobar:
+ * parecía que la web estaba rota.
+ *
+ * Se filtran en las consultas PÚBLICAS y solo ahí. En el panel del local o del
+ * admin el tardeo tiene que seguir viéndose —es suyo, y hay que poder
+ * arreglarlo—, y ahí el local sí llega porque quien mira tiene permiso.
+ */
+const conLocalVisible = (t: Tardeo): boolean => Boolean(t.local.nombre);
+
 async function leerTardeosPublicados(): Promise<Tardeo[]> {
   try {
     const { data, error } = await supabase
@@ -174,7 +192,17 @@ async function leerTardeosPublicados(): Promise<Tardeo[]> {
       .order("fecha", { ascending: true });
     if (error) throw error;
     const reglas = await planesActivos();
-    return (data ?? []).map(mapRow).map((t) => ({ ...t, local: segunPlan(t.local, reglas) }));
+    const todos = (data ?? []).map(mapRow);
+    const visibles = todos.filter(conLocalVisible);
+    // Se deja constancia: un tardeo escondido por su local es un local sin
+    // aprobar, y eso hay que verlo en los registros del servidor, no
+    // descubrirlo mirando la portada.
+    if (visibles.length < todos.length) {
+      console.warn(
+        `[tardeos] ${todos.length - visibles.length} tardeo(s) fuera del listado público: su local no está activo.`
+      );
+    }
+    return visibles.map((t) => ({ ...t, local: segunPlan(t.local, reglas) }));
   } catch (e) {
     console.error("[tardeos] Error cargando tardeos:", e);
     // En build hay que reventar. Devolver [] aquí hornea la portada, /tardeos
@@ -416,7 +444,9 @@ export async function getTardeosPublicadosDeDj(djId: string): Promise<Tardeo[]> 
   return (data ?? [])
     .map((r: any) => r.tardeos)
     .filter((t: any) => t && t.estado === "publicado" && t.fecha >= hoy)
-    .map(mapRow);
+    .map(mapRow)
+    // Misma razón que en el listado: aquí también es una pantalla pública.
+    .filter(conLocalVisible);
 }
 
 /** Actualiza el perfil de un DJ (bio, estilos, avatar…). */
@@ -535,7 +565,9 @@ export async function getTardeosDeLocal(localId: string): Promise<Tardeo[]> {
   return (data ?? []).map(mapRow);
 }
 
-/** Un tardeo por id: primero Supabase, luego mock (para no romper enlaces en la transición). */
+/** Un tardeo por id. Sin filtrar por local visible: esta la usa también el
+ *  editor, y el dueño tiene que poder abrir el suyo aunque su ficha esté sin
+ *  aprobar. Quien decide qué se enseña es la pantalla. */
 export async function getTardeoById(id: string): Promise<Tardeo | null> {
   try {
     const { data, error } = await supabase.from("tardeos").select(SELECT).eq("id", id).maybeSingle();
