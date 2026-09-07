@@ -1,6 +1,32 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+
+  /**
+   * Las direcciones de la web actual que aquí no existen.
+   *
+   * `tardeosclub.com` es la que usa la gente hoy, y sus enlaces van por otros
+   * caminos: /eventos y /locales. Alguien que tenga uno guardado —o que lo
+   * reciba por WhatsApp— abriría la web nueva en un 404 el día que se cambie,
+   * y eso es «cambio a peor» aunque no falte ninguna función: falta una que
+   * había.
+   *
+   * `permanent: true` porque no es un desvío temporal: esas direcciones no van
+   * a volver. Así los buscadores traspasan lo que tuvieran de la vieja en vez
+   * de indexar dos sitios.
+   *
+   * (El caso de /dj/<lo-que-sea> no cabe aquí: hace falta consultar la base
+   * para traducir el nombre a un identificador, así que vive en
+   * app/dj/[slug]/page.tsx.)
+   */
+  async redirects() {
+    return [
+      { source: "/eventos", destination: "/tardeos", permanent: true },
+      { source: "/eventos/:id", destination: "/tardeos/:id", permanent: true },
+      { source: "/locales", destination: "/colaboradores", permanent: true },
+    ];
+  },
+
   devIndicators: false,
   // Empaqueta solo lo necesario para ejecutar: imagen de Docker pequeña.
   output: "standalone",
