@@ -98,6 +98,18 @@ export async function revisarSalud(): Promise<{ pruebas: Prueba[]; datos: Record
       return { error, nota: `${count ?? 0} pendientes` };
     }),
 
+    comprobar("Moderación de reseñas", "Pega supabase/44_resenas_moderacion.sql", async () => {
+      // Se pide la consulta EXACTA del panel de moderación, con las columnas
+      // nuevas. Si falta el lote, PostgREST responde 42703 por la primera
+      // columna que no existe, que es justo lo que hay que detectar.
+      const { error, count } = await supabase
+        .from("resenas")
+        .select("id,estado,motivo_rechazo,apelacion,apelada_en,moderada_por,moderada_en", { count: "exact", head: true })
+        .in("estado", ["pendiente", "apelada"]);
+      if (!error) datos.resenasPendientes = count ?? 0;
+      return { error, nota: `${count ?? 0} pendientes o apeladas` };
+    }),
+
     comprobar("Seguimiento comercial", "Pega supabase/35_crm_comercial.sql", async () => {
       const { error } = await supabase.from("seguimiento_comercial").select("local_id").limit(1);
       return { error };
@@ -132,6 +144,20 @@ export async function revisarSalud(): Promise<{ pruebas: Prueba[]; datos: Record
       ? "Sus tardeos salen sin nombre de local. Se aprueban en Colaboradores."
       : undefined,
   });
+
+  // Una cola de moderación que crece es un problema de negocio, no técnico:
+  // una reseña sin aprobar no la ve nadie, así que quien la escribió cree que
+  // se ha perdido. Va aquí porque es donde se viene a mirar qué falla.
+  if ((datos.resenasPendientes ?? 0) > 0) {
+    pruebas.push({
+      nombre: "Cola de moderación",
+      ok: (datos.resenasPendientes ?? 0) <= 10,
+      detalle: `${datos.resenasPendientes} reseñas esperando`,
+      arreglo: (datos.resenasPendientes ?? 0) > 10
+        ? "Se moderan en Moderación. Mientras no se aprueben, no las ve nadie."
+        : undefined,
+    });
+  }
 
   return { pruebas, datos };
 }
