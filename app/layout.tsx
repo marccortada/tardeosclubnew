@@ -9,6 +9,7 @@ import { SITE_URL, INDEXABLE } from "@/lib/seo";
 import BottomNav from "@/components/BottomNav";
 import SiteNav from "@/components/SiteNav";
 import RegistrarSW from "@/components/RegistrarSW";
+import InstalarApp from "@/components/InstalarApp";
 
 const nunito = Nunito({
   subsets: ["latin"],
@@ -71,6 +72,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SiteNav />
         <div className="min-h-screen pb-24 md:pb-12">{children}</div>
         <BottomNav />
+        {/* El aviso de instalar. Va DESPUÉS de la barra de abajo para quedar
+            por encima de ella, y se pinta solo en móvil, una vez, y pasados
+            unos segundos: ver el porqué de cada condición en el componente. */}
+        <InstalarApp />
       </body>
     </html>
   );
