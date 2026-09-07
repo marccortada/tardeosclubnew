@@ -1,4 +1,4 @@
-import { getDjsPublicos, getLocalesPublicos } from "@/lib/tardeos";
+import { getDjsPublicos, getLocalesPublicos, getTardeosPublicados } from "@/lib/tardeos";
 import ColaboradoresLista from "@/components/ColaboradoresLista";
 import type { Metadata } from "next";
 import { metadataPublica } from "@/lib/seo";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = metadataPublica(
   "Colaboradores · TardeosClub",
-  "Los locales, promotores y DJs que hacen los tardeos de la costa catalana.",
+  "Los locales, promotores, eventos y DJs que hacen los tardeos de la costa catalana.",
   "/colaboradores"
 );
 
@@ -23,7 +23,9 @@ export const metadata: Metadata = metadataPublica(
  * y no dispara otra consulta.
  */
 export default async function Colaboradores() {
-  const [locales, djs] = await Promise.all([getLocalesPublicos(), getDjsPublicos()]);
+  const [locales, djs, tardeos] = await Promise.all([
+    getLocalesPublicos(), getDjsPublicos(), getTardeosPublicados(),
+  ]);
 
   return (
     <main className="mx-auto max-w-6xl px-4 pt-5 md:px-8 md:pt-8">
@@ -38,7 +40,7 @@ export default async function Colaboradores() {
 
       {/* Sin Suspense a propósito: la lista ya no usa useSearchParams, así que
           se renderiza en el servidor y las fichas llegan dentro del HTML. */}
-      <ColaboradoresLista locales={locales} djs={djs} />
+      <ColaboradoresLista locales={locales} djs={djs} tardeos={tardeos} />
     </main>
   );
 }

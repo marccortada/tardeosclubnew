@@ -17,14 +17,28 @@ import { medir } from "@/lib/metricas";
 import {
   SlidersHorizontal, X, Loader2, Search, Navigation, CalendarDays, Music, ChevronDown, Sparkles, Wand2,
 } from "lucide-react";
+import { hoyEnEspana, proximoDia, diaCorto } from "@/lib/fechas";
 
-/** Hoy en horario de España: el `min` del calendario y el corte de "Hoy" tienen
- *  que ser el mismo día que ve el usuario, no el del reloj del navegador. */
-const hoyEnEspana = () =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+/**
+ * Cuándo se sale.
+ *
+ * Los tres días sueltos —viernes, sábado y domingo— son lo que pide E-04 y no
+ * un capricho: «este finde» mete los tres en la misma bolsa, y quien tiene
+ * libre el domingo no quiere ver lo del viernes. Cada uno apunta a la PRÓXIMA
+ * vez que cae ese día, contando hoy: un viernes por la tarde, «Viernes» es
+ * hoy, no dentro de una semana.
+ *
+ * Salen en una fila visible encima de los filtros, no dentro del desplegable.
+ * Antes había que abrir «¿Cuándo?» para llegar a ellos, y la medición decía lo
+ * previsible: mucho uso de filtro y casi ninguna búsqueda.
+ */
+const DOW: Record<string, number> = { domingo: 0, viernes: 5, sabado: 6 };
 
 const CUANDOS = [
   { k: "hoy", label: "Hoy" },
+  { k: "viernes", label: "Viernes" },
+  { k: "sabado", label: "Sábado" },
+  { k: "domingo", label: "Domingo" },
   { k: "finde", label: "Este finde" },
   { k: "semana", label: "Esta semana" },
 ];
@@ -272,6 +286,8 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
     const d = new Date(t.fecha + "T00:00:00");
     const dias = Math.round((d.getTime() - hoy.getTime()) / 86400000);
     if (cuando === "hoy") return dias === 0;
+    // Un día concreto: la próxima vez que caiga, y solo ese día.
+    if (cuando in DOW) return t.fecha === proximoDia(DOW[cuando]);
     if (cuando === "semana") return dias >= 0 && dias <= 7;
     if (cuando === "finde") {
       const dow = d.getDay(); // 0 dom, 5 vie, 6 sab
@@ -485,6 +501,33 @@ export default function ListaTardeos({ todos }: { todos: Tardeo[] }) {
           Cinco chips no caben en una línea de móvil por mucho que se
           estrechen, así que la alternativa era esconder unos u otros. Dos
           líneas cuestan medio centímetro de alto y no esconden nada. */}
+      {/*
+        Los cuatro accesos directos de fecha, a la vista.
+        Antes había que abrir «¿Cuándo?» para llegar a ellos. Es el filtro que
+        más se usa con diferencia —salir es una decisión de día, no de estilo—
+        y estaba a dos toques. Aquí está a uno, y con la fecha escrita debajo
+        para no tener que calcularla.
+      */}
+      <div className="no-scrollbar mb-2 flex gap-2 overflow-x-auto">
+        {CUANDOS.slice(0, 4).map((c) => {
+          const fecha = c.k === "hoy" ? hoyEnEspana() : proximoDia(DOW[c.k]);
+          const activo = cuando === c.k;
+          return (
+            <button
+              key={c.k}
+              onClick={() => { setFechaExacta(""); setCuando((p) => (p === c.k ? null : c.k)); }}
+              className={`min-h-[52px] shrink-0 rounded-2xl px-4 py-2 text-left transition active:scale-[0.98] ${
+                activo ? "bg-magenta text-white shadow-tarjeta" : "bg-white text-tinta ring-1 ring-magenta-100"}`}
+            >
+              <span className="block text-sm font-black leading-tight">{c.label}</span>
+              <span className={`block text-xs font-bold ${activo ? "text-white/70" : "text-tinta/45"}`}>
+                {diaCorto(fecha)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="mb-2 flex flex-wrap gap-2">
         <Principal
           icono={CalendarDays}
