@@ -5,7 +5,7 @@ import Link from "next/link";
 import PanelHeader from "@/components/PanelHeader";
 import { supabase } from "@/lib/supabase";
 import { plegar, contieneTexto } from "@/lib/texto";
-import { PLANES, ETIQUETA, precioCorto, euroMes, type Plan } from "@/lib/planes";
+import { PLANES, ETIQUETA, precioCorto, euroMes, vigente, diasRestantes, type Plan } from "@/lib/planes";
 import { SUSCRIPCION, combinacionInvalida } from "@/lib/estados";
 import { CLAVE_PLANES, setAjuste } from "@/lib/ajustes";
 import { consumoDeTodos, type Consumo } from "@/lib/cuotas";
@@ -146,8 +146,20 @@ export default function AdminSuscripciones() {
     setFichas((p) => p.map((x) => (x.id === f.id ? { ...x, ...campos } as Ficha : x)));
   };
 
-  const pagando = fichas.filter((f) => f.plan_estado === "activa");
+  /**
+   * «Al corriente» ahora significa al corriente Y dentro del periodo.
+   *
+   * `plan_hasta` se guardaba desde el lote 33 y no lo miraba nadie: una
+   * suscripción que caducó en marzo seguía contando como activa aquí y
+   * sumando al recurrente. El dinero que enseñaba esta pantalla incluía a
+   * quien ya no paga.
+   */
+  const pagando = fichas.filter((f) => vigente(f.plan_estado, f.plan_hasta));
   const impagos = fichas.filter((f) => f.plan_estado === "impago");
+  // Marcadas como activas pero con la fecha pasada. No es lo mismo que un
+  // impago: nadie ha devuelto un recibo, es que se acabó el periodo y no se ha
+  // renovado. Se enseñan aparte para poder ir a por ellas.
+  const caducadas = fichas.filter((f) => f.plan_estado === "activa" && !vigente(f.plan_estado, f.plan_hasta));
   // El recurrente de verdad: el precio de siempre, no el de alta. Los 40 € de
   // los dos primeros meses del Fundador no son ingreso recurrente, y contarlos
   // como tal daría una previsión que baja sola sin que nadie se dé de baja.
@@ -212,10 +224,15 @@ export default function AdminSuscripciones() {
             <p className="mt-1 font-display text-2xl font-black leading-none">{pagando.length}</p>
             <p className="mt-1 text-xs font-bold text-tinta/60">al corriente</p>
           </div>
-          <div className={`rounded-2xl p-4 shadow-tarjeta ring-1 ${impagos.length ? "bg-oro/15 ring-oro/40" : "bg-white ring-black/5"}`}>
+          <div className={`rounded-2xl p-4 shadow-tarjeta ring-1 ${impagos.length + caducadas.length ? "bg-oro/15 ring-oro/40" : "bg-white ring-black/5"}`}>
             <AlertTriangle size={20} className={impagos.length ? "text-oro-600" : "text-tinta/30"} />
             <p className="mt-1 font-display text-2xl font-black leading-none">{impagos.length}</p>
-            <p className="mt-1 text-xs font-bold text-tinta/60">impagos</p>
+            <p className="mt-1 text-xs font-bold text-tinta/60">
+              impagos
+              {caducadas.length > 0 && (
+                <span className="block text-oro-700">+{caducadas.length} caducadas</span>
+              )}
+            </p>
           </div>
         </section>
 
@@ -252,6 +269,23 @@ export default function AdminSuscripciones() {
                       {f.reclamado ? "Perfil reclamado" : "Sin reclamar · ficha nuestra"}
                       {f.pago_referencia && ` · ${f.pago_proveedor ?? "pago"}: ${f.pago_referencia}`}
                     </p>
+                    {/* Hasta cuándo está pagado. Solo se dice cuando importa:
+                        una fecha a seis meses vista no es información. */}
+                    {(() => {
+                      const dias = diasRestantes(f.plan_hasta);
+                      if (dias === null || f.plan_estado !== "activa") return null;
+                      if (dias < 0) return (
+                        <p className="mt-0.5 text-xs font-black text-magenta">
+                          Caducó hace {Math.abs(dias)} {Math.abs(dias) === 1 ? "día" : "días"} · ya no cuenta como al corriente
+                        </p>
+                      );
+                      if (dias <= 14) return (
+                        <p className="mt-0.5 text-xs font-black text-oro-700">
+                          {dias === 0 ? "Vence hoy" : `Vence en ${dias} ${dias === 1 ? "día" : "días"}`}
+                        </p>
+                      );
+                      return null;
+                    })()}
                     {consumos[f.id] && (consumos[f.id].eventosMes > 0 || consumos[f.id].promosActivas > 0) && (
                       <p className="mt-0.5 text-xs font-bold text-tinta/60">
                         {consumos[f.id].eventosMes} eventos · {consumos[f.id].promosActivas} promos

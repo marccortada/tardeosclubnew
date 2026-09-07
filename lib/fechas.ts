@@ -10,6 +10,27 @@
 export const hoyEnEspana = (): string =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
 
+/**
+ * Qué DÍA es un instante, en España. "2026-09-07".
+ *
+ * Hace falta porque un `timestamptz` de la base puede caer a cualquier hora, y
+ * comparar instantes en bruto se lleva por delante el último día: una
+ * suscripción que vence hoy a las 00:30 valdría media hora en vez de un día.
+ * Y `toISOString()` a secas no sirve: las 00:30 de Madrid son las 22:30 UTC
+ * del día ANTERIOR, así que en verano restaría un día a todo lo nocturno.
+ */
+export function diaEnEspana(cuando: string | Date): string | null {
+  const d = typeof cuando === "string" ? new Date(cuando) : cuando;
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(d);
+}
+
+/** Días enteros entre dos días ISO. Negativo si el segundo ya pasó. */
+export function diasEntre(desde: string, hasta: string): number {
+  const n = (iso: string) => { const [a, m, d] = iso.split("-").map(Number); return Date.UTC(a, m - 1, d); };
+  return Math.round((n(hasta) - n(desde)) / 86400000);
+}
+
 /** El día de la semana de una fecha ISO. 0 domingo … 6 sábado. */
 export function diaDeLaSemana(iso: string): number {
   const [a, m, d] = iso.split("-").map(Number);

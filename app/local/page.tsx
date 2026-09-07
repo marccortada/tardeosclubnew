@@ -18,7 +18,7 @@ import {
 import EstadisticasLocal from "@/components/EstadisticasLocal";
 import ConsumoDelMes from "@/components/ConsumoDelMes";
 import { planesActivos } from "@/lib/ajustes";
-import { ETIQUETA, precioTexto, type Plan } from "@/lib/planes";
+import { ETIQUETA, precioTexto, vigente, diasRestantes, type Plan } from "@/lib/planes";
 import { etiquetaSuscripcion } from "@/lib/estados";
 import FichaPendiente from "@/components/FichaPendiente";
 
@@ -250,6 +250,24 @@ export default function PanelLocal() {
                 <p className="text-sm font-black text-tinta/80">
                   {precioTexto((local.plan ?? "basic") as Plan)}
                 </p>
+                {/* La caducidad, que se guardaba desde el lote 33 y no se
+                    enseñaba en ningún sitio. Solo se dice cuando importa: a
+                    dos meses vista no es información, es ruido. */}
+                {(() => {
+                  const dias = diasRestantes(local.plan_hasta);
+                  if (dias === null) return null;
+                  if (dias < 0) return (
+                    <p className="mt-0.5 text-sm font-black text-magenta">
+                      Caducó hace {Math.abs(dias)} {Math.abs(dias) === 1 ? "día" : "días"}. Renuévala para recuperar tu plan.
+                    </p>
+                  );
+                  if (dias <= 14) return (
+                    <p className="mt-0.5 text-sm font-black text-oro-600">
+                      {dias === 0 ? "Vence hoy." : `Vence en ${dias} ${dias === 1 ? "día" : "días"}.`}
+                    </p>
+                  );
+                  return null;
+                })()}
               </div>
             </div>
           )}

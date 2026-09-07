@@ -1,3 +1,5 @@
+import { hoyEnEspana, diaEnEspana, diasEntre } from "./fechas";
+
 /**
  * Qué abre cada plan.
  *
@@ -161,9 +163,22 @@ export function planNecesario(capacidad: Capacidad): Plan {
 export function puedeSiActivo(
   plan: string | null | undefined,
   capacidad: Capacidad,
-  reglasActivas: boolean
+  reglasActivas: boolean,
+  /**
+   * El estado y la caducidad. Opcionales para no romper a quien ya llamaba con
+   * tres argumentos, pero pasándolos se comprueba de verdad: sin ellos, una
+   * suscripción caducada o impagada abre lo mismo que una al día.
+   */
+  suscripcion?: { estado?: string | null; hasta?: string | Date | null }
 ): boolean {
-  return !reglasActivas || puede(plan, capacidad);
+  if (!reglasActivas) return true;
+  if (suscripcion && !vigente(suscripcion.estado, suscripcion.hasta)) {
+    // Caducado o impagado cae al nivel de entrada, no a cero: la ficha sigue
+    // en el mapa y los flyers siguen publicados. Quitarle a un local todo de
+    // golpe por un recibo devuelto es perder al local, no cobrarle.
+    return puede("basic", capacidad);
+  }
+  return puede(plan, capacidad);
 }
 
 /**
@@ -173,7 +188,52 @@ export function puedeSiActivo(
  * suscripción en 'impago' con su plan intacto. Así se sabe a qué volver cuando
  * pague, y se puede decidir por separado si un impago corta el servicio o solo
  * enciende un aviso en el panel.
+ *
+ * OJO: esto NO mira la caducidad. Para decidir si alguien tiene derecho a algo
+ * hoy, usa `vigente`. Se dejan separadas porque son dos preguntas distintas:
+ * «¿debe dinero?» y «¿le queda periodo?».
  */
 export function alCorriente(estado: string | null | undefined): boolean {
   return estado === "activa";
+}
+
+/**
+ * ¿La suscripción vale HOY?
+ *
+ * Al corriente Y dentro del periodo. `plan_hasta` se guardaba desde el lote 33
+ * y no lo miraba absolutamente nadie: una suscripción que caducó en marzo
+ * seguía contando como activa en el panel, en el recurrente y en las
+ * capacidades. El dato estaba, la comprobación no.
+ *
+ * Sin fecha se considera vigente. Es lo correcto mientras no haya pasarela: el
+ * admin marca «al corriente» a mano y todavía no rellena el hasta, y tratar
+ * eso como caducado le quitaría el plan a todo el que lo tiene.
+ *
+ * Se compara con el día, no con la hora: una suscripción que vence hoy vale
+ * todo el día de hoy. Con horas, quien pagó a las 9:00 se quedaba sin servicio
+ * a las 9:01 del último día.
+ */
+export function vigente(
+  estado: string | null | undefined,
+  hasta: string | Date | null | undefined
+): boolean {
+  if (!alCorriente(estado)) return false;
+  if (!hasta) return true;
+  const fin = diaEnEspana(hasta);
+  if (!fin) return true;                          // fecha ilegible: no se castiga
+  return fin >= hoyEnEspana();
+}
+
+/**
+ * Días que quedan de suscripción. Negativo si ya caducó; `null` si no hay fecha.
+ *
+ * Se cuentan DÍAS ENTEROS, no la diferencia en bruto. Restando instantes, una
+ * fecha de fin guardada a mediodía daba 30,5 días y redondeaba a 31: el panel
+ * enseñaba un día de más, y justo el último día decía «te queda 1» cuando ya
+ * no quedaba ninguno.
+ */
+export function diasRestantes(hasta: string | Date | null | undefined): number | null {
+  if (!hasta) return null;
+  const fin = diaEnEspana(hasta);
+  return fin ? diasEntre(hoyEnEspana(), fin) : null;
 }
