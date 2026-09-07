@@ -4,6 +4,7 @@ import { memo } from "@/lib/memo";
 import { plegar } from "@/lib/texto";
 import { puedeSiActivo } from "@/lib/planes";
 import { planesActivos } from "@/lib/ajustes";
+import { registrar, avisar } from "./registro";
 
 // Acotado a lo que usa mapRow. Con `locales(*)` venían descripción, redes,
 // fotos, horarios y el email de cada local: 42 KB por consulta en vez de 30.
@@ -198,13 +199,12 @@ async function leerTardeosPublicados(): Promise<Tardeo[]> {
     // aprobar, y eso hay que verlo en los registros del servidor, no
     // descubrirlo mirando la portada.
     if (visibles.length < todos.length) {
-      console.warn(
-        `[tardeos] ${todos.length - visibles.length} tardeo(s) fuera del listado público: su local no está activo.`
-      );
+      avisar("tardeos",
+        `${todos.length - visibles.length} tardeo(s) fuera del listado público: su local no está activo`);
     }
     return visibles.map((t) => ({ ...t, local: segunPlan(t.local, reglas) }));
   } catch (e) {
-    console.error("[tardeos] Error cargando tardeos:", e);
+    registrar("tardeos", "no se pudo cargar el listado público", e);
     // En build hay que reventar. Devolver [] aquí hornea la portada, /tardeos
     // y /mapa vacías y `next build` termina en verde: se despliega una web sin
     // contenido y nadie se entera hasta que un usuario la abre. Pasó de verdad.
@@ -234,7 +234,7 @@ async function leerLocalesPublicos(): Promise<any[]> {
     .order("destacado_orden", { ascending: true, nullsFirst: false })
     .order("verificado", { ascending: false })
     .order("nombre", { ascending: true });
-  if (error) console.error("[locales] directorio:", error.message);
+  if (error) registrar("locales", "no se pudo cargar el directorio", error);
   const reglas = await planesActivos();
   return (data ?? []).map((l) => segunPlan(l as any, reglas));
 }
@@ -253,7 +253,7 @@ async function leerLocalesDestacados(limite = 10): Promise<{ locales: any[]; son
     .not("destacado_orden", "is", null)
     .order("destacado_orden", { ascending: true })
     .limit(limite);
-  if (error) console.error("[locales] destacados:", error.message);
+  if (error) registrar("locales", "no se pudieron cargar los destacados", error);
   const reglas = await planesActivos();
   if (data?.length) return { locales: data.map((l) => segunPlan(l as any, reglas)), sonDePago: true };
 
@@ -353,7 +353,7 @@ export async function getMiLocal(ownerId: string): Promise<any | null> {
   // interpreta como "no tienes local": el dueño creaba otro y acababa con
   // duplicados. Sigue devolviendo null (cinco sitios la llaman y varios sin
   // catch), pero al menos deja rastro de que fue un fallo y no una ausencia.
-  if (error) console.error("[locales] no se pudo cargar tu local:", error.message);
+  if (error) registrar("locales", "no se pudo cargar el local del dueño", error);
   return data ?? null;
 }
 
@@ -395,7 +395,7 @@ export async function getMiDj(profileId: string): Promise<any | null> {
     .select("id,profile_id,nombre_artistico,bio,estilos,galeria,redes,verificado,reputacion_score,oculto,avatar_url,playlist_url,zonas,contacto")
     .eq("profile_id", profileId)
     .order("created_at", { ascending: true }).limit(1).maybeSingle();
-  if (error) console.error("[djs] no se pudo cargar tu perfil DJ:", error.message);
+  if (error) registrar("djs", "no se pudo cargar el perfil del DJ", error);
   return data ?? null;
 }
 
@@ -574,7 +574,7 @@ export async function getTardeoById(id: string): Promise<Tardeo | null> {
     if (error) throw error;
     return data ? mapRow(data) : null;
   } catch (e) {
-    console.error("[tardeos] getTardeoById error:", e);
+    registrar("tardeos", "no se pudo cargar la ficha de un tardeo", e);
     return null;
   }
 }

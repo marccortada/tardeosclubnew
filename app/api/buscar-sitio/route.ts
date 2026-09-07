@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { autorizarUsuario, pasaLimite, respuestaLimite } from "@/lib/apiAuth";
+import { registrar, avisar } from "@/lib/registro";
 
 export const runtime = "nodejs";
 
@@ -132,14 +133,14 @@ export async function POST(req: Request) {
     } catch (e: any) {
       // No se traga el fallo en silencio: si la clave está mal puesta o sin
       // saldo, aquí es donde se ve. El usuario sigue pudiendo buscar por calle.
-      console.error("[buscar-sitio] Google falló, tiro de OpenStreetMap:", e?.message);
+      avisar("buscar-sitio", "Google falló; se prueba con OpenStreetMap", e);
     }
   }
 
   try {
     return NextResponse.json({ fuente: "osm", resultados: await conOsm(texto) });
   } catch (e: any) {
-    console.error("[buscar-sitio] OpenStreetMap también falló:", e?.message);
+    registrar("buscar-sitio", "OpenStreetMap también falló: no hay búsqueda de direcciones", e);
     return NextResponse.json({ error: "El buscador de direcciones no responde ahora mismo." }, { status: 502 });
   }
 }

@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { registrar } from "./registro";
 
 /**
  * La promoción, como cosa propia.
@@ -100,7 +101,7 @@ export async function getPromosDeTardeo(tardeoId: string): Promise<Promocion[]> 
   const { data, error } = await supabase
     .from("promociones").select(COLUMNAS).eq("tardeo_id", tardeoId)
     .order("created_at", { ascending: true });
-  if (error && !tablaSinCrear(error)) console.error("[promos] tardeo:", error.message);
+  if (error && !tablaSinCrear(error)) registrar("promos", "no se pudieron leer las promociones del tardeo", error);
   return (data ?? []).map(mapRow);
 }
 
@@ -108,7 +109,7 @@ export async function getPromosDeLocal(localId: string): Promise<Promocion[]> {
   const { data, error } = await supabase
     .from("promociones").select(COLUMNAS).eq("local_id", localId)
     .order("created_at", { ascending: true });
-  if (error && !tablaSinCrear(error)) console.error("[promos] local:", error.message);
+  if (error && !tablaSinCrear(error)) registrar("promos", "no se pudieron leer las promociones del local", error);
   return (data ?? []).map(mapRow);
 }
 

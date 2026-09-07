@@ -10,6 +10,7 @@ import DestacarTardeo from "@/components/DestacarTardeo";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import EnlaceExterno from "@/components/EnlaceExterno";
+import DenunciarFlyer from "@/components/DenunciarFlyer";
 import type { Metadata } from "next";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import { jsonLdEvento, urlAbsoluta } from "@/lib/seo";
@@ -343,6 +344,10 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
         <DestacarTardeo localId={tardeo.local.id} tardeoId={tardeo.id} titulo={tardeo.titulo} />
 
         <Resenas tipo="local" objetivoId={tardeo.local.id} nombre={tardeo.local.nombre} />
+
+        {/* Lo último de la página, en letra pequeña. La mayoría de los flyers
+            están bien; esto es para el que no lo está. */}
+        <DenunciarFlyer tardeoId={tardeo.id} flyerUrl={flyerSrc(tardeo)} />
       </div>
 
       <AccionTardeo tardeo={tardeo} />

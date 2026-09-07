@@ -9,8 +9,7 @@ import { enlaceInstagram, enlaceWeb, enlaceTelefono } from "@/lib/crm";
 import {
   CalendarDays, Store, Disc3, Euro, BadgeCheck, X, Check, Contact,
   Megaphone, Bell, BellRing, ShieldAlert, ChevronRight, Loader2, Star,
-  Plus, CreditCard, ShieldCheck, Mail, CalendarPlus, LineChart, Phone, Instagram, Globe, Users,
-} from "lucide-react";
+  Plus, CreditCard, ShieldCheck, Mail, CalendarPlus, LineChart, Phone, Instagram, Globe, Users, Stethoscope } from "lucide-react";
 
 /**
  * El panel, por grupos y no en una lista de doce.
@@ -76,6 +75,7 @@ const GRUPOS = [
     items: [
       { icon: BadgeCheck, label: "Reclamaciones", sub: "Quién pide gestionar su ficha", href: "/admin/reclamaciones" },
       { icon: ShieldCheck, label: "Moderación", sub: "Reseñas y flyers", href: "/admin/moderacion" },
+      { icon: Stethoscope, label: "Salud", sub: "Si algo está mal, aquí se ve", href: "/admin/salud" },
     ],
   },
   {

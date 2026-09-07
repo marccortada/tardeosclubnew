@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { registrar } from "./registro";
 
 export type Contenido = {
   id: string;
@@ -21,7 +22,7 @@ export async function getContenidos(djId: string): Promise<Contenido[]> {
   const { data, error } = await supabase
     .from("dj_contenidos").select("*").eq("dj_id", djId)
     .order("created_at", { ascending: false });
-  if (error) console.error("[djs] no se pudo cargar el contenido:", error.message);
+  if (error) registrar("djs", "no se pudo cargar el contenido del DJ", error);
   return (data as Contenido[]) ?? [];
 }
 
@@ -48,7 +49,7 @@ export async function subirImagenDj(djId: string, file: File): Promise<string | 
     contentType: file.type || "image/jpeg",
     upsert: true,
   });
-  if (error) { console.error("[djs] no se pudo subir la imagen:", error.message); return null; }
+  if (error) { registrar("djs", "no se pudo subir la imagen", error); return null; }
   return supabase.storage.from("flyers").getPublicUrl(ruta).data.publicUrl;
 }
 

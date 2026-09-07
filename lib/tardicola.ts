@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { registrar } from "./registro";
 
 /**
  * El ADN del tardícola: los mismos criterios con los que se describe un tardeo,
@@ -52,7 +53,7 @@ export async function getAdn(profileId: string): Promise<AdnTardicola | null> {
   const { data, error } = await supabase
     .from("profiles").select(COLUMNAS).eq("id", profileId).maybeSingle();
   if (error) {
-    console.error("[adn] no se pudo leer tu perfil de gustos:", error.message);
+    registrar("adn", "no se pudo leer el perfil de gustos", error);
     return null;
   }
   if (!data) return { ...ADN_VACIO };

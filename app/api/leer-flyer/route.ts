@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { autorizarLocalOAdmin, pasaLimite, respuestaLimite } from "@/lib/apiAuth";
+import { registrar } from "@/lib/registro";
 
 export const runtime = "nodejs";
 
@@ -91,7 +92,7 @@ export async function POST(req: Request) {
     const text = textBlock && "text" in textBlock ? textBlock.text : "{}";
     return NextResponse.json({ data: JSON.parse(text) });
   } catch (e: unknown) {
-    console.error("[leer-flyer] falló la lectura:", e);
+    registrar("leer-flyer", "no se pudo leer el flyer", e);
     // El detalle al log, y a la pantalla algo
     // en español que el dueño de un bar pueda entender.
     const err = e as { status?: number };

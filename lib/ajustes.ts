@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { memo } from "./memo";
+import { registrar } from "./registro";
 
 /**
  * Ajustes generales, en la tabla `ajustes` del lote 23 (la misma que guarda el
@@ -23,7 +24,7 @@ export const CLAVE_PLANES = "planes_activos";
 const memoAjustes = memo("ajustes", async () => {
   const { data, error } = await supabase.from("ajustes").select("clave,valor");
   if (error) {
-    console.error("[ajustes] no se pudieron leer:", error.message);
+    registrar("ajustes", "no se pudieron leer los ajustes", error);
     return {} as Record<string, string>;
   }
   return Object.fromEntries((data ?? []).map((a) => [a.clave, a.valor])) as Record<string, string>;

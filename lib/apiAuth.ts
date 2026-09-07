@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { registrar } from "./registro";
 
 // Solo servidor. Usa la service role key, que nunca sale del servidor.
 
@@ -95,7 +96,7 @@ export async function pasaLimite(clave: string, maxPorHora: number): Promise<boo
   const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!URL || !SERVICE_ROLE) {
-    console.error("[limite] faltan las credenciales de servidor");
+    registrar("limite", "faltan las credenciales de servidor: la cuota de IA no se puede comprobar");
     return false;
   }
 
@@ -106,7 +107,7 @@ export async function pasaLimite(clave: string, maxPorHora: number): Promise<boo
   });
 
   if (error) {
-    console.error("[limite] no se pudo consultar la cuota:", error.message);
+    registrar("limite", "no se pudo consultar la cuota de IA", error);
     return false;
   }
   return data === true;
