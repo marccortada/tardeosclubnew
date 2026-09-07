@@ -5,7 +5,7 @@ import Link from "next/link";
 import PanelHeader from "@/components/PanelHeader";
 import { supabase } from "@/lib/supabase";
 import { plegar, contieneTexto } from "@/lib/texto";
-import { PLANES, ETIQUETA, precioTexto, euroMes, type Plan } from "@/lib/planes";
+import { PLANES, ETIQUETA, precioCorto, euroMes, type Plan } from "@/lib/planes";
 import { CLAVE_PLANES, setAjuste } from "@/lib/ajustes";
 import { consumoDeTodos, type Consumo } from "@/lib/cuotas";
 import { Store, Disc3, Loader2, Euro, AlertTriangle, Check, Power } from "lucide-react";
@@ -137,8 +137,9 @@ export default function AdminSuscripciones() {
 
   const pagando = fichas.filter((f) => f.plan_estado === "activa");
   const impagos = fichas.filter((f) => f.plan_estado === "impago");
-  // Normalizado a un mes: el Fundador se cobra cada dos, y sumar su importe
-  // entero junto a los mensuales inflaba el recurrente en un mes de cada dos.
+  // El recurrente de verdad: el precio de siempre, no el de alta. Los 40 € de
+  // los dos primeros meses del Fundador no son ingreso recurrente, y contarlos
+  // como tal daría una previsión que baja sola sin que nadie se dé de baja.
   //
   // Se redondea porque la división puede dar decimales —un plan trimestral de
   // 50 € son 16,66 al mes— y un panel de dinero con seis decimales se lee mal.
@@ -257,7 +258,7 @@ export default function AdminSuscripciones() {
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <select value={f.plan} onChange={(e) => guardar(f, { plan: e.target.value })}
                     className="min-h-[44px] rounded-xl border-2 border-magenta-100 bg-white px-3 text-sm font-extrabold outline-none focus:border-magenta">
-                    {PLANES.map((p) => <option key={p} value={p}>{ETIQUETA[p]} · {precioTexto(p)}</option>)}
+                    {PLANES.map((p) => <option key={p} value={p}>{ETIQUETA[p]} · {precioCorto(p)}</option>)}
                   </select>
                   <select value={f.plan_estado} onChange={(e) => guardar(f, { plan_estado: e.target.value })}
                     className={`min-h-[44px] rounded-xl border-2 px-3 text-sm font-extrabold outline-none ${

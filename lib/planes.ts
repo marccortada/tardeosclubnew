@@ -8,7 +8,7 @@
  *
  * Se corresponde con la oferta comercial acordada:
  *   basic 10 € al mes · pro 20 € al mes · premium 30 € al mes
- *   fundador 40 € cada dos meses
+ *   fundador 40 € al mes los dos primeros meses, luego 30 € al mes
  *
  * OJO con lo que NO está aquí: aftermovies, visitas al local, colaboraciones en
  * Instagram, emisiones con Nexo Radio. Eso son promesas humanas sujetas a
@@ -35,36 +35,57 @@ export const ETIQUETA: Record<Plan, string> = {
  * Lo que se cobra, CON SU PERIODO.
  *
  * El periodo va dentro del precio y no es una floritura. Antes esto era un
- * número suelto por plan y el Fundador figuraba como "30", que era el importe
- * mensual que se le suponía después del alta. En pantalla salía «Fundador ·
- * 30 €» sin decir de qué periodo, y no había forma de distinguir un plan
- * mensual de uno bimestral mirando la app.
+ * número suelto por plan y el Fundador figuraba como "30" sin decir de qué
+ * periodo, ni que los dos primeros meses no se paga eso. En pantalla salía
+ * «Fundador · 30 €», que es verdad a partir del tercer mes y mentira antes.
  *
- * Con el importe y los meses juntos, cualquier sitio que enseñe un precio está
- * obligado a decir cada cuánto se cobra: no se puede pintar `PRECIO[p]` a
- * secas porque ya no es un número. Eso es a propósito.
+ * Con el importe, los meses y el alta juntos, cualquier sitio que enseñe un
+ * precio está obligado a decir cada cuánto se cobra: no se puede pintar
+ * `PRECIO[p]` a secas porque ya no es un número. Eso es a propósito.
  */
-export const PRECIO: Record<Plan, { euros: number; meses: number }> = {
+export const PRECIO: Record<Plan, {
+  euros: number;
+  meses: number;
+  /** Condición de entrada, cuando el plan tiene una distinta de la de siempre. */
+  alta?: { euros: number; meses: number };
+}> = {
   basic:    { euros: 10, meses: 1 },
   pro:      { euros: 20, meses: 1 },
   premium:  { euros: 30, meses: 1 },
-  fundador: { euros: 40, meses: 2 },
+  // El Fundador entra pagando más y se queda en Premium: 40 € al mes los dos
+  // primeros meses, 30 € al mes a partir del tercero.
+  fundador: { euros: 30, meses: 1, alta: { euros: 40, meses: 2 } },
 };
 
 /** "al mes" / "cada 2 meses". Lo que hay que enseñar pegado al importe. */
 export const periodoDe = (plan: Plan): string =>
   PRECIO[plan].meses === 1 ? "al mes" : `cada ${PRECIO[plan].meses} meses`;
 
-/** El precio entero, para pintarlo de una pieza: "40 € cada 2 meses". */
-export const precioTexto = (plan: Plan): string =>
-  `${PRECIO[plan].euros} € ${periodoDe(plan)}`;
+/**
+ * El precio entero, para pintarlo de una pieza.
+ *
+ * "30 € al mes" para los normales; "40 € al mes los 2 primeros meses, luego
+ * 30 € al mes" para el Fundador. Largo a propósito: el importe corto es justo
+ * el que no se entiende, y esto se enseña donde alguien decide pagar.
+ */
+export const precioTexto = (plan: Plan): string => {
+  const p = PRECIO[plan];
+  const base = `${p.euros} € ${periodoDe(plan)}`;
+  if (!p.alta) return base;
+  return `${p.alta.euros} € al mes los ${p.alta.meses} primeros meses, luego ${base}`;
+};
+
+/** Sin la condición de entrada. Para sitios estrechos, como un desplegable. */
+export const precioCorto = (plan: Plan): string =>
+  `${PRECIO[plan].euros} € ${periodoDe(plan)}${PRECIO[plan].alta ? " (alta aparte)" : ""}`;
 
 /**
  * El importe llevado a un mes, para poder SUMAR planes con periodos distintos.
  *
- * Sin esto, el ingreso recurrente del panel sumaba 40 de un plan bimestral
- * junto a 30 de uno mensual como si fueran lo mismo, y salía un mes de más
- * cada dos. Un plan bimestral de 40 € son 20 € al mes.
+ * Se usa el precio DE SIEMPRE, no el de alta: el recurrente es lo que entra
+ * mes tras mes cuando la promoción de entrada ya ha pasado. Contar los 40 € de
+ * los dos primeros meses como si fueran para siempre daría una previsión que
+ * baja sola dentro de dos meses sin que nadie se dé de baja.
  */
 export const euroMes = (plan: Plan): number => PRECIO[plan].euros / PRECIO[plan].meses;
 
