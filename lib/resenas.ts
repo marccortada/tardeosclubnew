@@ -8,6 +8,12 @@ export type Resena = {
   autor_profile_id?: string;
   objetivo_tipo?: string;
   objetivo_id?: string;
+  estado?: "pendiente" | "aprobada" | "rechazada" | "apelada";
+  /** Por qué se rechazó (lote 44). Se le enseña a quien la escribió. */
+  motivo_rechazo?: string | null;
+  /** Lo que alega el autor si no está de acuerdo. */
+  apelacion?: string | null;
+  apelada_en?: string | null;
   profiles?: { display_name: string | null } | null;
 };
 
@@ -42,15 +48,105 @@ export async function yaReseno(uid: string, tipo: "local" | "dj", id: string): P
   return !!data;
 }
 
+/**
+ * Motivos de rechazo. Lista cerrada y no texto libre.
+ *
+ * Dos razones: se puede contar cuántas hay de cada tipo, y sobre todo se le
+ * enseña a quien escribió la reseña. Un motivo tecleado a las once de la noche
+ * después de moderar treinta acaba siendo «no procede», y eso a quien lo
+ * recibe no le dice nada.
+ */
+export const MOTIVOS_RECHAZO = [
+  { k: "insultos", label: "Insultos o falta de respeto" },
+  { k: "falso", label: "No parece una visita real" },
+  { k: "personal", label: "Datos personales de alguien" },
+  { k: "fuera", label: "No habla del local ni del DJ" },
+  { k: "spam", label: "Publicidad o enlaces" },
+  { k: "otro", label: "Otro motivo" },
+] as const;
+
+export type MotivoRechazo = (typeof MOTIVOS_RECHAZO)[number]["k"];
+
+export const etiquetaMotivo = (k?: string | null) =>
+  MOTIVOS_RECHAZO.find((m) => m.k === k)?.label ?? k ?? "Sin motivo";
+
 // --- Admin ---
+
+/**
+ * La cola: lo pendiente y lo apelado.
+ *
+ * Las apeladas van con lo pendiente porque son lo mismo —algo que hay que
+ * mirar— y tenerlas en otra pantalla es garantizar que nadie las mire.
+ */
 export async function getResenasPendientes(): Promise<Resena[]> {
   const { data } = await supabase
     .from("resenas")
-    .select("id,puntuacion,comentario,created_at,objetivo_tipo,objetivo_id,profiles:autor_profile_id(display_name)")
-    .eq("estado", "pendiente")
+    .select("id,puntuacion,comentario,created_at,estado,objetivo_tipo,objetivo_id,motivo_rechazo,apelacion,apelada_en,profiles:autor_profile_id(display_name)")
+    .in("estado", ["pendiente", "apelada"])
+    // Las apeladas primero: llevan más tiempo esperando que las nuevas.
+    .order("estado", { ascending: true })
     .order("created_at", { ascending: false });
   return (data as unknown as Resena[]) ?? [];
 }
-export async function moderarResena(id: string, aprobar: boolean) {
-  return supabase.from("resenas").update({ estado: aprobar ? "aprobada" : "rechazada" }).eq("id", id);
+
+/**
+ * Aprobar o rechazar. Al rechazar hace falta un motivo, y no es burocracia:
+ * es lo único que quien la escribió va a poder leer.
+ *
+ * Se mira lo que DEVUELVE y no solo si hay error: con seguridad de fila, un
+ * update que no alcanza ninguna fila responde bien sin haber escrito nada, y
+ * la cola se vaciaría en pantalla sin haberse moderado.
+ */
+export async function moderarResena(
+  id: string,
+  aprobar: boolean,
+  motivo?: MotivoRechazo
+): Promise<{ ok: boolean; error?: string }> {
+  const { data, error } = await supabase
+    .from("resenas")
+    .update({
+      estado: aprobar ? "aprobada" : "rechazada",
+      motivo_rechazo: aprobar ? null : (motivo ?? "otro"),
+    })
+    .eq("id", id)
+    .select("id,estado");
+  if (error) {
+    const falta = error.code === "42703" || error.code === "PGRST204";
+    return { ok: false, error: falta ? "Falta pegar el lote 44 (supabase/44_resenas_moderacion.sql)." : error.message };
+  }
+  if (!data?.length) return { ok: false, error: "No se guardó. ¿Tu cuenta es admin?" };
+  return { ok: true };
+}
+
+// --- Autor ---
+
+/** La reseña de esta persona sobre este objetivo, en cualquier estado. */
+export async function miResena(uid: string, tipo: "local" | "dj", id: string): Promise<Resena | null> {
+  const { data } = await supabase
+    .from("resenas")
+    .select("id,puntuacion,comentario,created_at,estado,objetivo_tipo,objetivo_id,motivo_rechazo,apelacion")
+    .eq("autor_profile_id", uid).eq("objetivo_tipo", tipo).eq("objetivo_id", id)
+    .maybeSingle();
+  return (data as unknown as Resena) ?? null;
+}
+
+/**
+ * Apelar un rechazo.
+ *
+ * La base solo deja pasar esto sobre una reseña propia y rechazada, y un
+ * disparador devuelve a su sitio la puntuación y el comentario: sin eso, se
+ * apelaría una reseña y se colaría otra distinta, que es justo lo que se está
+ * discutiendo.
+ */
+export async function apelarResena(id: string, texto: string): Promise<{ ok: boolean; error?: string }> {
+  const t = texto.trim().slice(0, 500);
+  if (!t) return { ok: false, error: "Cuéntanos por qué crees que hay un error." };
+  const { data, error } = await supabase
+    .from("resenas")
+    .update({ estado: "apelada", apelacion: t })
+    .eq("id", id)
+    .select("id,estado");
+  if (error) return { ok: false, error: "No se pudo enviar. Inténtalo en un momento." };
+  if (!data?.length) return { ok: false, error: "Esta reseña ya no se puede apelar." };
+  return { ok: true };
 }
