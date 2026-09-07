@@ -3,27 +3,66 @@ const nextConfig = {
   reactStrictMode: true,
 
   /**
-   * Las direcciones de la web actual que aquí no existen.
+   * Las direcciones de tardeosclub.com que aquí no existen.
    *
-   * `tardeosclub.com` es la que usa la gente hoy, y sus enlaces van por otros
-   * caminos: /eventos y /locales. Alguien que tenga uno guardado —o que lo
-   * reciba por WhatsApp— abriría la web nueva en un 404 el día que se cambie,
-   * y eso es «cambio a peor» aunque no falte ninguna función: falta una que
-   * había.
+   * La lista no está adivinada: sale del propio bundle de la web actual, que
+   * declara sus 21 rutas. De ellas, TRECE daban 404 aquí. No falta ninguna
+   * función —todas tienen su equivalente— pero el día que se cambie el
+   * dominio, quien tenga un enlace guardado se come una página que no existe,
+   * y eso es «cambio a peor» sin haber quitado nada.
    *
-   * `permanent: true` porque no es un desvío temporal: esas direcciones no van
-   * a volver. Así los buscadores traspasan lo que tuvieran de la vieja en vez
-   * de indexar dos sitios.
+   * DOS SON DELICADAS, y son las que de verdad justifican este bloque:
+   *
+   *   /reset-password  -> está DENTRO de correos ya enviados. Supabase manda
+   *      el enlace de recuperar contraseña a la dirección que le diga la app,
+   *      y la actual le dice esa. Sin redirección, alguien que pida su
+   *      contraseña hoy y la abra pasado mañana se queda fuera de su cuenta.
+   *      El token viaja en el fragmento (#access_token=…), que el navegador
+   *      conserva al seguir la redirección: llega igual.
+   *
+   *   /onboarding/:token -> las invitaciones para reclamar una ficha. Mismo
+   *      caso: enlaces ya repartidos. Aquí el testigo va en la ruta y allí en
+   *      la consulta, así que se traduce.
+   *
+   * `permanent: true` porque no es un desvío temporal: estas direcciones no
+   * van a volver, y así los buscadores traspasan lo que tuvieran en vez de
+   * indexar dos sitios.
    *
    * (El caso de /dj/<lo-que-sea> no cabe aquí: hace falta consultar la base
    * para traducir el nombre a un identificador, así que vive en
    * app/dj/[slug]/page.tsx.)
    */
   async redirects() {
+    const r = (source, destination) => ({ source, destination, permanent: true });
     return [
-      { source: "/eventos", destination: "/tardeos", permanent: true },
-      { source: "/eventos/:id", destination: "/tardeos/:id", permanent: true },
-      { source: "/locales", destination: "/colaboradores", permanent: true },
+      // Navegación
+      r("/map", "/mapa"),
+      r("/profile", "/perfil"),
+      r("/locales", "/colaboradores"),
+
+      // Entrar y darse de alta. Todas caen en /perfil, que es donde vive el
+      // acceso en esta app; las de registro con rol, en /unirse, que pregunta
+      // qué eres antes de crear nada.
+      r("/auth", "/perfil"),
+      r("/register", "/perfil"),
+      r("/forgot-password", "/perfil"),
+      r("/reset-password", "/perfil"),
+      r("/register-dj", "/unirse"),
+      r("/register-venue", "/unirse"),
+      r("/register-dj-venue", "/unirse"),
+
+      // Paneles
+      r("/venue-dashboard", "/local"),
+      r("/dj-dashboard", "/dj"),
+      r("/pending-approval", "/local"),
+      r("/admin-access", "/admin"),
+
+      // Invitaciones ya repartidas: el testigo pasa de la ruta a la consulta.
+      { source: "/onboarding/:token", destination: "/reclamar?token=:token", permanent: true },
+
+      // Esta no existía en la web actual: se deja porque es lo que teclea
+      // cualquiera en castellano y no cuesta nada.
+      r("/eventos", "/tardeos"),
     ];
   },
 
