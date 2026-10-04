@@ -449,6 +449,18 @@ export async function getTardeosPublicadosDeDj(djId: string): Promise<Tardeo[]> 
     .filter(conLocalVisible);
 }
 
+/** Sube el PressKit del DJ al Storage y devuelve la URL pública. */
+export async function subirPressKitDj(id: string, file: File): Promise<string | null> {
+  const ext = (file.name.split(".").pop() || "pdf").toLowerCase();
+  const ruta = `presskits/${id}-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("flyers").upload(ruta, file, {
+    contentType: file.type || "application/pdf",
+    upsert: true,
+  });
+  if (error) return null;
+  return supabase.storage.from("flyers").getPublicUrl(ruta).data.publicUrl;
+}
+
 /** Actualiza el perfil de un DJ (bio, estilos, avatar…). */
 export async function updateMiDj(id: string, fields: Record<string, unknown>) {
   return supabase.from("djs").update(fields).eq("id", id);

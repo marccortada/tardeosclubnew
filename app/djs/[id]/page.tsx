@@ -132,17 +132,29 @@ export default async function PaginaDj({ params }: { params: Promise<{ id: strin
           </section>
         )}
 
-        {/* Contratación */}
-        {wa && (
-          <a
-            href={`${wa}?text=${encodeURIComponent(`Hola ${dj.nombre_artistico}, te vi en TardeosClub y me gustaría contratarte para un tardeo.`)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] py-4 text-lg font-extrabold text-white shadow-tarjeta transition hover:brightness-105"
-          >
-            <Phone size={20} /> Contratar por WhatsApp
-          </a>
-        )}
+        {/* Contratación y PressKit */}
+        <div className="mt-4 flex flex-col gap-3">
+          {wa && (
+            <a
+              href={`${wa}?text=${encodeURIComponent(`Hola ${dj.nombre_artistico}, te vi en TardeosClub y me gustaría contratarte para un tardeo.`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] py-4 text-lg font-extrabold text-white shadow-tarjeta transition hover:brightness-105"
+            >
+              <Phone size={20} /> Contratar por WhatsApp
+            </a>
+          )}
+          {dj.presskit_url && (
+            <a
+              href={dj.presskit_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 rounded-2xl bg-white py-4 text-lg font-extrabold text-tinta shadow-tarjeta ring-1 ring-magenta-100 transition hover:bg-magenta-50"
+            >
+              <Disc3 size={20} className="text-magenta" /> Descargar PressKit (PDF)
+            </a>
+          )}
+        </div>
 
         {/* Tardeos del DJ */}
         <section className="mt-7">

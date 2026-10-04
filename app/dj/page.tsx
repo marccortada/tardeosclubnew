@@ -27,11 +27,13 @@ export default function PanelDj() {
   const [estilos, setEstilos] = useState<string[]>([]);
   const [redes, setRedes] = useState<Redes>({});
   const [playlist, setPlaylist] = useState("");
+  const [presskit, setPresskit] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [subiendo, setSubiendo] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const presskitRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user) { setCargando(false); return; }
@@ -44,6 +46,7 @@ export default function PanelDj() {
     setEstilos(Array.isArray(dj.estilos) ? dj.estilos : []);
     setRedes(dj.redes && typeof dj.redes === "object" ? dj.redes : {});
     setPlaylist(dj.playlist_url || "");
+    setPresskit(dj.presskit_url || "");
     setAvatar(dj.avatar_url || null);
     setEditando(true);
   };
@@ -59,6 +62,14 @@ export default function PanelDj() {
     setSubiendo(false);
   };
 
+  const onPresskit = async (file: File) => {
+    if (!dj) return;
+    setSubiendo(true);
+    const url = await subirPressKitDj(dj.id, file);
+    if (url) setPresskit(url);
+    setSubiendo(false);
+  };
+
   const guardar = async () => {
     if (!dj) return;
     setGuardando(true);
@@ -69,6 +80,7 @@ export default function PanelDj() {
     });
     const fields: Record<string, unknown> = {
       playlist_url: playlist.trim() || null,
+      presskit_url: presskit.trim() || null,
       nombre_artistico: nombre.trim() || dj.nombre_artistico,
       bio: bio.trim() || null,
       estilos,
@@ -230,7 +242,34 @@ export default function PanelDj() {
 
           {/* La playlist va con la bio: es parte de presentarse, no un dato de
               contacto. Solo en modo edición, como el resto. */}
-          {editando && <div className="mt-3"><CampoPlaylist valor={playlist} onCambio={setPlaylist} /></div>}
+          {editando && (
+            <div className="mt-3 flex flex-col gap-3">
+              <CampoPlaylist valor={playlist} onCambio={setPlaylist} />
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-black text-tinta/60">PressKit (PDF)</label>
+                <div className="flex flex-1 items-center gap-2">
+                  <input
+                    ref={presskitRef}
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={(e) => e.target.files?.[0] && onPresskit(e.target.files[0])}
+                  />
+                  <button
+                    onClick={() => presskitRef.current?.click()}
+                    className="flex-1 rounded-xl border-2 border-magenta-100 px-3 py-2 text-sm font-semibold text-tinta outline-none transition hover:bg-magenta-50"
+                  >
+                    {subiendo ? <Loader2 size={16} className="inline animate-spin" /> : "Subir archivo"}
+                  </button>
+                  {presskit && (
+                    <a href={presskit} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-oro/20 px-3 py-2 text-sm font-bold text-oro-600 underline">
+                      Ver PDF
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Redes y contacto (solo en edición) */}

@@ -132,6 +132,17 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
             sizes="(max-width: 640px) 100vw, 384px"
             className="relative z-10 object-contain"
           />
+          {/* Sello Recomendado para destacados */}
+          {tardeo.destacado_hasta && new Date(tardeo.destacado_hasta) > new Date() && (
+            <div className="absolute right-2 top-2 z-20 w-12 h-12 md:w-16 md:h-16 pointer-events-none">
+              <Image
+                src="/branding/SELLO VERIFICADO_TARDEOSCLUB.png"
+                alt="Sello Recomendado"
+                fill
+                className="object-contain"
+              />
+            </div>
+          )}
         </div>
       </div>
 

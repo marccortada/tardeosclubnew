@@ -1,0 +1,40 @@
+# TardeosClub MVP - Test Plan (Stabilization Phase)
+
+This document defines the critical paths that must be verified to ensure the "Option A" launch is stable and high-quality.
+
+## 1. Test Personas
+- **The Client**: Non-technical, mobile-first, searching for events.
+- **The DJ**: Professional, manages their own reputation and PressKit.
+- **The Local**: Business owner, seeks verification and visibility.
+- **The Admin**: Moderator, ensures data quality and resolves conflicts.
+
+## 2. Critical User Journeys (CUJ)
+
+### 🟢 Client Experience
+- [ ] **Discovery**: Land on Home $\rightarrow$ View highlighted tardeos $\rightarrow$ Open Ficha.
+- [ ] **Exploration**: Go to Listados $\rightarrow$ Apply filters (Zona, Estilo) $\rightarrow$ View results.
+- [ ] **Action**: Open Ficha $\rightarrow$ Add to Google Calendar $\rightarrow$ Open "Cómo llegar" (Google Maps).
+- [ ] **Reputation**: Read local/DJ reviews $\rightarrow$ Verify "Sello Recomendado" visibility.
+
+### 🟣 DJ Experience
+- [ ] **Onboarding**: Profile creation $\rightarrow$ OTP Verification flow $\rightarrow$ Access Panel.
+- [ ] **Management**: Edit Bio $\rightarrow$ Select Estilos $\rightarrow$ Add Social Links.
+- [ ] **PressKit**: Upload PDF PressKit $\rightarrow$ Verify download link on Public Profile.
+- [ ] **Visibility**: Check if appearing in the correct Tardeos.
+
+### 🟡 Local Experience
+- [ ] **Onboarding**: Registration $\rightarrow$ Request Verification $\rightarrow$ Fill address/details.
+- [ ] **Verification**: Wait for Admin approval $\rightarrow$ Verify "Badge Check" appears on public profile.
+- [ ] **Events**: Create Tardeo $\rightarrow$ Upload Flyer $\rightarrow$ Verify it appears in search.
+
+### 🔴 Admin Experience
+- [ ] **Moderation**: View Report Queue $\rightarrow$ Inspect "Evidence" (frozen flyer) $\rightarrow$ Resolve report.
+- [ ] **Verification**: Process Local verification requests $\rightarrow$ Approve/Reject.
+- [ ] **System Health**: Check `/admin/salud` $\rightarrow$ Verify all critical components are "Green".
+
+## 3. Technical Verification Checklist
+- [ ] **Security (RLS)**: Ensure users cannot edit other profiles or promote themselves to admin via Console.
+- [ ] **Auth**: OTP flow works for both new and existing emails without password friction.
+- [ ] **SEO**: Verify Canonical URLs and JSON-LD Event data on Fichas.
+- [ ] **Performance**: Verify `memo` system prevents redundant Supabase calls on Home/Listings.
+- [ ] **UX/UI**: Check Nunito typography and Magenta/Oro palette consistency across all breakpoints.

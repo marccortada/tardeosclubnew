@@ -22,9 +22,9 @@ export default function Perfil() {
   const [rol, setRol] = useState<"tardicola" | "local" | "promotor" | "dj">("tardicola");
   const [ofertas, setOfertas] = useState(false);
   const [email, setEmail] = useState("");
-  const [pass, setPass] = useState("");
+  const [otp, setOtp] = useState("");
   const [mayor, setMayor] = useState(false);
-  const [estado, setEstado] = useState<"idle" | "cargando" | "confirmar" | "error">("idle");
+  const [estado, setEstado] = useState<"idle" | "cargando" | "confirmar" | "verificando" | "error">("idle");
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
@@ -53,38 +53,42 @@ export default function Perfil() {
   };
 
   const enviar = async () => {
-    if (!email.trim() || pass.length < 6) { setEstado("error"); setMsg("Email y contraseña (mín. 6) obligatorios."); return; }
+    if (!email.trim()) { setEstado("error"); setMsg("Escribe tu email."); return; }
     if (modo === "signup" && !mayor) { setEstado("error"); setMsg("Debes confirmar que eres mayor de 18."); return; }
+
     setEstado("cargando");
-    if (modo === "signup") {
-      // Sin emailRedirectTo, el enlace del correo de verificación va a la
-      // "Site URL" que haya puesta en Supabase — que era localhost, así que
-      // quien se registraba desde el móvil acababa en un "no se puede acceder
-      // a esta página". Con esto vuelve al sitio desde el que se registró, sea
-      // el dominio de pruebas o el definitivo, y aterriza donde lo dejó.
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password: pass,
-        options: {
-          emailRedirectTo: `${window.location.origin}/unirse?rol=${rol}`,
-          /**
-           * El permiso viaja EN EL ALTA, no en un update después.
-           *
-           * La fila de `profiles` la crea un disparador en cuanto nace la
-           * cuenta, así que si esto se guardara con una segunda llamada habría
-           * un hueco en el que el perfil existe sin el permiso, y si esa
-           * segunda llamada falla —red, pestaña cerrada— la casilla se marcó y
-           * no quedó registrada en ninguna parte.
-           */
-          data: { acepta_ofertas: ofertas },
-        },
-      });
-      if (error) { setEstado("error"); setMsg(error.message); }
-      else if (!data.session) setEstado("confirmar"); // requiere confirmar email
-      else router.push(`/unirse?rol=${rol}`); // cuenta creada → completar rol elegido
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        emailRedirectTo: `${window.location.origin}/unirse?rol=${rol}`,
+      },
+    });
+
+    setEstado("idle");
+    if (error) {
+      setEstado("error");
+      setMsg(error.message);
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pass });
-      if (error) { setEstado("error"); setMsg("Email o contraseña incorrectos."); }
+      setEstado("verificando");
+      setMsg("Te hemos enviado un código de 6 dígitos a tu email.");
+    }
+  };
+
+  const verificarOtp = async () => {
+    if (otp.length !== 6) { setEstado("error"); setMsg("El código debe tener 6 dígitos."); return; }
+    setEstado("cargando");
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: otp,
+      type: "email",
+    });
+
+    setEstado("idle");
+    if (error) {
+      setEstado("error");
+      setMsg("Código incorrecto o caducado.");
+    } else if (data.session) {
+      router.push(modo === "signup" ? `/unirse?rol=${rol}` : "/perfil");
     }
   };
 
@@ -114,9 +118,6 @@ export default function Perfil() {
             <ActivarNotificaciones />
           </div>
 
-          {/* Justo debajo de las notificaciones: los dos son "cómo quieres que
-              te avisemos", y tenerlos juntos evita que alguien busque uno en
-              ajustes y el otro aquí. */}
           <div className="mt-3">
             <PermisoOfertas userId={user.id} />
           </div>
@@ -134,9 +135,6 @@ export default function Perfil() {
                 <span className="text-lg font-black">Mi perfil de DJ</span>
               </Link>
             )}
-            {/* Arriba de inscripciones y favoritos a propósito: es lo que hace
-                que las recomendaciones y los avisos valgan algo, y casi nadie lo
-                buscaría por su cuenta. */}
             <Link href="/perfil/gustos" className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-magenta-100 transition hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.99]">
               <div className="grid h-11 w-11 place-items-center rounded-xl bg-magenta-50 text-magenta"><Sparkles size={24} /></div>
               <span className="flex-1">
@@ -144,10 +142,6 @@ export default function Perfil() {
                 <span className="text-sm font-semibold text-tinta/55">Música, ambiente, zonas… para proponerte lo que encaja</span>
               </span>
             </Link>
-            {/* Una sola entrada. Antes había dos —"Mis inscripciones" y "Mis
-                favoritos"— y las dos llevaban a la misma página, que ya enseña
-                las dos cosas: a los que vas y los que guardaste. Son lo mismo
-                para quien mira: sus planes. */}
             <Link href="/favoritos" className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-magenta-100 transition hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.99]">
               <div className="grid h-11 w-11 place-items-center rounded-xl bg-magenta-50 text-magenta"><CalendarCheck size={24} /></div>
               <span className="flex-1">
@@ -183,7 +177,6 @@ export default function Perfil() {
             <p className="font-semibold text-tinta/60">Tu comunidad tardícola te espera.</p>
           </div>
 
-          {/* Google */}
           <button onClick={google}
             className="flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-black/10 bg-white py-3.5 text-lg font-extrabold text-tinta transition hover:bg-black/5 active:scale-[0.98]">
             <GoogleIcon /> Continuar con Google
@@ -193,7 +186,6 @@ export default function Perfil() {
             <span className="h-px flex-1 bg-black/10" /> o con email <span className="h-px flex-1 bg-black/10" />
           </div>
 
-          {/* Tabs login / signup */}
           <div className="mb-3 flex gap-2">
             {(["login", "signup"] as const).map((m) => (
               <button key={m} onClick={() => { setModo(m); setEstado("idle"); }}
@@ -206,14 +198,6 @@ export default function Perfil() {
           {modo === "signup" && (
             <div className="mb-3">
               <label className="mb-1.5 block text-sm font-black text-tinta/70">¿Cómo te unes?</label>
-              {/* Cuatro y no tres: faltaba Promotor, que es quien organiza sin
-                  local fijo. La pantalla de /unirse lleva soportándolo desde
-                  siempre —tiene su paso, su ficha y su panel—; lo que no había
-                  era manera de elegirlo al crear la cuenta, así que un promotor
-                  tenía que darse de alta como local y pedir que se lo cambiaran.
-
-                  2x2 en móvil y 4 en fila a partir de ahí: con `grid-cols-3` y
-                  cuatro opciones, la cuarta se queda sola en una fila. */}
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {([
                   { k: "tardicola", label: "Tardícola" },
@@ -234,46 +218,50 @@ export default function Perfil() {
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tucorreo@email.com"
             className="w-full rounded-xl border-2 border-magenta-100 px-4 py-3 text-base font-semibold outline-none focus:border-magenta" />
 
-          <label className="mb-1 mt-3 block text-sm font-black text-tinta/70"><Lock size={14} className="mr-1 inline text-magenta" /> Contraseña</label>
-          <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="Mínimo 6 caracteres"
-            className="w-full rounded-xl border-2 border-magenta-100 px-4 py-3 text-base font-semibold outline-none focus:border-magenta" />
-
-          {modo === "signup" && (
+          {estado === "verificando" ? (
+            <div className="mt-3 flex flex-col gap-3">
+              <label className="text-sm font-black text-tinta/70">Código de verificación</label>
+              <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="123456" maxLength={6}
+                className="w-full rounded-xl border-2 border-magenta-100 px-4 py-3 text-center text-2xl font-black tracking-widest outline-none focus:border-magenta" />
+              <button onClick={verificarOtp} disabled={estado === "cargando"}
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white transition active:scale-[0.98] disabled:opacity-40">
+                {estado === "cargando" ? <Loader2 size={20} className="animate-spin" /> : "Verificar código"}
+              </button>
+              <button onClick={() => setEstado("idle")} className="text-center text-sm font-bold text-tinta/50">Cambiar email</button>
+            </div>
+          ) : (
             <>
-            <label className="mt-3 flex items-center gap-2 text-sm font-bold text-tinta/70">
-              <input type="checkbox" checked={mayor} onChange={(e) => setMayor(e.target.checked)} className="h-5 w-5 accent-magenta" />
-              Soy mayor de 18 años
-            </label>
-            {/*
-              Desmarcada de serie, y así se queda.
-              Una casilla de consentimiento que viene marcada no es un
-              consentimiento: es un descuido de quien no la vio. Y sin esto, la
-              pantalla de ofertas del admin solo puede escribir a todos o a
-              nadie, que es justo donde estábamos.
-            */}
-            <label className="mt-2 flex items-start gap-2 text-sm font-bold text-tinta/70">
-              <input
-                type="checkbox" checked={ofertas}
-                onChange={(e) => setOfertas(e.target.checked)}
-                className="mt-0.5 h-5 w-5 shrink-0 accent-magenta"
-              />
-              <span>
-                Quiero recibir ofertas y novedades por email.
-                <span className="block text-xs font-semibold text-tinta/45">
-                  Opcional. Puedes cambiarlo cuando quieras desde tu perfil.
-                </span>
-              </span>
-            </label>
-            </>
+              {modo === "signup" && (
+                <>
+                <label className="mt-3 flex items-center gap-2 text-sm font-bold text-tinta/70">
+                  <input type="checkbox" checked={mayor} onChange={(e) => setMayor(e.target.checked)} className="h-5 w-5 accent-magenta" />
+                  Soy mayor de 18 años
+                </label>
+                <label className="mt-2 flex items-start gap-2 text-sm font-bold text-tinta/70">
+                  <input
+                    type="checkbox" checked={ofertas}
+                    onChange={(e) => setOfertas(e.target.checked)}
+                    className="mt-0.5 h-5 w-5 shrink-0 accent-magenta"
+                  />
+                  <span>
+                    Quiero recibir ofertas y novedades por email.
+                    <span className="block text-xs font-semibold text-tinta/45">
+                      Opcional. Puedes cambiarlo cuando quieras desde tu perfil.
+                    </span>
+                  </span>
+                </label>
+              </>
+            )}
+
+            {estado === "error" && <p className="mt-2 text-sm font-bold text-magenta">{msg}</p>}
+
+            <button onClick={enviar} disabled={estado === "cargando"}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white transition active:scale-[0.98] disabled:opacity-40">
+              {estado === "cargando" ? <Loader2 size={20} className="animate-spin" /> : null}
+              {modo === "login" ? "Entrar" : "Crear cuenta"}
+            </button>
+          </>
           )}
-
-          {estado === "error" && <p className="mt-2 text-sm font-bold text-magenta">{msg}</p>}
-
-          <button onClick={enviar} disabled={estado === "cargando"}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white transition active:scale-[0.98] disabled:opacity-40">
-            {estado === "cargando" ? <Loader2 size={20} className="animate-spin" /> : null}
-            {modo === "login" ? "Entrar" : "Crear cuenta"}
-          </button>
 
           {modo === "login" && (
             <button onClick={recuperar} className="mt-3 text-center text-sm font-bold text-magenta">

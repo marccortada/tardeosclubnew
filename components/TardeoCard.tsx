@@ -62,6 +62,17 @@ export default function TardeoCard({
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
           className="relative z-10 object-contain"
         />
+        {/* Sello Recomendado para destacados */}
+        {tardeo.destacado_hasta && new Date(tardeo.destacado_hasta) > new Date() && (
+          <div className="absolute right-2 top-2 z-20 w-12 h-12 md:w-16 md:h-16 pointer-events-none">
+            <Image
+              src="/branding/SELLO VERIFICADO_TARDEOSCLUB.png"
+              alt="Sello Recomendado"
+              fill
+              className="object-contain"
+            />
+          </div>
+        )}
         {/* badge de entrada: blanco + texto oscuro = contraste alto sobre cualquier flyer */}
         {/* Con tope de ancho: "Entrada 10€" crecía hasta meterse debajo del
             botón de compartir, y se leía "Entrada 10" con un círculo encima. */}
