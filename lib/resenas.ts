@@ -88,6 +88,32 @@ export async function getResenasPendientes(): Promise<Resena[]> {
   return (data as unknown as Resena[]) ?? [];
 }
 
+/** Columnas que necesita la cola del admin (sin `*`: solo lo que se pinta). */
+const COLS_COLA =
+  "id,puntuacion,comentario,created_at,estado,objetivo_tipo,objetivo_id,motivo_rechazo,apelacion,apelada_en,profiles:autor_profile_id(display_name)";
+
+/**
+ * La misma cola, paginada en el servidor (para `usePaginado`). Mismo orden:
+ * apeladas primero ('apelada' < 'pendiente'), luego las más nuevas.
+ * Si falta el lote 44 se traduce el error a algo que se pueda arreglar.
+ */
+export function consultaResenasPendientes(desde: number, hasta: number) {
+  return supabase
+    .from("resenas")
+    .select(COLS_COLA, { count: "exact" })
+    .in("estado", ["pendiente", "apelada"])
+    .order("estado", { ascending: true })
+    .order("created_at", { ascending: false })
+    .range(desde, hasta)
+    .then(({ data, count, error }) => ({
+      data: (data as unknown as Resena[]) ?? [],
+      count,
+      error: error
+        ? { message: error.code === "42703" || error.code === "PGRST204" ? "Falta pegar el lote 44 (supabase/44_resenas_moderacion.sql)." : error.message }
+        : null,
+    }));
+}
+
 /**
  * Aprobar o rechazar. Al rechazar hace falta un motivo, y no es burocracia:
  * es lo único que quien la escribió va a poder leer.

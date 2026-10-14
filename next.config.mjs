@@ -82,6 +82,9 @@ const nextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "fmbzcjsbyazkzsiiykto.supabase.co", pathname: "/storage/v1/object/public/**" },
       { protocol: "https", hostname: "obevrycebhqdqtvxnxoy.supabase.co", pathname: "/storage/v1/object/public/**" },
+      // Fotos de ambiente de la portada (Unsplash, licencia libre). Se piden ya
+      // redimensionadas a su CDN y van `unoptimized`: no gastan CPU aquí.
+      { protocol: "https", hostname: "images.unsplash.com" },
     ],
     // Solo WebP. AVIF sale ~3 KB más pequeño en la foto de cabecera (19 vs 22)
     // y cuesta varias veces más CPU y memoria en convertir. Este droplet lleva

@@ -79,14 +79,14 @@ export default function SelectorAdn({
   const outfitLibre = dressCode && !DRESS_CODES.some((s) => mismoValor(s, dressCode)) ? dressCode : "";
 
   const chip = (activo: boolean) =>
-    `min-h-[44px] rounded-full px-4 py-2 text-sm font-extrabold transition ${
-      activo ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100 hover:ring-magenta"
+    `min-h-[44px] rounded-full px-4 py-2 text-sm font-semibold transition ${
+      activo ? "bg-magenta text-white" : "bg-white text-tinta-suave ring-1 ring-linea hover:ring-magenta"
     }`;
 
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <label className="mb-1.5 flex items-center gap-1.5 text-sm font-black text-tinta/70">
+        <label className="mb-1.5 flex items-center gap-1.5 text-[15px] font-semibold text-tinta">
           <PartyPopper size={15} className="text-magenta" /> Tipo de evento
         </label>
         <div className="flex flex-wrap gap-2">
@@ -99,7 +99,7 @@ export default function SelectorAdn({
           ))}
           {tipoLibre && (
             <button type="button" onClick={() => onTipoEvento("")}
-              className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-magenta px-4 py-2 text-sm font-extrabold text-white">
+              className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-magenta px-4 py-2 text-sm font-semibold text-white">
               {tipoLibre} <X size={13} />
             </button>
           )}
@@ -110,12 +110,12 @@ export default function SelectorAdn({
           onBlur={anadirOtroTipo}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); anadirOtroTipo(); } }}
           placeholder="Otro…"
-          className="mt-2 w-full rounded-xl border-2 border-magenta-100 px-4 py-3 font-semibold outline-none focus:border-magenta"
+          className="mt-2 w-full rounded-xl border border-linea-fuerte px-4 py-3 font-semibold outline-none focus:border-magenta"
         />
       </div>
 
       <div>
-        <label className="mb-1.5 flex items-center gap-1.5 text-sm font-black text-tinta/70">
+        <label className="mb-1.5 flex items-center gap-1.5 text-[15px] font-semibold text-tinta">
           <Sparkles size={15} className="text-magenta" /> Ambiente
         </label>
         <div className="flex flex-wrap gap-2">
@@ -127,7 +127,7 @@ export default function SelectorAdn({
           ))}
           {ambienteLibre.map((v) => (
             <button key={v} type="button" onClick={() => alternarAmbiente(v)}
-              className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-magenta px-4 py-2 text-sm font-extrabold text-white">
+              className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-magenta px-4 py-2 text-sm font-semibold text-white">
               {v} <X size={13} />
             </button>
           ))}
@@ -138,12 +138,12 @@ export default function SelectorAdn({
           onBlur={anadirOtroAmbiente}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); anadirOtroAmbiente(); } }}
           placeholder="Otro…"
-          className="mt-2 w-full rounded-xl border-2 border-magenta-100 px-4 py-3 font-semibold outline-none focus:border-magenta"
+          className="mt-2 w-full rounded-xl border border-linea-fuerte px-4 py-3 font-semibold outline-none focus:border-magenta"
         />
       </div>
 
       <div>
-        <label className="mb-1.5 flex items-center gap-1.5 text-sm font-black text-tinta/70">
+        <label className="mb-1.5 flex items-center gap-1.5 text-[15px] font-semibold text-tinta">
           <Users size={15} className="text-magenta" /> Público
         </label>
         <div className="flex flex-wrap gap-2">
@@ -155,7 +155,7 @@ export default function SelectorAdn({
           ))}
           {publicoLibre.map((v) => (
             <button key={v} type="button" onClick={() => alternarPublico(v)}
-              className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-magenta px-4 py-2 text-sm font-extrabold text-white">
+              className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-magenta px-4 py-2 text-sm font-semibold text-white">
               {v} <X size={13} />
             </button>
           ))}
@@ -166,12 +166,12 @@ export default function SelectorAdn({
           onBlur={anadirOtroPublico}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); anadirOtroPublico(); } }}
           placeholder="Otro…"
-          className="mt-2 w-full rounded-xl border-2 border-magenta-100 px-4 py-3 font-semibold outline-none focus:border-magenta"
+          className="mt-2 w-full rounded-xl border border-linea-fuerte px-4 py-3 font-semibold outline-none focus:border-magenta"
         />
       </div>
 
       <div>
-        <label className="mb-1.5 flex items-center gap-1.5 text-sm font-black text-tinta/70">
+        <label className="mb-1.5 flex items-center gap-1.5 text-[15px] font-semibold text-tinta">
           <Shirt size={15} className="text-magenta" /> Outfit / Dress code
         </label>
         <div className="flex flex-wrap gap-2">
@@ -184,7 +184,7 @@ export default function SelectorAdn({
           ))}
           {outfitLibre && (
             <button type="button" onClick={() => onDressCode("")}
-              className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-magenta px-4 py-2 text-sm font-extrabold text-white">
+              className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-magenta px-4 py-2 text-sm font-semibold text-white">
               {outfitLibre} <X size={13} />
             </button>
           )}
@@ -195,7 +195,7 @@ export default function SelectorAdn({
           onBlur={anadirOtroOutfit}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); anadirOtroOutfit(); } }}
           placeholder="Otro…"
-          className="mt-2 w-full rounded-xl border-2 border-magenta-100 px-4 py-3 font-semibold outline-none focus:border-magenta"
+          className="mt-2 w-full rounded-xl border border-linea-fuerte px-4 py-3 font-semibold outline-none focus:border-magenta"
         />
       </div>
     </div>

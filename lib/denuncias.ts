@@ -76,6 +76,27 @@ export async function denunciasPendientes(): Promise<{ filas: Denuncia[]; error:
 }
 
 /**
+ * La cola del admin paginada en el servidor (para `usePaginado`). Mismo orden
+ * que `denunciasPendientes`; si falta el lote 42 lo dice en vez de un código.
+ */
+export function consultaDenunciasPendientes(desde: number, hasta: number) {
+  return supabase
+    .from("denuncias_flyer")
+    .select("id,tardeo_id,motivo,mensaje,flyer_url,estado,created_at,tardeos(titulo,fecha,flyer_url,local_id)", { count: "exact" })
+    .eq("estado", "pendiente")
+    .order("created_at", { ascending: false })
+    .range(desde, hasta)
+    .then(({ data, count, error }) => {
+      const falta = error && (error.code === "42P01" || error.code === "PGRST205");
+      return {
+        data: (data ?? []) as unknown as Denuncia[],
+        count,
+        error: error ? { message: falta ? "Falta pegar el lote 42 (supabase/42_denuncias_flyer.sql)." : error.message } : null,
+      };
+    });
+}
+
+/**
  * Resolver una denuncia. Quién y cuándo lo sella la base (lote 42), no esto.
  *
  * Se mira lo que DEVUELVE y no solo si hay error: con seguridad de fila, un

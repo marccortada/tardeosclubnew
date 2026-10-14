@@ -1,26 +1,56 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import PanelHeader from "@/components/PanelHeader";
+import { useEffect, useState, type ReactNode } from "react";
+import { Store, Check, Loader2, ImagePlus, Megaphone, Instagram, Globe, Mail, CalendarCheck, Phone } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { SeccionPanel } from "@/components/panel/PanelShell";
 import AddressSearch, { Direccion } from "@/components/AddressSearch";
-import { useAuth } from "@/lib/useAuth";
-import { getMiLocal, updateMiLocal, subirLogoLocal } from "@/lib/tardeos";
+import MiniMapa from "@/components/MiniMapa";
 import CampoPlaylist from "@/components/CampoPlaylist";
-import { Store, Phone, MapPin, FileText, Check, Loader2, ImagePlus, Megaphone,
-  Instagram, Globe, Mail, CalendarCheck } from "lucide-react";
+import SelectorAdnLocal, { type AdnLocal } from "@/components/SelectorAdnLocal";
+import Boton from "@/components/Boton";
+import Campo, { claseCampo } from "@/components/ui/Campo";
+import { useFicha, type FichaLocal } from "../_panel/PanelLocal";
+import { updateMiLocal, subirLogoLocal } from "@/lib/tardeos";
 import { redesParaGuardar, handleInstagram, urlSegura } from "@/lib/redes";
-import SelectorAdnLocal, { type AdnLocal, ADN_LOCAL_VACIO } from "@/components/SelectorAdnLocal";
 
+/** Una tarjeta por bloque, con ancla para el índice de arriba. */
+function Bloque({ id, titulo, ayuda, children }: { id: string; titulo: string; ayuda?: ReactNode; children: ReactNode }) {
+  return (
+    <section id={id} className="scroll-mt-20 rounded-2xl border border-linea bg-white p-4 shadow-tarjeta md:p-6">
+      <h2 className="text-lg font-bold">{titulo}</h2>
+      {ayuda && <p className="mt-0.5 text-sm text-tinta-suave">{ayuda}</p>}
+      <div className="mt-4 flex flex-col gap-4">{children}</div>
+    </section>
+  );
+}
+
+const adnDe = (l: FichaLocal): AdnLocal => ({
+  tipoLocal: l.tipo_local || "",
+  aforo: l.aforo != null ? String(l.aforo) : "",
+  espacios: l.espacios ?? [],
+  musica: l.musica ?? [],
+  ambiente: l.ambiente ?? [],
+  publico: l.publico ?? [],
+  dressCode: l.dress_code || "",
+  horarioHabitual: l.horario_habitual || "",
+});
+
+/**
+ * Los datos de la ficha, en bloques con nombre: básicos, dirección, redes,
+ * música y ambiente, y logo. Antes era una columna de quince campos con un
+ * «Guardar» al final y, al pulsarlo, te sacaba al panel sin decir si había
+ * ido bien. Ahora se queda aquí y lo dice.
+ *
+ * La ficha llega del panel (ya cargada), así que el admin que entra con
+ * ?id= edita la de ese local y no la suya.
+ */
 export default function EditarLocal() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { ficha: local, actualizar, esPromotor } = useFicha();
 
-  const [local, setLocal] = useState<any | null>(null);
-  const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
+  const [guardado, setGuardado] = useState(false);
 
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
@@ -31,7 +61,7 @@ export default function EditarLocal() {
   const [cambiarDir, setCambiarDir] = useState(false);
   const [playlist, setPlaylist] = useState("");
   const [logo, setLogo] = useState<string | null>(null);
-  const [adn, setAdn] = useState<AdnLocal>(ADN_LOCAL_VACIO);
+  const [adn, setAdn] = useState<AdnLocal>(adnDe(local));
   // Las redes viven en una sola columna jsonb, pero se editan por separado.
   const [instagram, setInstagram] = useState("");
   const [web, setWeb] = useState("");
@@ -39,55 +69,45 @@ export default function EditarLocal() {
   const [facebook, setFacebook] = useState("");
   const [email, setEmail] = useState("");
   const [subiendoLogo, setSubiendoLogo] = useState(false);
+  const [logoMsg, setLogoMsg] = useState<{ ok: boolean; t: string } | null>(null);
 
-  const esPromotor = local?.tipo === "promotor";
-
+  // Se rellena al entrar y al cambiar de ficha en el selector del panel.
   useEffect(() => {
-    if (!user) { setCargando(false); return; }
-    getMiLocal(user.id).then((l) => {
-      if (l) {
-        setLocal(l);
-        setNombre(l.nombre || "");
-        setTelefono(l.telefono || "");
-        setDescripcion(l.descripcion || "");
-        setPlaylist(l.playlist_url || "");
-        setDireccion(l.direccion || "");
-        setZona(l.zona || "");
-        setLogo(l.logo_url || null);
-        setEmail(l.email || "");
-        const r = (l.redes ?? {}) as Record<string, string>;
-        setInstagram(r.instagram || "");
-        setWeb(r.web || "");
-        setReservas(r.reservas || "");
-        setFacebook(r.facebook || "");
-        setAdn({
-          tipoLocal: l.tipo_local || "",
-          aforo: l.aforo != null ? String(l.aforo) : "",
-          espacios: l.espacios ?? [],
-          musica: l.musica ?? [],
-          ambiente: l.ambiente ?? [],
-          publico: l.publico ?? [],
-          dressCode: l.dress_code || "",
-          horarioHabitual: l.horario_habitual || "",
-        });
-      }
-      setCargando(false);
-    });
-  }, [user]);
+    const l = local;
+    setNombre(l.nombre || "");
+    setTelefono(l.telefono || "");
+    setDescripcion(l.descripcion || "");
+    setPlaylist(l.playlist_url || "");
+    setDireccion(l.direccion || "");
+    setZona(l.zona || "");
+    setCoords(l.lat && l.lng ? { lat: l.lat, lng: l.lng } : null);
+    setLogo(l.logo_url || null);
+    setEmail(l.email || "");
+    const r = (l.redes ?? {}) as Record<string, string>;
+    setInstagram(r.instagram || "");
+    setWeb(r.web || "");
+    setReservas(r.reservas || "");
+    setFacebook(r.facebook || "");
+    setAdn(adnDe(l));
+    setGuardado(false); setError(""); setCambiarDir(false);
+    // Solo al cambiar de ficha: `local` cambia también al guardar (actualizar)
+    // y no hay que pisar lo que se está escribiendo.
+  }, [local.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * El logo se guarda en cuanto se sube, sin esperar al botón de Guardar: si
    * alguien sube la imagen y se va de la página, lo raro sería perderla.
    */
   const onLogo = async (file: File) => {
-    if (!local) return;
-    setSubiendoLogo(true); setError("");
+    setSubiendoLogo(true); setLogoMsg(null);
     const url = await subirLogoLocal(local.id, file);
-    if (!url) { setSubiendoLogo(false); setError("No se pudo subir el logo. Prueba con otra imagen."); return; }
-    const { error: e } = await updateMiLocal(local.id, { logo_url: url });
+    if (!url) { setSubiendoLogo(false); setLogoMsg({ ok: false, t: "No se pudo subir el logo. Prueba con otra imagen." }); return; }
+    const { data, error: e } = await updateMiLocal(local.id, { logo_url: url });
     setSubiendoLogo(false);
-    if (e) setError(e.message);
-    else setLogo(url);
+    if (e || !data?.length) { setLogoMsg({ ok: false, t: e ? e.message : "No tienes permiso sobre esta ficha." }); return; }
+    setLogo(url);
+    actualizar({ logo_url: url });
+    setLogoMsg({ ok: true, t: "Logo guardado." });
   };
 
   const onDireccion = (d: Direccion) => {
@@ -95,11 +115,13 @@ export default function EditarLocal() {
     setZona(d.zona);
     setCoords({ lat: d.lat, lng: d.lng });
     setCambiarDir(false);
+    setGuardado(false);
   };
 
   const guardar = async () => {
-    if (!local) return;
-    if (!nombre.trim()) { setError("El local necesita un nombre."); return; }
+    setGuardado(false);
+    if (!nombre.trim()) { setError(esPromotor ? "Pon el nombre con el que organizas." : "El local necesita un nombre."); return; }
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError("El email no parece válido."); return; }
     setGuardando(true); setError("");
     const fields: Record<string, unknown> = {
       nombre: nombre.trim(),
@@ -131,161 +153,177 @@ export default function EditarLocal() {
       fields.zona = zona;
       if (coords) { fields.lat = coords.lat; fields.lng = coords.lng; }
     }
-    const { error: e } = await updateMiLocal(local.id, fields);
+    const { data, error: e } = await updateMiLocal(local.id, fields);
     setGuardando(false);
-    if (e) setError(e.message);
-    else router.push("/local");
+    if (e) { setError(`No se pudo guardar: ${e.message}`); return; }
+    if (!data?.length) { setError("No se guardó: no tienes permiso sobre esta ficha."); return; }
+    actualizar(fields as Partial<FichaLocal>);
+    setGuardado(true);
   };
 
-  if (loading || cargando) {
-    return <main className="flex items-center justify-center gap-2 pt-24 text-tinta/50"><Loader2 className="animate-spin" /> Cargando…</main>;
-  }
-  if (!user || !local) {
-    return (
-      <main className="pb-8">
-        <PanelHeader titulo="Editar local" volverHref="/local" />
-        <p className="mx-auto max-w-lg px-4 pt-16 text-center font-bold text-tinta/60">No tienes ningún local todavía.</p>
-      </main>
-    );
-  }
+  const indice = [
+    ["basicos", "Datos básicos"],
+    ...(esPromotor ? [] : [["direccion", "Dirección"]]),
+    ["redes", "Redes y contacto"],
+    ["musica", "Música y ambiente"],
+    ["logo", "Logo"],
+  ];
 
   return (
-    <main className="pb-10">
-      <PanelHeader titulo="Editar local" volverHref="/local" />
-      <div className="mx-auto max-w-lg px-4 pt-5 md:px-8">
-        <div className="flex flex-col gap-4">
-          {/* El logo es lo que sale en la chincheta del mapa, así que va primero
-              y se guarda solo al subirlo. */}
-          <div>
-            <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
-              <ImagePlus size={16} className="text-magenta" /> Logo
-            </span>
-            <div className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
-              <span className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-magenta-50 text-magenta ring-1 ring-black/5">
-                {logo
-                  // eslint-disable-next-line @next/next/no-img-element -- se reemplaza al vuelo tras subir; next/image cachearía la anterior
-                  ? <img src={logo} alt="Logo del local" className="h-full w-full object-cover" />
-                  : <Store size={32} />}
-              </span>
-              <div className="min-w-0 flex-1">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-magenta px-4 py-2.5 text-sm font-extrabold text-white active:scale-[0.98]">
-                  {subiendoLogo ? <Loader2 size={16} className="animate-spin" /> : <ImagePlus size={16} />}
-                  {logo ? "Cambiar logo" : "Subir logo"}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    disabled={subiendoLogo}
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) onLogo(f); e.target.value = ""; }}
-                  />
-                </label>
-                <p className="mt-1.5 text-xs font-semibold text-tinta/50">
-                  Es la chincheta que verá la gente en el mapa. Cuadrada se ve mejor: se recorta al centro.
-                </p>
-              </div>
-            </div>
-          </div>
+    <SeccionPanel
+      titulo={esPromotor ? "Datos de la marca" : "Datos del local"}
+      descripcion="Lo que ve la gente en tu ficha. Guarda al terminar."
+      ancho="estrecho"
+    >
+      <nav aria-label="Secciones" className="no-scrollbar -mx-4 mb-4 flex gap-1.5 overflow-x-auto px-4 md:mx-0 md:px-0">
+        {indice.map(([id, t]) => (
+          <a key={id} href={`#${id}`}
+            className="inline-flex min-h-[40px] shrink-0 items-center rounded-full border border-linea-fuerte bg-white px-3.5 text-[14px] font-semibold hover:border-tinta/50">
+            {t}
+          </a>
+        ))}
+      </nav>
 
-          <label className="block">
-            <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
-              {esPromotor ? <Megaphone size={16} className="text-magenta" /> : <Store size={16} className="text-magenta" />}
-              {esPromotor ? "Nombre con el que organizas" : "Nombre del local"}
-            </span>
-            <input value={nombre} onChange={(e) => setNombre(e.target.value)} className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 text-base font-semibold outline-none focus:border-magenta" />
-          </label>
+      <div className="flex flex-col gap-4">
+        <Bloque id="basicos" titulo="Datos básicos">
+          <Campo etiqueta={esPromotor ? "Nombre con el que organizas" : "Nombre del local"} htmlFor="nombre">
+            <input id="nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} className={claseCampo} />
+          </Campo>
+          <Campo etiqueta="Teléfono o WhatsApp" htmlFor="tel" ayuda="Sale en tu ficha con un botón para escribirte.">
+            <input id="tel" type="tel" inputMode="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="600 000 000" className={claseCampo} />
+          </Campo>
+          <Campo etiqueta="Descripción" htmlFor="desc" ayuda="Dos o tres frases: qué tipo de sitio es y por qué ir.">
+            <textarea id="desc" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={4}
+              placeholder={esPromotor ? "Cuenta qué tipo de eventos organizas…" : "Cuenta qué ofrece tu local…"} className={`${claseCampo} resize-y`} />
+          </Campo>
+        </Bloque>
 
-          <label className="block">
-            <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70"><Phone size={16} className="text-magenta" /> Teléfono / WhatsApp</span>
-            <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="600 000 000" className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 text-base font-semibold outline-none focus:border-magenta" />
-          </label>
-
-          <label className="block">
-            <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70"><FileText size={16} className="text-magenta" /> Descripción</span>
-            <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={3} placeholder="Cuenta qué ofrece tu local…" className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 text-base font-semibold outline-none focus:border-magenta" />
-          </label>
-
-          {/* Dónde te encuentran fuera de aquí.
-              46 de los 60 locales activos ya traían esto guardado de la
-              migración —45 con Instagram— y no había ninguna pantalla para
-              verlo ni corregirlo. Ahora sale en la ficha pública. */}
-          <div className="rounded-2xl bg-crema/60 p-4 ring-1 ring-magenta-100">
-            <p className="font-display text-lg font-black">Dónde te encuentran</p>
-            <p className="mb-3 text-sm font-semibold text-tinta/60">
-              Sale en tu ficha, debajo de la dirección. El email no: ese es para que
-              podamos avisarte a ti.
-            </p>
-            <div className="flex flex-col gap-3">
-              <CampoRed
-                icon={Instagram} label="Instagram" valor={instagram} onCambio={setInstagram}
-                placeholder="@tulocal"
-                pista={instagram && !handleInstagram(instagram)
-                  ? "No se entiende. Pon tu nombre de usuario, como @tulocal."
-                  : handleInstagram(instagram) ? `Se abrirá instagram.com/${handleInstagram(instagram)}` : undefined}
-                mal={Boolean(instagram) && !handleInstagram(instagram)}
-              />
-              <CampoRed
-                icon={Globe} label="Página web" valor={web} onCambio={setWeb}
-                placeholder="tulocal.com"
-                pista={web && !urlSegura(web) ? "Esa dirección no se puede abrir." : undefined}
-                mal={Boolean(web) && !urlSegura(web)}
-              />
-              <CampoRed
-                icon={CalendarCheck} label="Reservas" valor={reservas} onCambio={setReservas}
-                placeholder="Enlace para reservar mesa o entrada"
-                pista={reservas && !urlSegura(reservas) ? "Esa dirección no se puede abrir." : undefined}
-                mal={Boolean(reservas) && !urlSegura(reservas)}
-              />
-              <CampoRed
-                icon={Mail} label="Email de contacto" valor={email} onCambio={setEmail}
-                placeholder="hola@tulocal.com"
-              />
-            </div>
-          </div>
-
-          <CampoPlaylist valor={playlist} onCambio={setPlaylist} />
-
-          {/* El promotor no tiene dirección fija: la pone en cada tardeo. */}
-          {esPromotor ? (
-            <div className="flex items-start gap-2 rounded-2xl bg-oro/10 p-3 text-sm font-semibold text-tinta/80">
-              <Megaphone size={18} className="mt-0.5 shrink-0 text-oro-600" />
-              Como promotor no tienes dirección fija: el sitio se elige al crear cada tardeo.
-            </div>
-          ) : (
-            <div>
-              <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70"><MapPin size={16} className="text-magenta" /> Dirección</span>
-              {!cambiarDir ? (
-                <div className="flex items-center gap-2 rounded-xl border-2 border-magenta-100 bg-white px-4 py-3">
-                  <span className="min-w-0 flex-1 truncate text-base font-semibold text-tinta/80">{direccion || "Sin dirección"}</span>
-                  <button onClick={() => setCambiarDir(true)} className="shrink-0 text-sm font-extrabold text-magenta">Cambiar</button>
+        {/* El promotor no tiene dirección fija: la pone en cada tardeo. */}
+        {esPromotor ? (
+          <p className="flex items-start gap-2 rounded-2xl border border-linea bg-white p-4 text-[15px] text-tinta-suave">
+            <Megaphone size={18} className="mt-0.5 shrink-0 text-magenta" aria-hidden />
+            Como promotor no tienes dirección fija: el sitio se elige al crear cada tardeo.
+          </p>
+        ) : (
+          <Bloque id="direccion" titulo="Dirección" ayuda="De aquí salen tu chincheta en el mapa y la zona de los filtros.">
+            {!cambiarDir ? (
+              <div className="flex flex-col gap-2 rounded-xl border border-linea-fuerte bg-white p-3 sm:flex-row sm:items-center">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-semibold">{direccion || "Sin dirección"}</p>
+                  {zona && <p className="text-sm text-tinta-suave">Zona: {zona}</p>}
                 </div>
-              ) : (
-                <AddressSearch onSelect={onDireccion} />
+                <Boton variante="contorno" tamano="pequeno" onClick={() => setCambiarDir(true)}>Cambiar</Boton>
+              </div>
+            ) : (
+              <>
+                <AddressSearch onSelect={onDireccion} inicial={nombre} />
+                <button type="button" onClick={() => setCambiarDir(false)} className="min-h-[44px] self-start text-[15px] font-bold text-magenta-700">
+                  Dejarla como estaba
+                </button>
+              </>
+            )}
+            {coords ? (
+              <div className="overflow-hidden rounded-xl ring-1 ring-linea">
+                <MiniMapa lat={coords.lat} lng={coords.lng} />
+              </div>
+            ) : (
+              <p className="rounded-xl bg-aviso-fondo p-3 text-[15px] text-aviso">
+                Sin coordenadas tu local no sale en el mapa. Pulsa «Cambiar» y búscalo por su nombre.
+              </p>
+            )}
+          </Bloque>
+        )}
+
+        {/* Dónde te encuentran fuera de aquí.
+            46 de los 60 locales activos ya traían esto guardado de la
+            migración —45 con Instagram— y no había ninguna pantalla para
+            verlo ni corregirlo. Ahora sale en la ficha pública. */}
+        <Bloque id="redes" titulo="Redes y contacto" ayuda="Sale en tu ficha, debajo de la dirección. El email no: ese es para que podamos avisarte a ti.">
+          <CampoRed
+            icon={Instagram} label="Instagram" valor={instagram} onCambio={setInstagram}
+            placeholder="@tulocal"
+            pista={instagram && !handleInstagram(instagram)
+              ? "No se entiende. Pon tu nombre de usuario, como @tulocal."
+              : handleInstagram(instagram) ? `Se abrirá instagram.com/${handleInstagram(instagram)}` : undefined}
+            mal={Boolean(instagram) && !handleInstagram(instagram)}
+          />
+          <CampoRed
+            icon={Globe} label="Página web" valor={web} onCambio={setWeb}
+            placeholder="tulocal.com"
+            pista={web && !urlSegura(web) ? "Esa dirección no se puede abrir." : undefined}
+            mal={Boolean(web) && !urlSegura(web)}
+          />
+          <CampoRed
+            icon={CalendarCheck} label="Reservas" valor={reservas} onCambio={setReservas}
+            placeholder="Enlace para reservar mesa o entrada"
+            pista={reservas && !urlSegura(reservas) ? "Esa dirección no se puede abrir." : undefined}
+            mal={Boolean(reservas) && !urlSegura(reservas)}
+          />
+          <CampoRed
+            icon={Mail} label="Email de contacto (privado)" valor={email} onCambio={setEmail}
+            placeholder="hola@tulocal.com"
+          />
+          <p className="flex items-center gap-2 text-sm text-tinta-suave">
+            <Phone size={14} aria-hidden /> El teléfono se cambia arriba, en Datos básicos.
+          </p>
+        </Bloque>
+
+        {/* El ADN del local. Nada obligatorio: es lo que hace que te
+            encuentren, no lo que hace falta para publicar. */}
+        <Bloque id="musica" titulo="Música y ambiente" ayuda="Nada es obligatorio, pero cuanto más cuentes, en más búsquedas apareces y mejor te recomendamos a quien encaja contigo.">
+          <CampoPlaylist valor={playlist} onCambio={setPlaylist} />
+          <SelectorAdnLocal adn={adn} onCambio={setAdn} />
+        </Bloque>
+
+        {/* El logo es lo que sale en la chincheta del mapa; se guarda solo al
+            subirlo, aparte del botón de abajo. */}
+        <Bloque id="logo" titulo="Logo" ayuda="Es tu chincheta en el mapa. Cuadrado se ve mejor: se recorta al centro. Se guarda al subirlo.">
+          <div className="flex items-center gap-4">
+            <span className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-2xl bg-magenta-50 text-magenta ring-1 ring-linea">
+              {logo
+                // eslint-disable-next-line @next/next/no-img-element -- se reemplaza al vuelo tras subir; next/image cachearía la anterior
+                ? <img src={logo} alt="Logo actual" className="h-full w-full object-cover" />
+                : <Store size={36} aria-hidden />}
+            </span>
+            <div className="min-w-0 flex-1">
+              <label className={`inline-flex min-h-tacto cursor-pointer items-center gap-2 rounded-xl px-5 text-[16px] font-bold ${subiendoLogo ? "bg-marfil-100 text-tinta-suave" : "bg-magenta-50 text-magenta-700 hover:bg-magenta-100"}`}>
+                {subiendoLogo ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <ImagePlus size={18} aria-hidden />}
+                {subiendoLogo ? "Subiendo…" : logo ? "Cambiar logo" : "Subir logo"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  disabled={subiendoLogo}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) onLogo(f); e.target.value = ""; }}
+                />
+              </label>
+              {logoMsg && (
+                <p role={logoMsg.ok ? undefined : "alert"} className={`mt-2 text-[15px] font-semibold ${logoMsg.ok ? "text-ok" : "text-error"}`}>{logoMsg.t}</p>
               )}
-              {zona && <p className="mt-1 text-xs font-semibold text-tinta/50">Zona: <b>{zona}</b></p>}
             </div>
-          )}
-
-          {/* El ADN del local. Va al final porque lo de arriba —nombre,
-              teléfono, dirección— es lo que hay que rellenar sí o sí, y esto
-              es lo que hace que te encuentren. */}
-          <div className="rounded-2xl bg-crema/60 p-4 ring-1 ring-magenta-100">
-            <p className="font-display text-lg font-black">Cómo es tu sitio</p>
-            <p className="mb-4 text-sm font-semibold text-tinta/60">
-              Nada de esto es obligatorio, pero cuanto más cuentes, en más búsquedas apareces
-              y mejor te recomendamos a quien encaja contigo.
-            </p>
-            <SelectorAdnLocal adn={adn} onCambio={setAdn} />
           </div>
+        </Bloque>
 
-          {error && <p className="text-sm font-bold text-magenta">{error}</p>}
-
-          <button onClick={guardar} disabled={guardando} className="flex items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white shadow-tarjeta active:scale-[0.98] disabled:opacity-40">
-            {guardando ? <Loader2 size={22} className="animate-spin" /> : <Check size={22} />} Guardar datos
-          </button>
-          <Link href="/local" className="pb-2 text-center text-sm font-bold text-tinta/50">Cancelar</Link>
+        {/* Barra de guardar pegada abajo en el móvil: el formulario es largo y
+            el botón no puede quedar a seis pantallas. */}
+        <div className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-2 border-t border-linea bg-marfil/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
+          <div aria-live="polite">
+            {error && <p role="alert" className="rounded-xl border border-error/20 bg-error-fondo p-3 text-[15px] font-semibold text-error">{error}</p>}
+            {guardado && !error && (
+              <p className="flex items-center gap-2 rounded-xl bg-ok-fondo p-3 text-[15px] font-semibold text-ok">
+                <Check size={18} aria-hidden /> Datos guardados.
+                {/* Solo una ficha activa sale en la web: con la ficha pendiente
+                    de aprobar, «ya se ven» sería falso. */}
+                {local?.estado === "activo" ? " Ya se ven en tu ficha." : " Se verán en la web en cuanto tu ficha esté aprobada."}
+              </p>
+            )}
+          </div>
+          <Boton ancho onClick={guardar} cargando={guardando}>
+            {!guardando && <Check size={20} aria-hidden />} Guardar datos
+          </Boton>
         </div>
       </div>
-    </main>
+    </SeccionPanel>
   );
 }
 
@@ -300,23 +338,23 @@ export default function EditarLocal() {
 function CampoRed({
   icon: Icon, label, valor, onCambio, placeholder, pista, mal,
 }: {
-  icon: typeof Instagram; label: string; valor: string;
+  icon: LucideIcon; label: string; valor: string;
   onCambio: (v: string) => void; placeholder?: string; pista?: string; mal?: boolean;
 }) {
   return (
     <label className="block">
-      <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
-        <Icon size={16} className="text-magenta" /> {label}
+      <span className="mb-1.5 flex items-center gap-2 text-[15px] font-semibold">
+        <Icon size={17} className="text-magenta" aria-hidden /> {label}
       </span>
       <input
         value={valor}
         onChange={(e) => onCambio(e.target.value)}
         placeholder={placeholder}
-        className={`w-full rounded-xl border-2 bg-white px-4 py-3 text-base font-semibold outline-none transition ${
-          mal ? "border-magenta" : "border-magenta-100 focus:border-magenta"}`}
+        aria-invalid={mal || undefined}
+        className={`${claseCampo} ${mal ? "!border-error" : ""}`}
       />
       {pista && (
-        <span className={`mt-1 block text-xs font-semibold ${mal ? "text-magenta" : "text-tinta/50"}`}>
+        <span className={`mt-1.5 block text-sm ${mal ? "font-semibold text-error" : "text-tinta-suave"}`}>
           {pista}
         </span>
       )}

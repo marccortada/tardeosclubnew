@@ -1,30 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import PanelHeader from "@/components/PanelHeader";
-import { useAuth } from "@/lib/useAuth";
-import { getMiLocal, vincularDjsPorNombre, invalidarCacheTardeos } from "@/lib/tardeos";
+import { SeccionPanel } from "@/components/panel/PanelShell";
+import { usePanelLocal } from "../_panel/PanelLocal";
+import { vincularDjsPorNombre, invalidarCacheTardeos, falloPorColumna, getTardeoRow, getTardeoById } from "@/lib/tardeos";
+import CampoDjs from "../_panel/CampoDjs";
+import { leerFlyerConIA, subirFlyer } from "../_panel/leerFlyer";
 import { supabase } from "@/lib/supabase";
 import SelectorAdn from "@/components/SelectorAdn";
+import SelectorLocal from "@/components/SelectorLocal";
 import AddressSearch, { Direccion } from "@/components/AddressSearch";
-import ProgramarPublicacion, { type Cuando } from "@/components/ProgramarPublicacion";
+import ProgramarPublicacion, { errorProgramacion, type Cuando } from "@/components/ProgramarPublicacion";
 import PeriodicidadTardeo from "@/components/PeriodicidadTardeo";
 import { fechasDeSerie, fechaCorta, SIN_REPETIR, type Periodicidad } from "@/lib/periodicidad";
-import PrecioTardeo, { PRECIO_VACIO, aColumnas, type Precio } from "@/components/PrecioTardeo";
+import PrecioTardeo, { PRECIO_VACIO, aColumnas, desdeColumnas, errorPrecio, type Precio } from "@/components/PrecioTardeo";
+import CampoAforo from "@/components/CampoAforo";
 import PromoTardeo, { PROMO_VACIA, type Promo } from "@/components/PromoTardeo";
 import SubirFlyer from "@/components/SubirFlyer";
+import Boton, { claseBoton } from "@/components/Boton";
+import Campo, { claseCampo } from "@/components/ui/Campo";
 import {
-  Sparkles, Loader2, Check, AlertTriangle,
-  Calendar, Clock, Music, MapPin, Disc3, ArrowRight, Store, Megaphone,
-  FileText, Repeat,
+  Sparkles, Loader2, Check, AlertTriangle, MapPin, ArrowRight, ArrowLeft, Store, Repeat, Copy, Clock,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-
 
 /** Los mismos tres del admin antiguo, para que nadie tenga que reaprender. */
-const PASOS = ["Básico", "Ubicación y precio", "Categorías"];
+const PASOS = [
+  { t: "Flyer y datos", d: "Qué, cuándo y quién pincha" },
+  { t: "Lugar y entradas", d: "Dónde es y cómo se entra" },
+  { t: "Detalles y publicar", d: "Ambiente y cuándo sale" },
+];
 /**
  * "revisar" es la pantalla del formulario, con flyer o sin él.
  *
@@ -45,72 +51,25 @@ const EXTRAIDO = {
   estilo: "",
   ubicacion: "",
   zona: "",
-  tipo: "gratis",
-  precio: "",
 };
 
-function Campo({
-  label, icon: Icon, valor, onChange, revisar, type = "text", placeholder,
-}: {
-  label: string; icon: LucideIcon; valor: string; onChange: (v: string) => void;
-  revisar?: boolean; type?: string; placeholder?: string;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
-        <Icon size={16} className="text-magenta" /> {label}
-        {revisar && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-oro/20 px-2 py-0.5 text-xs font-black text-oro-600">
-            <AlertTriangle size={11} /> Revisar
-          </span>
-        )}
-      </span>
-      <input
-        type={type}
-        value={valor}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className={`w-full rounded-xl border-2 bg-white px-4 py-3 text-base font-semibold outline-none transition focus:border-magenta ${
-          revisar ? "border-oro/60 bg-oro/5" : "border-magenta-100"
-        }`}
-      />
-    </label>
-  );
-}
-
-function CampoLargo({
-  label, icon: Icon, valor, onChange, placeholder,
-}: {
-  label: string; icon: LucideIcon; valor: string; onChange: (v: string) => void; placeholder?: string;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
-        <Icon size={16} className="text-magenta" /> {label}
-      </span>
-      <textarea
-        value={valor}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        rows={3}
-        className="w-full resize-y rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 text-base font-semibold outline-none transition focus:border-magenta"
-      />
-    </label>
-  );
-}
+/** Lo que la IA no ha leído claro se marca para que se mire dos veces. */
+const claseRevisar = (r: boolean) => (r ? `${claseCampo} !border-aviso !bg-aviso-fondo` : claseCampo);
 
 export default function CrearTardeo() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, esAdmin, ficha, ajena, enlace } = usePanelLocal();
   const [estado, setEstado] = useState<Estado>("revisar");
   const [form, setForm] = useState(EXTRAIDO);
   // Fuera de `form` porque no son texto: dos son listas y el formulario base
   // solo maneja cadenas.
   const [cuando, setCuando] = useState<Cuando>({ estado: "publicado", publicarEn: "" });
+  const [errorCuando, setErrorCuando] = useState("");
   const [periodicidad, setPeriodicidad] = useState<Periodicidad>(SIN_REPETIR);
   const [creados, setCreados] = useState(1);
   const [rellenoIA, setRellenoIA] = useState(false);
   const [precio, setPrecio] = useState<Precio>(PRECIO_VACIO);
+  const [aforo, setAforo] = useState("");
   const [promo, setPromo] = useState<Promo>(PROMO_VACIA);
   // Ya se eligió qué hacer con el flyer subido (IA o tal cual).
   const [flyerDecidido, setFlyerDecidido] = useState(false);
@@ -119,10 +78,11 @@ export default function CrearTardeo() {
   const [ambiente, setAmbiente] = useState<string[]>([]);
   const [publico, setPublico] = useState<string[]>([]);
   const [dressCode, setDressCode] = useState("");
-  // El admin puede publicar en cualquier local; el resto, solo en el suyo.
-  const [esAdmin, setEsAdmin] = useState(false);
-  const [locales, setLocales] = useState<any[]>([]);
-  const [localId, setLocalId] = useState("");
+  // El admin puede publicar en cualquier local; el resto, solo en el suyo
+  // (el elegido en la barra lateral si tiene varios).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [locales, setLocales] = useState<any[]>(ficha ? [ficha] : []);
+  const [localId, setLocalId] = useState(ficha?.id ?? "");
   const [publicando, setPublicando] = useState(false);
   // Nombres del flyer que no corresponden a ningún DJ fichado. Se avisa al
   // publicar: si no, el tardeo se queda sin salir en el perfil de ese DJ y
@@ -134,29 +94,32 @@ export default function CrearTardeo() {
   // Solo para promotores: su ficha no tiene dirección, así que el sitio se
   // elige aquí, en cada tardeo.
   const [dirTardeo, setDirTardeo] = useState<Direccion | null>(null);
+  // Duplicar (?desde=<id>): el flyer del original se reutiliza tal cual si
+  // no se sube otro, y se dice de qué tardeo viene.
+  const [flyerOriginal, setFlyerOriginal] = useState<string | null>(null);
+  const [duplicando, setDuplicando] = useState<{ titulo: string } | null>(null);
+  // Avisos tras crear que no son error: aforo sin el lote 48, serie sin el 53.
+  const [avisos, setAvisos] = useState<string[]>([]);
+  // El admin necesita la lista completa de locales antes de duplicar (el
+  // original puede ser de otro). Y al cambiar de local por duplicar, no se
+  // borra la dirección copiada.
+  const [listaAdmin, setListaAdmin] = useState(false);
+  const conservarDir = useRef(false);
 
   useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const { data: perfil } = await supabase
-        .from("profiles").select("is_admin").eq("id", user.id).maybeSingle();
-      const admin = !!perfil?.is_admin;
-      setEsAdmin(admin);
-
-      const propio = await getMiLocal(user.id);
-      if (admin) {
-        // RLS deja al admin ver todos los locales, tenga o no uno propio.
-        const { data } = await supabase
-          .from("locales").select("id,nombre,zona,direccion,lat,lng,tipo").order("nombre");
-        const todos = data ?? [];
-        setLocales(todos);
-        setLocalId(propio?.id ?? todos[0]?.id ?? "");
-      } else {
-        setLocales(propio ? [propio] : []);
-        setLocalId(propio?.id ?? "");
-      }
-    })();
-  }, [user]);
+    if (!esAdmin) {
+      setLocales(ficha ? [ficha] : []);
+      setLocalId(ficha?.id ?? "");
+      return;
+    }
+    // RLS deja al admin ver todos los locales, tenga o no uno propio.
+    supabase.from("locales").select("id,nombre,zona,direccion,lat,lng,tipo,estado").order("nombre").then(({ data }) => {
+      const todos = data ?? [];
+      setLocales(todos);
+      setLocalId(ficha?.id ?? todos[0]?.id ?? "");
+      setListaAdmin(true);
+    });
+  }, [esAdmin, ficha]);
 
   const local = locales.find((l) => l.id === localId) ?? null;
 
@@ -170,7 +133,8 @@ export default function CrearTardeo() {
   // que se limpia y se pide abajo con el buscador.
   useEffect(() => {
     if (!local) return;
-    setDirTardeo(null);
+    if (conservarDir.current) conservarDir.current = false;
+    else setDirTardeo(null);
     setForm((f) => ({ ...f, ubicacion: local.direccion ?? "", zona: local.zona ?? "" }));
   }, [localId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -184,33 +148,66 @@ export default function CrearTardeo() {
     if (f && /^\d{4}-\d{2}-\d{2}$/.test(f)) setForm((p) => ({ ...p, fecha: f }));
   }, []);
 
+  /**
+   * «Duplicar» desde Mis tardeos (?desde=<id>): se copia todo menos la fecha,
+   * que es justo lo que cambia. Se lee DESPUÉS de que el efecto del local haya
+   * puesto su dirección, para que la del original no se pise.
+   */
+  useEffect(() => {
+    const desde = new URLSearchParams(window.location.search).get("desde");
+    if (!desde || !localId || (esAdmin && !listaAdmin)) return;
+    let vivo = true;
+    Promise.all([getTardeoRow(desde), getTardeoById(desde)]).then(([fila, t]) => {
+      if (!vivo || !fila) return;
+      // El admin puede duplicar en cualquier local: se va al del original.
+      if (esAdmin && fila.local_id && fila.local_id !== localId && locales.some((l) => l.id === fila.local_id)) {
+        conservarDir.current = true;
+        setLocalId(fila.local_id);
+      }
+      setForm((p) => ({
+        ...p,
+        titulo: fila.titulo ?? "",
+        descripcion: fila.descripcion ?? "",
+        horaInicio: (fila.hora_inicio ?? "").slice(0, 5),
+        horaFin: (fila.hora_fin ?? "").slice(0, 5),
+        dj: t?.djs.map((d) => d.nombre).filter(Boolean).join(" · ") ?? "",
+        estilo: fila.estilo ?? "",
+      }));
+      setPrecio(desdeColumnas({
+        // La fila guarda dos banderas (ver aColumnas), no un «tipo_entrada».
+        tipoEntrada: fila.tiene_lista ? "lista" : fila.es_de_pago ? "pago" : "gratis",
+        precio: fila.precio ?? undefined,
+        fourvenues_url: fila.fourvenues_url ?? null, promo_url: fila.promo_url ?? null,
+      }));
+      setAforo(fila.aforo ? String(fila.aforo) : "");
+      setPromo({ etiquetas: fila.etiquetas ?? [] });
+      setTipoEvento(fila.tipo_evento ?? "");
+      setAmbiente(fila.ambiente ?? []);
+      setPublico(fila.publico ?? []);
+      setDressCode(fila.dress_code ?? "");
+      // El sitio del original con sus coordenadas: un promotor no tiene que
+      // volver a buscarlo, y un local que lo hizo fuera tampoco.
+      if (fila.direccion && fila.lat != null && fila.lng != null) {
+        setDirTardeo({ display: fila.direccion, lat: fila.lat, lng: fila.lng, cp: "", zona: fila.zona ?? "" });
+      }
+      if (fila.flyer_url && !String(fila.flyer_url).includes("placeholder")) setFlyerOriginal(fila.flyer_url);
+      setDuplicando({ titulo: fila.titulo ?? "" });
+    });
+    return () => { vivo = false; };
+    // Solo una vez, cuando ya se sabe el local (y la lista, en el admin).
+  }, [esAdmin ? listaAdmin : !!localId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const set = (k: keyof typeof form, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
-  const fileToBase64 = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result).split(",")[1]); // sin el prefijo data:
-      r.onerror = reject;
-      r.readAsDataURL(file);
-    });
-
-
-  // Vía "ya tengo el flyer": Claude LEE la imagen (IA real)
+  // Vía "ya tengo el flyer": Claude LEE la imagen (IA real). La lectura, la
+  // reducción de la imagen y los errores de red van en leerFlyerConIA, la
+  // misma que usa el editor.
   const leerFlyer = async (file: File) => {
     setError("");
     setArchivoSubido(file);
     setEstado("procesando");
     try {
-      const imageBase64 = await fileToBase64(file);
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch("/api/leer-flyer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64, mediaType: file.type, accessToken: session?.access_token }),
-      });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error || "No se pudo leer el flyer.");
-      const d = j.data;
+      const d = await leerFlyerConIA(file);
       setForm((f) => ({
         ...f,
         titulo: d.titulo || f.titulo,
@@ -222,18 +219,62 @@ export default function CrearTardeo() {
         // analizar un flyer podía BORRAR lo que ya habías puesto a mano.
         dj: d.dj || f.dj,
         estilo: d.estilo || f.estilo,
-
         ubicacion: local?.direccion ?? f.ubicacion,
         zona: local?.zona ?? f.zona,
       }));
+      // Entrada y precio que ha leído la IA. Solo se aplican si la persona aún
+      // no ha tocado la entrada (sigue en «gratis», el valor por defecto): así
+      // no se pisa lo que ya hubiera elegido o escrito a mano.
+      // Del texto del flyer se toma el PRIMER número: «10-15 €» daba 1015 €.
+      const primerNumero = String(d.precio ?? "").match(/\d+(?:[.,]\d+)?/)?.[0] ?? "";
+      const importe = primerNumero.replace(",", ".");
+      if (d.tipoEntrada === "pago") {
+        setPrecio((p) => p.modo !== "gratis" || p.importe ? p : {
+          ...p, modo: Number(importe) > 0 ? "conprecio" : "sinprecio", importe: Number(importe) > 0 ? importe : "",
+        });
+      } else if (d.tipoEntrada === "lista") {
+        setPrecio((p) => (p.modo !== "gratis" ? p : { ...p, modo: "lista" }));
+      }
       setRevisar(new Set(Array.isArray(d.revisar) ? d.revisar : []));
       setRellenoIA(true);
       setFlyerDecidido(true);
       setEstado("revisar");
-    } catch (e: any) {
-      setError(e?.message || "Error al leer el flyer.");
+    } catch (e: unknown) {
+      setError((e as Error)?.message || "Error al leer el flyer.");
       setEstado("revisar");
     }
+  };
+
+  const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+
+  /** Lo que falta en cada paso. Se comprueba al pulsar «Siguiente» para que
+   *  el error salga donde está el campo, y no dos pantallas después. */
+  const faltaEnPaso = (p: number): string | null => {
+    if (p === 0) {
+      if (!form.titulo.trim()) return "Ponle un título al tardeo.";
+      if (!form.fecha) return "Falta la fecha del tardeo.";
+      if (form.fecha < hoy) return "La fecha ya ha pasado. Pon una fecha de hoy en adelante.";
+      if (!form.horaInicio) return "Falta la hora de inicio.";
+      // Sin esto, elegir "cada semana" y no poner el hasta creaba UN tardeo sin
+      // decir nada, que es lo contrario de lo que acaba de pedir.
+      if (periodicidad.cada !== "una" && !periodicidad.hasta) return "Dinos hasta cuándo se repite, o elige «No se repite».";
+    }
+    if (p === 1) {
+      // Sin sitio, el tardeo de un promotor entraría sin coordenadas y no saldría
+      // en el mapa, que es medio producto.
+      if (esPromotor && !dirTardeo) return "Busca dónde se hace este tardeo.";
+      const e = errorPrecio(precio);
+      if (e) return e;
+    }
+    return null;
+  };
+
+  const siguiente = () => {
+    const e = faltaEnPaso(paso);
+    if (e) { setError(e); return; }
+    setError("");
+    setPaso(paso + 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const publicar = async () => {
@@ -246,36 +287,24 @@ export default function CrearTardeo() {
       return;
     }
 
-    // --- Validación antes de publicar ---
-    const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
-    if (!form.titulo.trim()) { setError("Ponle un título al tardeo."); return; }
-    if (!form.fecha) { setError("Falta la fecha del tardeo."); return; }
-    if (form.fecha < hoy) { setError("La fecha ya ha pasado. Pon una fecha de hoy en adelante."); return; }
-    if (!form.horaInicio) { setError("Falta la hora de inicio."); return; }
-    if (form.tipo === "pago" && !(Number(form.precio) > 0)) { setError("Indica el precio de la entrada."); return; }
-    // Sin esto, elegir "cada semana" y no poner el hasta creaba UN tardeo sin
-    // decir nada, que es lo contrario de lo que acaba de pedir.
-    if (periodicidad.cada !== "una" && !periodicidad.hasta) {
-      setError("Dinos hasta cuándo se repite, o elige «No se repite»."); return;
+    // --- Validación antes de publicar (por si se volvió atrás y se cambió algo) ---
+    for (const p of [0, 1]) {
+      const e = faltaEnPaso(p);
+      if (e) { setError(e); setPaso(p); return; }
     }
-    // Sin sitio, el tardeo de un promotor entraría sin coordenadas y no saldría
-    // en el mapa, que es medio producto.
-    if (esPromotor && !dirTardeo) { setError("Busca dónde se hace este tardeo."); return; }
+
+    const ec = errorProgramacion(cuando);
+    if (ec) { setErrorCuando(ec); setError(""); return; }
 
     setPublicando(true); setError("");
 
     // Guardar el flyer en Supabase Storage
-    let flyer_url = "/flyers/placeholder.jpg";
-    try {
-      if (archivoSubido) {
-        const ext = (archivoSubido.name.split(".").pop() || "jpg").toLowerCase();
-        const p = `${user.id}/${Date.now()}.${ext}`;
-        const { error: up } = await supabase.storage.from("flyers").upload(p, archivoSubido, { contentType: archivoSubido.type || "image/jpeg" });
-        if (up) { setError("No se pudo subir el flyer. Inténtalo de nuevo."); setPublicando(false); return; }
-        flyer_url = supabase.storage.from("flyers").getPublicUrl(p).data.publicUrl;
-      }
-    } catch {
-      setError("No se pudo subir el flyer. Inténtalo de nuevo."); setPublicando(false); return;
+    let flyer_url = flyerOriginal ?? "/flyers/placeholder.jpg";
+    if (archivoSubido) {
+      // subirFlyer reduce la imagen antes (máx. 1600 px) y no lanza.
+      const url = await subirFlyer(user.id, archivoSubido);
+      if (!url) { setError("No se pudo subir el flyer. Inténtalo de nuevo."); setPublicando(false); return; }
+      flyer_url = url;
     }
 
     /**
@@ -297,9 +326,19 @@ export default function CrearTardeo() {
       estilo: form.estilo,
       // Las tres columnas de precio más los dos enlaces salen del componente.
       ...aColumnas(precio),
+      // Plazas (lote 48): solo se manda si se ha puesto, para no romper el alta si el lote aún no está pegado.
+      ...(precio.modo === "gratis" && Number(aforo) > 0 ? { aforo: Number(aforo) } : {}),
       etiquetas: promo.etiquetas.length ? promo.etiquetas : null,
       flyer_url,
-      flyer_origen: "subido",
+      // 'ia' si el flyer pasó por la lectura con IA; 'subido' si se subió tal
+      // cual; null si no hay flyer (la columna admite null, lote 1).
+      flyer_origen: archivoSubido ? (rellenoIA ? "ia" : "subido") : flyerOriginal ? "subido" : null,
+      // El ADN del paso 3. Se guardan igual que en el editor: null y no []
+      // cuando está vacío, para que «sin indicar» no parezca «revisado».
+      tipo_evento: tipoEvento || null,
+      ambiente: ambiente.length ? ambiente : null,
+      publico: publico.length ? publico : null,
+      dress_code: dressCode || null,
       // Lo que dijo ProgramarPublicacion, que hasta ahora se recogía y se
       // tiraba: el insert ponía "publicado" fijo, así que elegir "Programar" o
       // "Guardar sin publicar" publicaba igual, en el acto. El botón hasta
@@ -311,32 +350,60 @@ export default function CrearTardeo() {
       created_by: user.id,
     };
 
-    const { data: nuevos, error } = await supabase
-      .from("tardeos")
-      .insert(fechas.map((fecha) => ({ ...comun, fecha })))
-      .select("id");
+    // Las fechas de una serie comparten `serie_id` (lote 53): así luego se
+    // pueden cambiar todas a la vez desde el editor.
+    let filas: Record<string, unknown>[] = fechas.map((fecha) => ({ ...comun, fecha }));
+    if (fechas.length > 1) {
+      const serie = crypto.randomUUID();
+      filas = filas.map((f) => ({ ...f, serie_id: serie }));
+    }
+    const insertar = (f: Record<string, unknown>[]) => supabase.from("tardeos").insert(f).select("id");
+    const quitar = (f: Record<string, unknown>[], col: string) =>
+      f.map((x) => { const y = { ...x }; delete y[col]; return y; });
+
+    // El código de «columna inexistente» es el mismo para todas: se mira
+    // también que el mensaje nombre ESA columna, para quitar la que toca.
+    const faltaColumna = (e: { code?: string; message?: string } | null, col: string) =>
+      falloPorColumna(e, col) && (e?.message ?? "").includes(col);
+    let { data: nuevos, error } = await insertar(filas);
+    const notas: string[] = [];
+    // Columnas de lotes que pueden no estar pegados: se reintenta sin ellas y
+    // se dice qué se ha perdido, en vez de no crear nada.
+    for (let i = 0; i < 2 && error; i++) {
+      if (faltaColumna(error, "serie_id") && "serie_id" in (filas[0] ?? {})) {
+        filas = quitar(filas, "serie_id");
+        notas.push("Las fechas se han creado sueltas: para poder cambiarlas todas a la vez falta pegar el lote 53 (supabase/53_series.sql).");
+      } else if (faltaColumna(error, "aforo") && "aforo" in (filas[0] ?? {})) {
+        filas = quitar(filas, "aforo");
+        notas.push("Las plazas no se han guardado: falta pegar el lote 48 (supabase/48_reservas_aforo_asistencia.sql). El tardeo queda sin límite.");
+      } else break;
+      ({ data: nuevos, error } = await insertar(filas));
+    }
+
+    if (error) { setPublicando(false); setError(error.message); return; }
+    setAvisos(notas);
 
     // Vincular los DJs (por nombre) en TODAS las fechas: si solo se enlazara la
-    // primera, el DJ vería un tardeo suyo de cinco en su perfil.
+    // primera, el DJ vería un tardeo suyo de cinco en su perfil. Una sola
+    // llamada para toda la serie (antes, una por fecha).
     if (form.dj && nuevos?.length) {
       const nombres = form.dj.split(/[,·&]|\sy\s/i);
       try {
-        const res = await Promise.all(nuevos.map((n) => vincularDjsPorNombre(n.id, nombres)));
-        setDjsSinFicha(res[0]?.sinFicha ?? []);
+        const res = await vincularDjsPorNombre(nuevos.map((n) => n.id), nombres);
+        setDjsSinFicha(res.sinFicha);
       } catch { /* no crítico: los tardeos ya están creados */ }
     }
     setCreados(fechas.length);
 
     setPublicando(false);
-    if (error) setError(error.message);
-    else {
-      invalidarCacheTardeos(); // que el listado y el mapa lo vean ya
-      setEstado("publicado");
-    }
+    invalidarCacheTardeos(); // que el listado y el mapa lo vean ya
+    setEstado("publicado");
+    window.scrollTo({ top: 0 });
   };
 
-  // El admin llega desde /admin/crear, así que ahí debe volver.
-  const panelHref = esAdmin ? "/admin" : "/local";
+  // El admin que no trabaja sobre una ficha concreta llega desde /admin y
+  // ahí debe volver.
+  const panelHref = esAdmin && (!ficha || ajena) ? "/admin" : enlace("/local/tardeos");
 
   /**
    * Cuántos tardeos va a crear el botón.
@@ -353,97 +420,113 @@ export default function CrearTardeo() {
   const fechasSerie = fechasDeSerie(form.fecha, periodicidad);
   const enSerie = periodicidad.cada !== "una" && fechasSerie.length > 1;
 
+  const empezarOtro = () => {
+    setForm({ ...EXTRAIDO, ubicacion: local?.direccion ?? "", zona: local?.zona ?? "" });
+    setPeriodicidad(SIN_REPETIR); setPrecio(PRECIO_VACIO); setAforo(""); setPromo(PROMO_VACIA);
+    setTipoEvento(""); setAmbiente([]); setPublico([]); setDressCode("");
+    setArchivoSubido(null); setFlyerDecidido(false); setRellenoIA(false); setRevisar(new Set());
+    setDjsSinFicha([]); setDirTardeo(null); setPaso(0); setCuando({ estado: "publicado", publicarEn: "" }); setErrorCuando("");
+    setFlyerOriginal(null); setDuplicando(null); setAvisos([]);
+    setEstado("revisar");
+  };
+
   // ---------- Publicado ----------
   if (estado === "publicado") {
     return (
-      <main className="pb-10">
-        <PanelHeader titulo="Crear tardeo" volverHref={panelHref} />
-        <div className="mx-auto flex max-w-lg flex-col items-center gap-4 px-4 pt-16 text-center">
-          <span className="grid h-20 w-20 place-items-center rounded-full bg-oro text-tinta">
-            <Check size={44} />
+      <SeccionPanel titulo="Crear tardeo" ancho="estrecho">
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-linea bg-white p-6 text-center shadow-tarjeta md:p-10">
+          <span className="grid h-16 w-16 place-items-center rounded-full bg-ok-fondo text-ok">
+            <Check size={36} aria-hidden />
           </span>
           {/* El texto sigue a lo que ha pasado de verdad: cuántos y en qué
               estado. Antes decía "¡Tardeo publicado!" siempre, y con la
               programación arreglada eso sería mentira en dos de los tres
               caminos, además de contar mal las series. */}
-          <h2 className="font-display text-3xl font-black">
+          <h2 className="text-2xl font-bold">
             {creados > 1
-              ? `¡${creados} tardeos ${cuando.estado === "borrador" ? "guardados" : cuando.estado === "programado" ? "programados" : "publicados"}!`
+              ? `${creados} tardeos ${cuando.estado === "borrador" ? "guardados" : cuando.estado === "programado" ? "programados" : "publicados"}`
               : cuando.estado === "borrador"
-                ? "¡Tardeo guardado!"
+                ? "Tardeo guardado"
                 : cuando.estado === "programado"
-                  ? "¡Tardeo programado!"
-                  : "¡Tardeo publicado!"}
+                  ? "Tardeo programado"
+                  : "Tardeo publicado"}
           </h2>
-          <p className="font-semibold text-tinta/70">
+          <p className="text-[16px] text-tinta-suave">
             {cuando.estado === "borrador"
-              ? <>«{form.titulo}» {creados > 1 ? "queda guardado" : "queda guardado"} sin publicar. Puedes seguir cuando quieras.</>
+              ? <>«{form.titulo}» queda guardado sin publicar. Puedes seguir cuando quieras.</>
               : cuando.estado === "programado"
                 ? <>«{form.titulo}» {creados > 1 ? "saldrán solos" : "saldrá solo"} a la hora que has puesto.</>
-                : <>«{form.titulo}» ya {creados > 1 ? "están visibles" : "está visible"} para todos los tardícolas de {form.zona}.</>}
+                : <>«{form.titulo}» ya {creados > 1 ? "están visibles" : "está visible"} para la gente de {form.zona || "tu zona"}.</>}
           </p>
           {esAdmin && local && (
-            <p className="-mt-2 text-sm font-semibold text-tinta/50">Publicado en {local.nombre}.</p>
+            <p className="-mt-2 text-[15px] text-tinta-suave">En {local.nombre}.</p>
           )}
 
+          {/* Un tardeo de una ficha sin aprobar no sale en la web aunque esté
+              «publicado». Sin decirlo, el local lo busca, no lo ve y cree que
+              ha fallado. */}
+          {cuando.estado !== "borrador" && local && local.estado && local.estado !== "activo" && (
+            <p className="flex w-full items-start gap-2 rounded-xl border border-aviso/25 bg-aviso-fondo p-4 text-left text-[15px] text-tinta">
+              <Clock size={18} className="mt-0.5 shrink-0 text-aviso" aria-hidden />
+              <span><b>Se verá en cuanto aprobemos tu ficha.</b> Lo revisamos a mano; mientras, solo lo ves tú en tu panel.</span>
+            </p>
+          )}
+
+          {avisos.map((a) => (
+            <p key={a} className="flex w-full items-start gap-2 rounded-xl border border-aviso/25 bg-aviso-fondo p-4 text-left text-[15px] text-tinta">
+              <AlertTriangle size={18} className="mt-0.5 shrink-0 text-aviso" aria-hidden /> {a}
+            </p>
+          ))}
+
           {djsSinFicha.length > 0 && (
-            <div className="mt-1 rounded-2xl bg-oro/15 p-4 text-left ring-1 ring-oro/40">
-              <p className="font-black">
+            <div className="w-full rounded-xl border border-aviso/25 bg-aviso-fondo p-4 text-left">
+              <p className="font-bold">
                 {djsSinFicha.length === 1 ? "Este DJ no tiene ficha" : "Estos DJs no tienen ficha"}:{" "}
                 {djsSinFicha.join(", ")}
               </p>
-              <p className="mt-1 text-sm font-semibold text-tinta/70">
-                El tardeo está publicado, pero no saldrá en su perfil hasta que exista.
-                {esAdmin ? " Créala en Administración → Crear / invitar." : " Dínoslo y la creamos."}
+              <p className="mt-1 text-[15px] text-tinta">
+                El tardeo está guardado, pero no saldrá en su perfil hasta que exista.
+                {esAdmin ? " Créala en Administración → Crear nuevo." : " Dínoslo desde Ayuda y la creamos."}
               </p>
             </div>
           )}
-          <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-            <Link href={panelHref} className="rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">
-              Ir al panel
+          <div className="mt-2 flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
+            <Link href={panelHref} className={claseBoton("primario")}>
+              {esAdmin && (!ficha || ajena) ? "Volver al admin" : "Ver mis tardeos"}
             </Link>
-            <Link href="/tardeos" className="rounded-2xl bg-white px-6 py-4 text-lg font-extrabold text-magenta ring-2 ring-magenta-100">
-              Ver en la app
-            </Link>
+            <Boton variante="contorno" onClick={empezarOtro}>Crear otro</Boton>
           </div>
         </div>
-      </main>
+      </SeccionPanel>
     );
   }
 
   return (
-    <main className="pb-10">
-      <PanelHeader titulo="Crear tardeo" volverHref={panelHref} />
-      <div className="mx-auto max-w-lg px-4 pt-5 md:px-8">
+    <SeccionPanel
+      titulo="Crear tardeo"
+      descripcion="Tres pasos. Con el flyer y la IA, en un minuto."
+      ancho="estrecho"
+    >
+      <div className="flex flex-col gap-5">
         {/* Selector de local: solo para admin, que publica en nombre de otros.
             Va arriba y visible en todos los pasos porque de él salen la
             dirección y las coordenadas con las que acabará el tardeo. */}
         {esAdmin && (
-          <div className="mb-4 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
-            <label className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
-              <Store size={16} className="text-magenta" /> Publicar en
-            </label>
+          <div className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta">
+            <p className="mb-2 flex items-center gap-2 text-[15px] font-semibold">
+              <Store size={18} className="text-magenta" aria-hidden /> Publicar en
+            </p>
             {locales.length === 0 ? (
-              <p className="text-sm font-bold text-tinta/50">
+              <p className="text-[15px] text-tinta-suave">
                 No hay locales todavía.{" "}
-                <Link href="/admin/crear" className="text-magenta underline">Crea uno primero</Link>.
+                <Link href="/admin/crear" className="font-semibold text-magenta-700 underline">Crea uno primero</Link>.
               </p>
             ) : (
               <>
-                <select
-                  value={localId}
-                  onChange={(e) => setLocalId(e.target.value)}
-                  className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 font-semibold outline-none focus:border-magenta"
-                >
-                  {locales.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.tipo === "promotor" ? "🎪 " : ""}{l.nombre}{l.zona ? ` · ${l.zona}` : ""}
-                    </option>
-                  ))}
-                </select>
+                <SelectorLocal locales={locales} valor={localId} onCambio={setLocalId} />
                 {local && !esPromotor && !(local.lat && local.lng) && (
-                  <p className="mt-2 flex items-start gap-1.5 text-xs font-bold text-magenta">
-                    <AlertTriangle size={14} className="mt-px shrink-0" />
+                  <p className="mt-2 flex items-start gap-1.5 text-sm font-semibold text-aviso">
+                    <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden />
                     Este local no tiene coordenadas: el tardeo no saldrá en el mapa.
                   </p>
                 )}
@@ -452,146 +535,161 @@ export default function CrearTardeo() {
           </div>
         )}
 
-        {/* Un promotor no tiene dirección fija: el sitio se elige aquí, en cada
-            tardeo. Sin esto entraría sin coordenadas y no saldría en el mapa. */}
-        {esPromotor && (
-          <div className="mb-4 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
-            <label className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
-              <Megaphone size={16} className="text-magenta" /> ¿Dónde se hace este tardeo?
-            </label>
-            <AddressSearch onSelect={setDirTardeo} />
-            <p className="mt-1 text-xs font-semibold text-tinta/50">
-              Como organizas en sitios distintos, cada tardeo lleva su propia dirección.
-              De aquí salen el punto del mapa y la zona de los filtros.
-            </p>
-          </div>
-        )}
-
-
         {/* Procesando */}
         {estado === "procesando" && (
-          <section className="flex flex-col items-center gap-4 py-16 text-center">
-            <Loader2 size={48} className="animate-spin text-magenta" />
-            <p className="font-display text-xl font-black">
-              Leyendo tu flyer…
-            </p>
-            <p className="font-semibold text-tinta/60">La IA está sacando los datos. Un momento.</p>
+          <section className="flex flex-col items-center gap-4 rounded-2xl border border-linea bg-white py-16 text-center shadow-tarjeta" aria-live="polite">
+            <Loader2 size={44} className="animate-spin text-magenta" aria-hidden />
+            <p className="text-xl font-bold">Leyendo tu flyer…</p>
+            <p className="text-[15px] text-tinta-suave">La IA está sacando los datos. Un momento.</p>
           </section>
         )}
 
-        {/* Revisar */}
-          {estado === "revisar" && (
-            <section className="flex flex-col gap-4">
-
-              {/* Tres pasos en vez de un formulario de veinte campos: el que
-                  publica un tardeo lo hace desde el móvil y con prisa, y una
-                  pantalla que hay que recorrer entera antes de ver el botón se
-                  abandona a la mitad. */}
-              <ol className="flex items-center gap-2 text-sm font-black">
-                {PASOS.map((p, i) => (
-                  <li key={p} className="flex flex-1 items-center gap-2">
+        {estado === "revisar" && (
+          <>
+            {/* Tres pasos en vez de un formulario de veinte campos: el que
+                publica un tardeo lo hace desde el móvil y con prisa, y una
+                pantalla que hay que recorrer entera antes de ver el botón se
+                abandona a la mitad. */}
+            <ol className="grid grid-cols-3 gap-2" aria-label="Pasos">
+              {PASOS.map((p, i) => {
+                const hecho = i < paso;
+                const actual = i === paso;
+                return (
+                  <li key={p.t}>
                     <button
                       type="button"
-                      // Se puede volver atrás tocando el número, pero no saltar
-                      // hacia delante: el paso 2 necesita el local del paso 1.
-                      onClick={() => i < paso && setPaso(i)}
-                      className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs ${
-                        i === paso ? "bg-magenta text-white" : i < paso ? "bg-oro text-tinta" : "bg-black/5 text-tinta/40"
-                      }`}
+                      // Se puede volver atrás tocando el paso, pero no saltar
+                      // hacia delante sin pasar la comprobación del actual.
+                      onClick={() => (i < paso ? setPaso(i) : i === paso + 1 ? siguiente() : undefined)}
+                      aria-current={actual ? "step" : undefined}
+                      className={`flex w-full flex-col items-start gap-1 rounded-xl border-t-4 bg-white p-2.5 text-left shadow-tarjeta ${
+                        actual ? "border-magenta" : hecho ? "border-ok" : "border-linea"}`}
                     >
-                      {i < paso ? <Check size={14} /> : i + 1}
+                      <span className={`flex items-center gap-1.5 text-[13px] font-semibold ${actual ? "text-magenta-700" : "text-tinta-suave"}`}>
+                        {hecho ? <Check size={14} aria-hidden /> : null} Paso {i + 1}
+                      </span>
+                      <span className="text-[14px] font-bold leading-tight sm:text-[15px]">{p.t}</span>
+                      <span className="hidden text-[13px] text-tinta-suave sm:block">{p.d}</span>
                     </button>
-                    <span className={`hidden sm:block ${i === paso ? "text-tinta" : "text-tinta/40"}`}>{p}</span>
-                    {i < PASOS.length - 1 && <span className="h-px flex-1 bg-black/10" />}
                   </li>
-                ))}
-              </ol>
+                );
+              })}
+            </ol>
 
+            <section className="flex flex-col gap-5 rounded-2xl border border-linea bg-white p-4 shadow-tarjeta md:p-6">
               {paso === 0 && (
                 <>
                   {/* El flyer, aquí y no en una pantalla anterior. Es opcional:
                       se puede publicar sin él —se guarda un marcador— y se
                       puede añadir después de haber escrito medio formulario,
                       que es como pasa de verdad cuando el diseño llega tarde. */}
+                  {duplicando && (
+                    <p className="flex items-start gap-2 rounded-xl bg-magenta-50 p-3 text-[15px] font-semibold text-magenta-700">
+                      <Copy size={18} className="mt-0.5 shrink-0" aria-hidden />
+                      Copia de «{duplicando.titulo}». Pon la fecha nueva y revisa lo demás.
+                    </p>
+                  )}
+                  {flyerOriginal && !archivoSubido && (
+                    <div className="flex items-center gap-3 rounded-xl bg-marfil-100 p-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={flyerOriginal} alt="" className="h-[70px] w-14 shrink-0 rounded-lg object-cover" />
+                      <p className="text-[15px]">Se usará el mismo flyer. Si tienes uno nuevo, súbelo aquí debajo.</p>
+                    </div>
+                  )}
                   <SubirFlyer
                     archivo={archivoSubido}
-                    onArchivo={(f) => { setArchivoSubido(f); setFlyerDecidido(false); }}
+                    onArchivo={(f) => { setArchivoSubido(f); setFlyerDecidido(false); setRellenoIA(false); }}
                     onAnalizar={() => archivoSubido && leerFlyer(archivoSubido)}
                     onSoloSubir={() => setFlyerDecidido(true)}
                     decidido={flyerDecidido}
                   />
 
                   {archivoSubido && flyerDecidido && (
-                    <div className="flex items-center gap-2 rounded-2xl bg-oro/10 p-3 text-sm font-bold text-tinta/80">
-                      <Sparkles size={18} className="shrink-0 text-oro-600" />
+                    <p className={`flex items-start gap-2 rounded-xl p-3 text-[15px] font-semibold ${rellenoIA ? "bg-ok-fondo text-ok" : "bg-marfil-100 text-tinta"}`}>
+                      <Sparkles size={18} className="mt-0.5 shrink-0" aria-hidden />
                       {rellenoIA
-                        ? "La IA rellenó lo que pudo. Revisa lo marcado en amarillo."
-                        : "Flyer subido. Rellena los datos a mano."}
-                    </div>
+                        ? revisar.size
+                          ? "La IA ha rellenado lo que ha podido. Revisa lo marcado en amarillo."
+                          : "La IA ha rellenado los datos. Échales un vistazo antes de seguir."
+                        : "Flyer listo. Rellena los datos a mano."}
+                    </p>
                   )}
 
-                  <Campo label="Título" icon={Music} valor={form.titulo} onChange={(v) => set("titulo", v)} />
-                  <CampoLargo
-                    label="Descripción" icon={FileText} valor={form.descripcion}
-                    onChange={(v) => set("descripcion", v)}
-                    placeholder="Qué se va a encontrar quien venga. Opcional."
-                  />
+                  <Campo etiqueta="Título" htmlFor="titulo">
+                    <input id="titulo" value={form.titulo} onChange={(e) => set("titulo", e.target.value)}
+                      placeholder="Ej: Tardeo Remember con DJ Nando" className={claseRevisar(revisar.has("titulo"))} />
+                  </Campo>
                   <div className="grid grid-cols-2 gap-3">
-                    <Campo label="Fecha" icon={Calendar} type="date" valor={form.fecha} onChange={(v) => set("fecha", v)} revisar={revisar.has("fecha")} />
-                    <Campo label="Estilo" icon={Music} valor={form.estilo} onChange={(v) => set("estilo", v)} />
+                    <Campo etiqueta="Fecha" htmlFor="fecha" ayuda={revisar.has("fecha") ? "Revísala: no se leía clara." : undefined}>
+                      <input id="fecha" type="date" min={hoy} value={form.fecha} onChange={(e) => set("fecha", e.target.value)}
+                        className={claseRevisar(revisar.has("fecha"))} />
+                    </Campo>
+                    <Campo etiqueta="Estilo de música" htmlFor="estilo">
+                      <input id="estilo" value={form.estilo} onChange={(e) => set("estilo", e.target.value)}
+                        placeholder="Remember, reggaeton…" className={claseRevisar(revisar.has("estilo"))} />
+                    </Campo>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <Campo label="Empieza" icon={Clock} type="time" valor={form.horaInicio} onChange={(v) => set("horaInicio", v)} />
-                    <Campo label="Acaba" icon={Clock} type="time" valor={form.horaFin} onChange={(v) => set("horaFin", v)} revisar={revisar.has("horaFin")} />
+                    <Campo etiqueta="Empieza" htmlFor="ini">
+                      <input id="ini" type="time" value={form.horaInicio} onChange={(e) => set("horaInicio", e.target.value)}
+                        className={claseRevisar(revisar.has("horaInicio"))} />
+                    </Campo>
+                    <Campo etiqueta="Acaba (opcional)" htmlFor="fin" ayuda={revisar.has("horaFin") ? "Revísala: no se leía clara." : undefined}>
+                      <input id="fin" type="time" value={form.horaFin} onChange={(e) => set("horaFin", e.target.value)}
+                        className={claseRevisar(revisar.has("horaFin"))} />
+                    </Campo>
                   </div>
-                  <Campo label="DJ" icon={Disc3} valor={form.dj} onChange={(v) => set("dj", v)} />
+                  <CampoDjs valor={form.dj} onCambio={(v) => set("dj", v)} clase={claseRevisar(revisar.has("dj"))} />
+                  <Campo etiqueta="Descripción (opcional)" htmlFor="desc">
+                    <textarea id="desc" value={form.descripcion} onChange={(e) => set("descripcion", e.target.value)} rows={3}
+                      placeholder="Qué se va a encontrar quien venga." className={`${claseCampo} resize-y`} />
+                  </Campo>
                   <PeriodicidadTardeo fecha={form.fecha} valor={periodicidad} onCambio={setPeriodicidad} />
                 </>
               )}
 
               {paso === 1 && (
                 <>
-                  <Campo label="Ubicación" icon={MapPin} valor={form.ubicacion} onChange={(v) => set("ubicacion", v)} />
                   {/* Un local ya tiene dirección fija; un promotor cambia de
                       sitio cada finde, así que a él se le pide siempre buscarla
                       en el mapa y con coordenadas de verdad. */}
-                  {esPromotor ? (
-                    <div className="rounded-2xl bg-magenta-50 p-3">
-                      <p className="mb-1.5 flex items-center gap-1.5 text-sm font-black text-magenta-700">
-                        <MapPin size={15} /> ¿Dónde se hace este tardeo?
-                      </p>
-                      <AddressSearch onSelect={setDirTardeo} />
-                      <p className="mt-1 text-xs font-semibold text-tinta/55">
-                        {dirTardeo
-                          ? `Elegido: ${dirTardeo.display}`
-                          : "Busca por el nombre del sitio o por la calle. Sin esto el tardeo no sale en el mapa."}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl bg-magenta-50/60 p-3">
-                      <p className="mb-1.5 flex items-center gap-1.5 text-sm font-black text-tinta/70">
-                        <MapPin size={15} className="text-magenta" /> Sitio del tardeo
-                      </p>
-                      <p className="mb-2 text-xs font-semibold text-tinta/55">
-                        Por defecto la dirección de tu local. Si este tardeo es en otro sitio, búscalo aquí.
-                      </p>
-                      {/* Arranca con el nombre del local escrito: así al abrirlo
-                          ya salen sus resultados y no hay que teclearlo. Es lo
-                          que hace que un bar encuentre su propia ficha con la
-                          calle y el número, en vez de escribirlos a mano. */}
-                      <AddressSearch
-                        inicial={local?.nombre ?? ""}
-                        onSelect={setDirTardeo}
-                        placeholder="Busca tu local por su nombre…"
-                      />
-                      {dirTardeo && (
-                        <p className="mt-1 text-xs font-bold text-magenta">Elegido: {dirTardeo.display}</p>
-                      )}
-                    </div>
-                  )}
+                  <div>
+                    <p className="mb-1.5 flex items-center gap-2 text-[15px] font-semibold">
+                      <MapPin size={18} className="text-magenta" aria-hidden /> {esPromotor ? "¿Dónde se hace este tardeo?" : "Sitio del tardeo"}
+                    </p>
+                    {esPromotor ? (
+                      <>
+                        <AddressSearch onSelect={setDirTardeo} />
+                        <p className="mt-1.5 text-sm text-tinta-suave">
+                          Como organizas en sitios distintos, cada tardeo lleva su dirección. De aquí salen
+                          el punto del mapa y la zona de los filtros.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="mb-2 rounded-xl bg-marfil-100 px-4 py-3 text-[15px]">
+                          {dirTardeo?.display ?? (form.ubicacion || "Tu local no tiene dirección todavía.")}
+                        </p>
+                        <p className="mb-2 text-sm text-tinta-suave">
+                          Por defecto, la dirección de tu local. Si este tardeo es en otro sitio, búscalo:
+                        </p>
+                        {/* Arranca con el nombre del local escrito: así al abrirlo
+                            ya salen sus resultados y no hay que teclearlo. Es lo
+                            que hace que un bar encuentre su propia ficha con la
+                            calle y el número, en vez de escribirlos a mano. */}
+                        <AddressSearch
+                          inicial={local?.nombre ?? ""}
+                          onSelect={setDirTardeo}
+                          placeholder="Busca el sitio por su nombre o por la calle…"
+                        />
+                      </>
+                    )}
+                  </div>
 
+                  <hr className="border-linea" />
                   <PrecioTardeo valor={precio} onCambio={setPrecio} />
-
+                  {precio.modo === "gratis" && <CampoAforo valor={aforo} onCambio={setAforo} />}
+                  <hr className="border-linea" />
                   <PromoTardeo valor={promo} onCambio={setPromo} />
                 </>
               )}
@@ -602,26 +700,32 @@ export default function CrearTardeo() {
                       criterios del ADN no llegaron nunca a este formulario, así
                       que un tardeo creado aquí nacía sin tipo, sin ambiente, sin
                       público y sin outfit — invisible para los filtros nuevos. */}
-                  <SelectorAdn
-                    tipoEvento={tipoEvento} ambiente={ambiente} publico={publico} dressCode={dressCode}
-                    onTipoEvento={setTipoEvento} onAmbiente={setAmbiente}
-                    onPublico={setPublico} onDressCode={setDressCode}
-                  />
-                  <ProgramarPublicacion valor={cuando} onCambio={setCuando} />
+                  <div>
+                    <p className="text-[17px] font-bold">Cómo es el tardeo</p>
+                    <p className="mb-3 text-sm text-tinta-suave">Opcional, pero con esto te encuentran en los filtros y te recomendamos a quien encaja.</p>
+                    <SelectorAdn
+                      tipoEvento={tipoEvento} ambiente={ambiente} publico={publico} dressCode={dressCode}
+                      onTipoEvento={setTipoEvento} onAmbiente={setAmbiente}
+                      onPublico={setPublico} onDressCode={setDressCode}
+                    />
+                  </div>
+                  <hr className="border-linea" />
+                  <ProgramarPublicacion valor={cuando} error={errorCuando}
+                    onCambio={(c) => { setCuando(c); setErrorCuando(""); }} />
 
                   {/* Lo que va a pasar al pulsar, en el paso en el que se
                       pulsa. No sustituye a la previsualización del paso 1:
                       allí se eligen las fechas, aquí se confirma el bulto. */}
                   {enSerie && (
-                    <div className="rounded-2xl bg-oro/10 p-4 ring-1 ring-oro/30">
-                      <p className="flex items-center gap-2 font-display text-lg font-black">
-                        <Repeat size={18} className="shrink-0 text-oro-600" />
+                    <div className="rounded-xl border border-aviso/25 bg-aviso-fondo p-4">
+                      <p className="flex items-center gap-2 text-lg font-bold">
+                        <Repeat size={18} className="shrink-0 text-aviso" aria-hidden />
                         Se crearán {fechasSerie.length} tardeos
                       </p>
-                      <p className="mt-1 text-sm font-semibold leading-relaxed text-tinta/70">
+                      <p className="mt-1 text-[15px] leading-relaxed text-tinta">
                         {fechasSerie.map(fechaCorta).join(" · ")}
                       </p>
-                      <p className="mt-2 text-xs font-semibold text-tinta/55">
+                      <p className="mt-2 text-sm text-tinta-suave">
                         Cada uno se crea por separado. Si no es lo que quieres, vuelve al
                         primer paso y cambia la repetición.
                       </p>
@@ -630,37 +734,31 @@ export default function CrearTardeo() {
                 </>
               )}
 
-              {error && <p className="text-sm font-bold text-magenta">{error}</p>}
+              {error && <p role="alert" className="rounded-xl border border-error/20 bg-error-fondo p-3 text-[15px] font-semibold text-error">{error}</p>}
 
-              <div className="flex gap-2">
-                <button
-                  onClick={() => (paso === 0 ? router.push(panelHref) : setPaso(paso - 1))}
-                  className="rounded-2xl bg-white px-5 py-4 text-base font-extrabold text-tinta/60 ring-1 ring-magenta-100"
+              <div className="flex gap-2 border-t border-linea pt-4">
+                <Boton
+                  variante="contorno"
+                  onClick={() => { setError(""); if (paso === 0) router.push(panelHref); else setPaso(paso - 1); }}
                 >
-                  {paso === 0 ? "Cancelar" : "Atrás"}
-                </button>
+                  {paso === 0 ? "Cancelar" : <><ArrowLeft size={18} aria-hidden /> Atrás</>}
+                </Boton>
                 {paso < PASOS.length - 1 ? (
-                  <button
-                    onClick={() => setPaso(paso + 1)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white shadow-tarjeta active:scale-[0.98]"
-                  >
-                    Siguiente <ArrowRight size={20} />
-                  </button>
+                  <Boton ancho onClick={siguiente}>
+                    Siguiente <ArrowRight size={20} aria-hidden />
+                  </Boton>
                 ) : (
-                  <button
-                    onClick={publicar}
-                    disabled={publicando}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white shadow-tarjeta active:scale-[0.98] disabled:opacity-40"
-                  >
-                    {publicando ? <Loader2 size={22} className="animate-spin" /> : <Check size={22} />}
-                    {cuando.estado === "programado" ? "Programar" : cuando.estado === "borrador" ? "Guardar" : "Publicar"}
+                  <Boton ancho onClick={publicar} cargando={publicando}>
+                    {!publicando && <Check size={20} aria-hidden />}
+                    {cuando.estado === "programado" ? "Programar" : cuando.estado === "borrador" ? "Guardar borrador" : "Publicar"}
                     {enSerie && ` ${fechasSerie.length} tardeos`}
-                  </button>
+                  </Boton>
                 )}
               </div>
             </section>
-          )}
+          </>
+        )}
       </div>
-    </main>
+    </SeccionPanel>
   );
 }

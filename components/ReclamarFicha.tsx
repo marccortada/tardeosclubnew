@@ -1,12 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { claseCampo } from "@/components/ui/Campo";
+import { claseBoton } from "@/components/Boton";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { entrarYVolver } from "@/lib/volver";
 import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
 import { BadgeCheck, Loader2, ShieldQuestion, Check } from "lucide-react";
 
 type Estado = "cargando" | "puede" | "pendiente" | "enviada" | "sinSesion" | "sinTabla";
+
+const Caja = ({ children }: { children: React.ReactNode }) => (
+  <section className="rounded-2xl border border-magenta-100 bg-magenta-50/60 p-5 md:p-6">{children}</section>
+);
 
 /**
  * «¿Eres el responsable de este perfil?» en las fichas que aún no tiene nadie.
@@ -29,6 +37,8 @@ export default function ReclamarFicha({
   nombre: string;
 }) {
   const { user, loading } = useAuth();
+  // Tras entrar, de vuelta a esta misma ficha para terminar de reclamarla.
+  const pathname = usePathname();
   const [estado, setEstado] = useState<Estado>("cargando");
   const [abierto, setAbierto] = useState(false);
   const [cargo, setCargo] = useState("");
@@ -79,17 +89,13 @@ export default function ReclamarFicha({
 
   if (estado === "cargando" || estado === "sinTabla") return null;
 
-  const Caja = ({ children }: { children: React.ReactNode }) => (
-    <section className="mt-6 rounded-2xl bg-white p-5 shadow-tarjeta ring-1 ring-magenta-100">{children}</section>
-  );
-
   if (estado === "pendiente" || estado === "enviada") {
     return (
       <Caja>
-        <p className="flex items-center gap-2 font-display text-lg font-black">
-          <Check size={20} className="shrink-0 text-oro-600" /> Solicitud enviada
+        <p className="flex items-center gap-2 text-lg font-bold">
+          <Check size={20} className="shrink-0 text-ok" aria-hidden /> Solicitud enviada
         </p>
-        <p className="mt-1 font-semibold text-tinta/70">
+        <p className="mt-1 text-tinta-suave">
           Estamos comprobando que llevas {nombre}. Te escribimos en cuanto esté.
         </p>
       </Caja>
@@ -98,20 +104,20 @@ export default function ReclamarFicha({
 
   return (
     <Caja>
-      <p className="flex items-center gap-2 font-display text-lg font-black">
+      <p className="flex items-center gap-2 text-lg font-bold">
         <ShieldQuestion size={20} className="shrink-0 text-magenta" /> ¿Eres el responsable de este perfil?
       </p>
-      <p className="mt-1 font-semibold text-tinta/70">
+      <p className="mt-1 text-tinta-suave">
         Ya te estamos publicando en TardeosClub. Reclámalo y podrás subir tus tardeos, editar la
         ficha y ver quién te sigue.
       </p>
 
       {estado === "sinSesion" ? (
-        <Link href="/perfil" className="mt-3 inline-block rounded-2xl bg-magenta px-5 py-3 font-extrabold text-white">
+        <Link href={entrarYVolver(pathname)} className={claseBoton("primario", "pequeno", false, "mt-3")}>
           Entra para reclamarlo
         </Link>
       ) : !abierto ? (
-        <button onClick={() => setAbierto(true)} className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-magenta px-5 py-3 font-extrabold text-white transition hover:brightness-105">
+        <button onClick={() => setAbierto(true)} className={claseBoton("primario", "pequeno", false, "mt-3")}>
           <BadgeCheck size={18} /> Reclamar este perfil
         </button>
       ) : (
@@ -119,28 +125,28 @@ export default function ReclamarFicha({
           <input
             value={cargo} onChange={(e) => setCargo(e.target.value)}
             placeholder={tipo === "local" ? "¿Qué eres del local? Propietario, encargado…" : "¿Eres tú? ¿Su representante?"}
-            className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 font-semibold outline-none focus:border-magenta"
+            className={claseCampo}
           />
           <input
             value={telefono} onChange={(e) => setTelefono(e.target.value)}
             placeholder="Teléfono de contacto (para verificarlo)"
-            className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 font-semibold outline-none focus:border-magenta"
+            className={claseCampo}
           />
           <textarea
             value={mensaje} onChange={(e) => setMensaje(e.target.value)} rows={2}
             placeholder="Lo que quieras contarnos (opcional)"
-            className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 font-semibold outline-none focus:border-magenta"
+            className={claseCampo}
           />
-          {error && <p className="text-sm font-bold text-magenta">{error}</p>}
+          {error && <p role="alert" className="text-[15px] font-semibold text-error">{error}</p>}
           <div className="flex gap-2">
-            <button onClick={enviar} disabled={enviando} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-magenta py-3 font-extrabold text-white disabled:opacity-50">
+            <button onClick={enviar} disabled={enviando} className={claseBoton("primario", "pequeno", false, "flex-1")}>
               {enviando ? <Loader2 size={18} className="animate-spin" /> : <BadgeCheck size={18} />} Enviar solicitud
             </button>
-            <button onClick={() => setAbierto(false)} className="rounded-2xl bg-white px-4 py-3 font-extrabold text-tinta/60 ring-1 ring-magenta-100">
+            <button onClick={() => setAbierto(false)} className={claseBoton("contorno", "pequeno")}>
               Cancelar
             </button>
           </div>
-          <p className="text-xs font-semibold text-tinta/50">
+          <p className="text-[14px] text-tinta-suave">
             Lo revisa una persona: no se asigna solo.
           </p>
         </div>

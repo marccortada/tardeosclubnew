@@ -2,6 +2,10 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ReactNode } from "react";
 
+/**
+ * Cabecera con flecha de volver para pantallas sueltas fuera de los paneles.
+ * Dentro de un panel con barra lateral se usa SeccionPanel (PanelShell).
+ */
 export default function PanelHeader({
   titulo,
   volverHref = "/",
@@ -12,15 +16,15 @@ export default function PanelHeader({
   children?: ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-[700] flex items-center gap-3 border-b border-black/5 bg-white/90 px-4 py-3 backdrop-blur-md md:px-8">
+    <header className="sticky top-0 z-[700] flex items-center gap-2 border-b border-linea bg-white/95 px-2 py-1.5 backdrop-blur md:px-6">
       <Link
         href={volverHref}
         aria-label="Volver"
-        className="grid h-10 w-10 place-items-center rounded-full text-tinta transition hover:bg-black/5 active:scale-95"
+        className="grid min-h-tacto min-w-tacto place-items-center rounded-full text-tinta transition hover:bg-marfil-100 active:scale-95"
       >
-        <ArrowLeft size={22} />
+        <ArrowLeft size={22} aria-hidden />
       </Link>
-      <h1 className="flex-1 truncate font-display text-xl font-black md:text-2xl">{titulo}</h1>
+      <h1 className="flex-1 truncate text-lg font-bold md:text-xl">{titulo}</h1>
       {children}
     </header>
   );

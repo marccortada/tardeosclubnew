@@ -2,7 +2,6 @@ import { getDjsPublicos, getLocalesPublicos, getTardeosPublicados } from "@/lib/
 import ColaboradoresLista from "@/components/ColaboradoresLista";
 import type { Metadata } from "next";
 import { metadataPublica } from "@/lib/seo";
-import { Handshake } from "lucide-react";
 
 // Cambia poco: no hace falta consultar Supabase en cada visita.
 // Se pinta en cada visita, no por ISR: ver el porqué en app/page.tsx.
@@ -28,14 +27,10 @@ export default async function Colaboradores() {
   ]);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 pt-5 md:px-8 md:pt-8">
-      <div className="mb-4">
-        <p className="font-script text-xl leading-none text-magenta-600 md:text-2xl">
-          Los que montan la fiesta
-        </p>
-        <h1 className="mt-1 flex items-center gap-2 font-display text-2xl font-black leading-tight md:text-3xl">
-          <Handshake size={26} className="text-magenta" /> Colaboradores
-        </h1>
+    <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 md:px-8 md:pt-10">
+      <div className="mb-6">
+        <h1 className="font-display text-[34px] font-bold leading-[1.1] md:text-[48px]">Locales, eventos y DJs</h1>
+        <p className="mt-2 max-w-2xl text-[16px] text-tinta-suave md:text-[17px]">Los que montan los tardeos de la costa. Entra en su ficha para ver sus próximos planes.</p>
       </div>
 
       {/* Sin Suspense a propósito: la lista ya no usa useSearchParams, así que

@@ -12,6 +12,10 @@ export default function AdnLocalFicha({ local }: { local: any }) {
   const tamano = tamanoDeAforo(local.aforo);
 
   const filas: { icono: typeof Store; etiqueta: string; valores: string[] }[] = [
+    // Música y ambiente primero: es lo que decide si alguien va o no.
+    { icono: Music, etiqueta: "Música habitual", valores: local.musica ?? [] },
+    { icono: Sparkles, etiqueta: "Ambiente", valores: local.ambiente ?? [] },
+    { icono: Users, etiqueta: "Público", valores: local.publico ?? [] },
     { icono: Store, etiqueta: "Tipo de sitio", valores: local.tipo_local ? [local.tipo_local] : [] },
     {
       icono: Users,
@@ -21,9 +25,6 @@ export default function AdnLocalFicha({ local }: { local: any }) {
       valores: local.aforo ? [`${local.aforo} personas${tamano ? ` · ${tamano}` : ""}`] : [],
     },
     { icono: LayoutGrid, etiqueta: "Espacios", valores: local.espacios ?? [] },
-    { icono: Music, etiqueta: "Música habitual", valores: local.musica ?? [] },
-    { icono: Sparkles, etiqueta: "Ambiente", valores: local.ambiente ?? [] },
-    { icono: Users, etiqueta: "Público", valores: local.publico ?? [] },
     { icono: Shirt, etiqueta: "Cómo se viene", valores: local.dress_code ? [local.dress_code] : [] },
     { icono: Clock, etiqueta: "Horario", valores: local.horario_habitual ? [local.horario_habitual] : [] },
   ].filter((f) => f.valores.length > 0);
@@ -31,19 +32,17 @@ export default function AdnLocalFicha({ local }: { local: any }) {
   if (filas.length === 0) return null;
 
   return (
-    <section className="mt-7">
-      <h2 className="mb-3 flex items-center gap-2 font-display text-xl font-black md:text-2xl">
-        <Sparkles size={22} className="text-magenta" /> Cómo es este sitio
-      </h2>
-      <div className="flex flex-col gap-3 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-magenta-100">
+    <section>
+      <h2 className="mb-4 font-display text-[24px] font-bold leading-tight md:text-[30px]">Música y ambiente</h2>
+      <div className="grid gap-5 rounded-2xl border border-linea bg-white p-5 shadow-tarjeta sm:grid-cols-2 md:p-6">
         {filas.map(({ icono: Icono, etiqueta, valores }) => (
           <div key={etiqueta} className="flex items-start gap-3">
-            <Icono size={17} className="mt-1 shrink-0 text-magenta" />
+            <Icono size={20} className="mt-0.5 shrink-0 text-magenta" aria-hidden />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-black uppercase tracking-wide text-tinta/45">{etiqueta}</p>
+              <p className="text-[14px] font-semibold text-tinta-suave">{etiqueta}</p>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {valores.map((v) => (
-                  <span key={v} className="rounded-full bg-magenta-50 px-3 py-1 text-sm font-extrabold text-magenta-700">
+                  <span key={v} className="rounded-full bg-magenta-50 px-3 py-1 text-[14px] font-semibold text-magenta-700">
                     {v}
                   </span>
                 ))}

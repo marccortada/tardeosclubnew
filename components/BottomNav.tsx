@@ -5,69 +5,82 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
-import { Home, CalendarDays, MapPin, Heart, User, Store, Megaphone, Handshake } from "lucide-react";
+import { ocultaBarraInferior, esRutaPanel } from "@/lib/rutasPanel";
+import { Home, CalendarDays, MapPin, Heart, User, Store, Megaphone, Disc3 } from "lucide-react";
 
+// Cinco pestañas: caben sin encoger nada y cada una se acierta con el pulgar.
+// "Colaboradores" salió de aquí (se llega desde la portada y el pie): con siete
+// pestañas las etiquetas bajaban a 9 px, ilegible a partir de los 30.
 const BASE = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/tardeos", label: "Tardeos", icon: CalendarDays },
-  { href: "/colaboradores", label: "Colaboradores", icon: Handshake },
   { href: "/mapa", label: "Mapa", icon: MapPin },
-  { href: "/favoritos", label: "Mis planes", icon: Heart },
-  { href: "/perfil", label: "Perfil", icon: User },
+  { href: "/favoritos", label: "Planes", icon: Heart },
+  { href: "/perfil", label: "Cuenta", icon: User },
 ];
 
 export default function BottomNav() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const [ficha, setFicha] = useState<"local" | "promotor" | null>(null);
+  const [ficha, setFicha] = useState<"local" | "promotor" | "dj" | null>(null);
 
-  // La pestaña de local/promotor solo aparece a quien tiene ficha: para un
-  // tardícola normal sería un enlace a una página que le dice que no tiene nada.
+  // La pestaña de su panel solo aparece a quien tiene ficha: para un
+  // tardícola normal sería un enlace a una página que le dice que no tiene
+  // nada. Local/promotor tiene prioridad; si solo es DJ, sale "DJ". (Con las
+  // dos, el panel de DJ está en Cuenta: siete pestañas no caben a 12 px.)
   useEffect(() => {
     if (!user) { setFicha(null); return; }
-    supabase.from("locales").select("tipo").eq("owner_id", user.id).limit(1).maybeSingle()
-      .then(({ data }) => setFicha(data ? (data.tipo === "promotor" ? "promotor" : "local") : null));
+    Promise.all([
+      supabase.from("locales").select("tipo").eq("owner_id", user.id).limit(1).maybeSingle(),
+      supabase.from("djs").select("id").eq("profile_id", user.id).limit(1).maybeSingle(),
+    ]).then(([l, d]) =>
+      setFicha(l.data ? (l.data.tipo === "promotor" ? "promotor" : "local") : d.data ? "dj" : null));
   }, [user]);
 
-  // A quien tiene ficha se le añade su panel antes de Favoritos, sin quitar
-  // nada. Son siete pestañas: caben, pero justas, por eso los tamaños de abajo
-  // se ajustan cuando aparece la séptima.
+  // A quien tiene ficha se le añade su panel entre Mapa y Planes: seis pestañas,
+  // con etiquetas cortas para que sigan a 12 px.
+  // El admin tiene su propio menú: ahí no se pinta.
+  if (ocultaBarraInferior(pathname)) return null;
+
   const tabs = ficha
     ? [
-        ...BASE.slice(0, 4),
-        {
-          href: "/local",
-          label: ficha === "promotor" ? "Promo" : "Local",
-          icon: ficha === "promotor" ? Megaphone : Store,
-        },
-        ...BASE.slice(4),
+        ...BASE.slice(0, 3),
+        ficha === "dj"
+          ? { href: "/dj", label: "Mi DJ", icon: Disc3 }
+          : {
+              href: "/local",
+              label: ficha === "promotor" ? "Eventos" : "Mi local",
+              icon: ficha === "promotor" ? Megaphone : Store,
+            },
+        ...BASE.slice(3),
       ]
     : BASE;
-  const apretado = tabs.length > 6;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[1000] border-t border-magenta-100 bg-white md:hidden">
-      <div className="mx-auto flex max-w-md items-stretch justify-around">
+    <>
+    {/* Hueco para que la barra fija no tape el final de la página. */}
+    <div aria-hidden className={`h-24 ${esRutaPanel(pathname) ? "md:hidden" : "md:h-12"}`} />
+    <nav
+      aria-label="Principal"
+      className="fixed bottom-0 left-0 right-0 z-[1000] border-t border-linea bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+    >
+      <div className="mx-auto flex max-w-md items-stretch justify-around px-1">
         {tabs.map(({ href, label, icon: Icon }) => {
-          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          // Exacto o subruta: "/dj" no debe encenderse en "/djs/…" (ficha pública).
+          const active = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
               key={href}
               href={href}
-              className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 ${apretado ? "px-0.5 py-2" : "py-2.5"}`}
+              aria-current={active ? "page" : undefined}
+              className="flex min-h-[64px] min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1.5"
             >
-              <Icon
-                size={apretado ? 21 : 24}
-                strokeWidth={active ? 2.6 : 2}
-                className={active ? "text-magenta" : "text-tinta/50"}
-              />
-              {/* "Colaboradores" no cabe al tamaño normal. En vez de inventar
-                  una abreviatura que se lea raro, la etiqueta larga se encoge. */}
-              <span
-                className={`w-full truncate text-center font-bold ${
-                  label.length > 9 ? "text-[9px]" : apretado ? "text-[10px]" : "text-[11px]"
-                } ${active ? "text-magenta" : "text-tinta/50"}`}
-              >
+              {/* Píldora detrás del icono activo: se ve en qué pestaña estás sin
+                  depender solo del color. */}
+              <span className={`grid h-8 w-14 place-items-center rounded-full transition ${active ? "bg-magenta-50" : ""}`}>
+                <Icon size={24} strokeWidth={active ? 2.4 : 2} className={active ? "text-magenta" : "text-tinta-suave"} aria-hidden />
+              </span>
+              <span className={`text-[12px] font-semibold leading-none ${active ? "text-magenta-700" : "text-tinta-suave"}`}>
                 {label}
               </span>
             </Link>
@@ -75,5 +88,6 @@ export default function BottomNav() {
         })}
       </div>
     </nav>
+    </>
   );
 }

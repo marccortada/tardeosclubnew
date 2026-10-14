@@ -8,6 +8,11 @@ export const runtime = "nodejs";
 // Leer un flyer cuesta una llamada a Claude por intento.
 const LECTURAS_POR_HORA = 40;
 
+// Tope del base64 (~7 MB de texto ≈ 5 MB de imagen) y tipos que acepta Claude.
+const MAX_BASE64 = 7 * 1024 * 1024;
+const TIPOS_OK = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
+type TipoImagen = (typeof TIPOS_OK)[number];
+
 // Esquema de salida estructurada (JSON garantizado)
 const schema = {
   type: "object",
@@ -47,12 +52,20 @@ export async function POST(req: Request) {
   }
 
   // Solo locales dados de alta (o admin): esta ruta gasta créditos de IA.
-  const auth = await autorizarLocalOAdmin(body.accessToken);
+  const auth = await autorizarLocalOAdmin(body.accessToken, req);
   if (auth instanceof NextResponse) return auth;
   if (!(await pasaLimite(`leer:${auth.uid}`, LECTURAS_POR_HORA))) return respuestaLimite("lecturas de flyer");
 
   if (!body.imageBase64) {
     return NextResponse.json({ error: "Falta la imagen del flyer." }, { status: 400 });
+  }
+
+  if (body.imageBase64.length > MAX_BASE64) {
+    return NextResponse.json({ error: "La imagen es demasiado grande (máximo unos 5 MB). Reduce su tamaño e inténtalo de nuevo." }, { status: 413 });
+  }
+  const mediaType = (body.mediaType || "image/jpeg") as TipoImagen;
+  if (!TIPOS_OK.includes(mediaType)) {
+    return NextResponse.json({ error: "Formato de imagen no válido. Usa JPG, PNG, WEBP o GIF." }, { status: 400 });
   }
 
   const client = new Anthropic({ apiKey });
@@ -71,7 +84,7 @@ export async function POST(req: Request) {
               type: "image",
               source: {
                 type: "base64",
-                media_type: (body.mediaType as "image/jpeg" | "image/png") || "image/jpeg",
+                media_type: mediaType,
                 data: body.imageBase64,
               },
             },

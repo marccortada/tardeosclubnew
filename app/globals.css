@@ -8,14 +8,16 @@
 
 html,
 body {
-  background: #f5f3f4;
-  color: #2a1721;
+  background: theme("colors.marfil.DEFAULT");
+  color: theme("colors.tinta.DEFAULT");
   -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  font-size: 17px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.55;
+  font-feature-settings: "cv11", "ss01";
+  text-rendering: optimizeLegibility;
 }
 
 /* ---------- Calidad UX (guías ui-ux-pro-max) ---------- */
@@ -29,7 +31,7 @@ label {
 }
 /* Foco visible para navegación con teclado (accesibilidad) */
 :focus-visible {
-  outline: 3px solid #e10a5a;
+  outline: 3px solid theme("colors.magenta.DEFAULT");
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -47,59 +49,25 @@ label {
 
 /* ---------- Marca ---------- */
 .bg-marca {
-  background-image: linear-gradient(135deg, #e10a5a 0%, #f5b301 100%);
+  background-color: theme("colors.magenta.DEFAULT");
+  background-image: linear-gradient(135deg, theme("colors.magenta.DEFAULT") 0%, theme("colors.magenta.400") 100%);
 }
-.text-marca {
-  background-image: linear-gradient(120deg, #ff2d78 0%, #f5b301 100%);
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+.font-display {
+  letter-spacing: -0.025em;
+}
+/* Degradados de la marca (los de tardeosclub.com). */
+.bg-fiesta {
+  background-image: linear-gradient(to right, #ec4899, #f97316);
+}
+.texto-oro {
+  background-image: linear-gradient(to right, #facc15, #fde047, #fb923c);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
-
-/* ---------- Hero con ambiente de fiesta ---------- */
-.hero-fiesta {
-  position: relative;
-  background:
-    radial-gradient(120% 90% at 15% 10%, rgba(255, 60, 130, 0.55), transparent 55%),
-    radial-gradient(110% 80% at 90% 20%, rgba(245, 179, 1, 0.45), transparent 50%),
-    radial-gradient(130% 120% at 60% 110%, rgba(120, 0, 60, 0.9), transparent 60%),
-    linear-gradient(160deg, #2a0616 0%, #58072f 45%, #8a0d49 100%);
-  overflow: hidden;
-}
-/* Puntos de luz (bokeh) */
-.bokeh {
-  position: absolute;
-  border-radius: 9999px;
-  filter: blur(14px);
-  opacity: 0.55;
-  pointer-events: none;
-}
-/* Grano sutil */
-.hero-fiesta::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px);
-  background-size: 22px 22px;
-  opacity: 0.5;
-  mix-blend-mode: screen;
-  pointer-events: none;
-}
-
-/* ---------- Cristal ---------- */
-.glass {
-  background: rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-}
-.glass-dark {
-  background: rgba(30, 6, 20, 0.35);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-}
-
 /* ---------- Carrusel ---------- */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
@@ -121,19 +89,19 @@ label {
 }
 
 /* ---------- Páginas legales ---------- */
-/* Texto grande y aireado: el público de TardeosClub es mayor. */
+/* Texto grande y aireado: el público de TardeosClub es mayor. Pesos de la
+   escala común (700 títulos, 600 énfasis): con 900 el texto legal gritaba. */
 .legal h2 {
-  font-family: var(--font-playfair), Georgia, serif;
-  font-size: 1.4rem;
-  font-weight: 800;
-  margin: 1.75rem 0 0.5rem;
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin: 2rem 0 0.5rem;
 }
 .legal h2:first-child {
   margin-top: 0;
 }
 .legal h3 {
-  font-size: 1.05rem;
-  font-weight: 900;
+  font-size: 1.1rem;
+  font-weight: 700;
   margin: 1.25rem 0 0.35rem;
 }
 .legal p {
@@ -148,12 +116,26 @@ label {
   margin: 0.35rem 0;
 }
 .legal a {
-  color: #c00040;
-  font-weight: 800;
+  color: theme("colors.magenta.700");
+  font-weight: 600;
   text-decoration: underline;
 }
 .legal strong {
-  font-weight: 900;
+  font-weight: 700;
+}
+.legal em {
+  font-style: normal;
+  font-weight: 600;
+}
+/* Dato de empresa aún sin rellenar (ver lib/legal.ts). */
+.legal .pendiente {
+  display: inline-block;
+  border-radius: 9999px;
+  background: theme("colors.marfil.100");
+  color: theme("colors.tinta.suave");
+  padding: 0 0.6rem;
+  font-size: 0.9em;
+  font-weight: 600;
 }
 .legal table {
   width: 100%;
@@ -163,14 +145,14 @@ label {
 }
 .legal th,
 .legal td {
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid theme("colors.linea.DEFAULT");
   padding: 0.5rem 0.6rem;
   text-align: left;
   vertical-align: top;
 }
 .legal th {
-  background: #fde7f0;
-  font-weight: 900;
+  background: theme("colors.marfil.100");
+  font-weight: 700;
 }
 /* Las tablas no rompen el ancho en móvil */
 .legal .tabla-scroll {
@@ -184,3 +166,39 @@ label {
   border-radius: 1.25rem;
   font-family: inherit;
 }
+
+/* ---------- Animaciones de la portada ----------
+   Suaves y con sentido: el hero entra al cargar, la foto se acerca muy
+   despacio y cada bloque aparece al llegar con el scroll. Todo queda quieto
+   con "reducir movimiento" (regla global de arriba) y sin JavaScript el
+   contenido se ve igual (la clase .revelar solo oculta si hay JS). */
+@keyframes entrar-arriba {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes acercar {
+  from { transform: scale(1.08); }
+  to { transform: scale(1); }
+}
+@keyframes latido {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
+  60% { box-shadow: 0 0 0 14px rgba(34, 197, 94, 0); }
+}
+.entrar { animation: entrar-arriba 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.entrar-1 { animation-delay: 0.08s; }
+.entrar-2 { animation-delay: 0.18s; }
+.entrar-3 { animation-delay: 0.3s; }
+.entrar-4 { animation-delay: 0.42s; }
+.acercar { animation: acercar 14s ease-out both; }
+.latido { animation: latido 2.4s ease-out infinite; }
+.js .revelar { opacity: 0; transform: translateY(24px); transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
+.js .revelar.visible { opacity: 1; transform: none; }
+.js .revelar-hijos > * { opacity: 0; transform: translateY(18px); transition: opacity 0.6s ease-out, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+.js .revelar-hijos.visible > * { opacity: 1; transform: none; }
+.js .revelar-hijos.visible > *:nth-child(2) { transition-delay: 0.06s; }
+.js .revelar-hijos.visible > *:nth-child(3) { transition-delay: 0.12s; }
+.js .revelar-hijos.visible > *:nth-child(4) { transition-delay: 0.18s; }
+.js .revelar-hijos.visible > *:nth-child(5) { transition-delay: 0.24s; }
+.js .revelar-hijos.visible > *:nth-child(6) { transition-delay: 0.3s; }
+.js .revelar-hijos.visible > *:nth-child(7) { transition-delay: 0.36s; }
+.js .revelar-hijos.visible > *:nth-child(8) { transition-delay: 0.42s; }

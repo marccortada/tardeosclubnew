@@ -10,12 +10,18 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Mismo usuario → mismo objeto. La librería emite SIGNED_IN con un objeto
+    // nuevo cada vez que la pestaña vuelve a estar visible (o al volver de la
+    // cámara en Android): sin esto, todos los efectos que dependen de `user`
+    // se relanzaban, los paneles volvían a "Cargando…" y se perdía lo que
+    // estuvieras escribiendo.
+    const poner = (u: User | null) => setUser((prev) => (prev?.id === u?.id ? prev : u));
     supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null);
+      poner(data.session?.user ?? null);
       setLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      poner(session?.user ?? null);
     });
     return () => sub.subscription.unsubscribe();
   }, []);

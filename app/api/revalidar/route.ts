@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { invalidarCacheTardeos, invalidarCacheListas } from "@/lib/tardeos";
 import { invalidarAjustes } from "@/lib/ajustes";
-import { autorizarAdmin } from "@/lib/apiAuth";
+import { autorizarAdmin, secretoCronValido } from "@/lib/apiAuth";
 
 export const runtime = "nodejs";
 
@@ -20,26 +20,19 @@ export const runtime = "nodejs";
  * páginas se rehacen en ese momento. Si además la regeneración de fondo va
  * bien, no molesta: rehacer una página que ya estaba al día no cuesta nada.
  *
- * Se protege con el mismo secreto que /api/recordatorios.
+ * Solo POST. Se protege con el mismo secreto que /api/recordatorios, SOLO por
+ * cabecera `x-cron-secret` (o sesión de admin).
  */
 const RUTAS = ["/", "/tardeos", "/mapa", "/colaboradores"];
-
-function conSecreto(req: Request): boolean {
-  const esperado = process.env.CRON_SECRET;
-  if (!esperado) return false;
-  const url = new URL(req.url);
-  const dado = req.headers.get("x-cron-secret") || url.searchParams.get("secret");
-  return dado === esperado;
-}
 
 async function handler(req: Request) {
   // Dos formas de entrar: el secreto (lo usa la sincronización diaria) o una
   // sesión de admin. Lo segundo es para que al marcar un destacado la portada
   // lo enseñe ya: si hay que esperar el minuto de la caché, quien lo acaba de
   // marcar va a mirar, no lo ve, y da por hecho que no funciona.
-  if (!conSecreto(req)) {
-    const cuerpo = await req.json().catch(() => ({}) as { accessToken?: string });
-    const auth = await autorizarAdmin(cuerpo?.accessToken);
+  if (!secretoCronValido(req)) {
+    const cuerpo: { accessToken?: string } = await req.json().catch(() => ({}));
+    const auth = await autorizarAdmin(cuerpo?.accessToken, req);
     if (auth instanceof NextResponse) return auth;
   }
 
@@ -55,5 +48,4 @@ async function handler(req: Request) {
   return NextResponse.json({ ok: true, rehechas: RUTAS });
 }
 
-export const GET = handler;
 export const POST = handler;

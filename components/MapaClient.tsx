@@ -18,7 +18,15 @@ const RADIO_POBLACION_KM = 8;
 // aleje hasta enseñar media Europa; el techo, que un tardeo solo te deje
 // mirando una acera.
 const ZOOM_MINIMO = 8;
-const ZOOM_MAXIMO = 14;
+const ZOOM_MAXIMO = 12;
+
+/**
+ * La costa catalana, de Amposta a Portbou. Con uno o ningún tardeo no hay
+ * nada que encuadrar: ajustar a un solo punto acercaba hasta enseñar un único
+ * pueblo (en la portada no se sabía ni dónde estaba). Se enseña la costa
+ * entera y, si hay un tardeo, su chincheta dentro.
+ */
+const COSTA: [[number, number], [number, number]] = [[40.9, 0.9], [42.1, 3.3]];
 
 function distanciaKm(aLat: number, aLng: number, bLat: number, bLng: number) {
   const R = 6371;
@@ -66,6 +74,8 @@ export default function MapaClient({
   const observerRef = useRef<ResizeObserver | null>(null);
   const encuadreRef = useRef<any>(null);   // límites que abarcan los tardeos pintados
   const encuadradoRef = useRef(false);
+  const costaRef = useRef(false);          // true = encuadre de la costa (0-1 tardeos)
+  const unicoRef = useRef<[number, number] | null>(null); // el tardeo, si solo hay uno
   const LRef = useRef<any>(null);
   const [sel, setSel] = useState<Tardeo | null>(null);
   const [internos, setInternos] = useState<Tardeo[]>([]);
@@ -108,8 +118,16 @@ export default function MapaClient({
     // como el mapa de la portada en móvil, se aleja tantísimo que salen
     // Portugal e Italia. Un punto más de zoom, y nunca por debajo del suelo:
     // vale más entrar viendo bien la zona buena que verlo todo diminuto.
-    const z = map.getZoom();
-    map.setZoom(Math.min(Math.max(z + 1, ZOOM_MINIMO), ZOOM_MAXIMO));
+    // Con la costa entera de encuadre no se acerca más: ya es lo que se quiere ver.
+    // En un móvil en vertical o un contenedor bajo, la costa entera obliga a
+    // alejarse hasta Toulouse y Mallorca: suelo de 8, centrado en la costa
+    // (o en el único tardeo, para que su chincheta se vea seguro).
+    if (costaRef.current) {
+      if (map.getZoom() < ZOOM_MINIMO) map.setView(unicoRef.current ?? [41.6, 2.2], ZOOM_MINIMO);
+    } else {
+      const z = map.getZoom();
+      map.setZoom(Math.min(Math.max(z + 1, ZOOM_MINIMO), ZOOM_MAXIMO));
+    }
     encuadradoRef.current = true;
   }, []);
 
@@ -192,7 +210,7 @@ export default function MapaClient({
      * de una cadena: aquí no hay React, así que tampoco next/image.
      */
     const pin = (destacado: boolean, logo?: string) => {
-      const color = destacado ? "#F5B301" : "#E10A5A";
+      const color = destacado ? "#FAC72E" : "#D61AA8";
       const dentro = logo
         ? `<img src="${logo}" style="width:100%;height:100%;object-fit:cover;display:block" alt=""
              onerror="this.src='/branding/pin-logo.png';this.style.objectFit='contain';this.style.padding='5px'"/>`
@@ -219,7 +237,7 @@ export default function MapaClient({
         .getAllChildMarkers()
         .some((m: any) => m.options?.tardeoDestacado);
       const size = n < 10 ? 46 : n < 25 ? 56 : 66;
-      const color = destacado ? "#F5B301" : "#E10A5A";
+      const color = destacado ? "#FAC72E" : "#D61AA8";
       const texto = destacado ? "#2A1721" : "#fff";
       return L.divIcon({
         className: "",
@@ -260,9 +278,16 @@ export default function MapaClient({
     });
 
     // Cambian los datos (carga inicial o filtro) -> toca reencuadrar.
-    encuadreRef.current = conCoords.length
-      ? L.latLngBounds(conCoords.map((t: Tardeo) => [t.lat, t.lng]))
-      : null;
+    costaRef.current = conCoords.length < 2;
+    unicoRef.current = conCoords.length === 1 ? [conCoords[0].lat, conCoords[0].lng] : null;
+    if (costaRef.current) {
+      const costa = L.latLngBounds(COSTA);
+      // Si el único tardeo cae fuera (Lleida, Andorra…), se amplía para que se vea.
+      if (conCoords[0]) costa.extend([conCoords[0].lat, conCoords[0].lng]);
+      encuadreRef.current = costa;
+    } else {
+      encuadreRef.current = L.latLngBounds(conCoords.map((t: Tardeo) => [t.lat, t.lng]));
+    }
     encuadradoRef.current = false;
     encuadrar();
   }, [datos, listo, encuadrar]);

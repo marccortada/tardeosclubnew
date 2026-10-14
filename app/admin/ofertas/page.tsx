@@ -1,10 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import PanelHeader from "@/components/PanelHeader";
+import { SeccionPanel } from "@/components/panel/PanelShell";
 import { supabase } from "@/lib/supabase";
-import { Mail, Send, Loader2, Tag, Check, Users, Search, AlertTriangle } from "lucide-react";
+import { Send, Tag, Users, Search } from "lucide-react";
 import { plegar, contieneTexto } from "@/lib/texto";
+import Boton from "@/components/Boton";
+import Campo, { claseCampo } from "@/components/ui/Campo";
+import Chip from "@/components/ui/Chip";
+import Hoja from "@/components/ui/Hoja";
+import Tarjeta from "@/components/ui/Tarjeta";
+import Aviso from "@/components/admin/Aviso";
 
 type Promo = { id: string; nombre: string; tipo: string; precio: number | null };
 type Local = { id: string; nombre: string; registrado: boolean };
@@ -20,6 +26,7 @@ export default function AdminOfertas() {
   const [elegidos, setElegidos] = useState<Set<string>>(new Set());
   const [busca, setBusca] = useState("");
   const [cuentas, setCuentas] = useState<Cuentas | null>(null);
+  const [confirmando, setConfirmando] = useState(false);
 
   useEffect(() => {
     supabase.from("locales").select("id,nombre,owner_id").eq("estado", "activo").order("nombre")
@@ -60,138 +67,165 @@ export default function AdminOfertas() {
 
   const enviar = async () => {
     if (!titulo.trim()) return;
+    setConfirmando(false);
     setEstado("enviando"); setResultado("");
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch("/api/enviar-oferta", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titulo, mensaje, accessToken: session?.access_token }),
-    });
-    const j = await res.json();
-    if (!res.ok) { setEstado("error"); setResultado(j.error || "No se pudo enviar."); return; }
-    setEstado("ok");
-    setResultado(j.aviso ? j.aviso : `Enviado a ${j.enviados}.`);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/enviar-oferta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // `localIds` iba SOLO en el contador y se olvidaba aquí: con tres locales
+        // marcados el botón decía "Enviar a 3" y el correo salía a todos los que
+        // habían aceptado. Sin selección se manda vacío (= todos), como dice el aviso.
+        body: JSON.stringify({ titulo, mensaje, localIds: [...elegidos], accessToken: session?.access_token }),
+      });
+      const j = await res.json().catch(() => ({}));
+      const enviados = Number(j.enviados) || 0;
+      const fallidos = Number(j.fallidos) || 0;
+      const salieron = enviados > 0 ? ` Sí salieron ${enviados}.` : "";
+      if (!res.ok) {
+        setEstado("error");
+        setResultado(`${j.error || "No se pudo enviar."}${fallidos > 0 ? ` ${fallidos} no se pudieron enviar.` : ""}${salieron}`);
+        return;
+      }
+      // Un envío con fallos o sin ningún correo enviado no es un éxito, aunque
+      // la API responda 200: el admin tiene que saber que hay que repetirlo.
+      if (fallidos > 0) {
+        setEstado("error");
+        setResultado(`${fallidos} no se pudieron enviar.${salieron}`);
+        return;
+      }
+      if (enviados === 0) {
+        setEstado("error");
+        setResultado(j.aviso || "No se envió ningún correo.");
+        return;
+      }
+      setEstado("ok");
+      setResultado(`Enviado a ${enviados}.`);
+    } catch {
+      // Sin red o el servidor caído: que no se quede el botón girando.
+      setEstado("error"); setResultado("No se pudo conectar. Revisa la conexión y vuelve a intentarlo.");
+    }
   };
 
-  return (
-    <main className="pb-10">
-      <PanelHeader titulo="Ofertas a locales" volverHref="/admin" />
-      <div className="mx-auto max-w-3xl px-4 pt-5 md:px-8">
-        <div className="mb-4 flex items-center gap-2 rounded-2xl bg-oro/10 p-3 text-sm font-bold text-tinta/80">
-          <Mail size={18} className="shrink-0 text-oro-600" />
-          Crea una oferta sobre tus promociones y avisa por email a todos los locales registrados.
-        </div>
+  const puedeEnviar = Boolean(titulo.trim()) && cuentas?.conPermiso !== 0;
 
-        {/* Promos como base */}
+  return (
+    <SeccionPanel
+      titulo="Ofertas a locales"
+      descripcion="Redacta una oferta y mándala por email a los locales que hayan aceptado recibirlas."
+      ancho="estrecho"
+    >
+      <div>
+
         {promos.length > 0 && (
           <div className="mb-4">
-            <p className="mb-2 text-sm font-black text-tinta/60">Basar en una promoción</p>
-            <div className="flex flex-wrap gap-2">
+            <p className="mb-2 text-[15px] font-semibold">Partir de un extra del catálogo</p>
+            <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
               {promos.map((p) => (
-                <button key={p.id} onClick={() => usarPromo(p)} className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-2 text-sm font-extrabold text-tinta ring-1 ring-magenta-100 hover:ring-magenta">
-                  <Tag size={14} className="text-magenta" /> {p.nombre}{p.precio != null ? ` · ${p.precio}€` : ""}
-                </button>
+                <Chip key={p.id} onClick={() => usarPromo(p)} icono={<Tag size={16} className="text-magenta" aria-hidden />}>
+                  {p.nombre}{p.precio != null ? ` · ${p.precio}€` : ""}
+                </Chip>
               ))}
             </div>
           </div>
         )}
 
-        {/* Formulario */}
-        <div className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
-          <label className="mb-1 block text-sm font-black text-tinta/70">Título de la oferta</label>
-          <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Destacado a mitad de precio esta semana"
-            className="w-full rounded-xl border-2 border-magenta-100 px-4 py-3 font-semibold outline-none focus:border-magenta" />
-          <label className="mb-1 mt-3 block text-sm font-black text-tinta/70">Mensaje</label>
-          <textarea value={mensaje} onChange={(e) => setMensaje(e.target.value)} rows={4} placeholder="Cuéntales la oferta…"
-            className="w-full rounded-xl border-2 border-magenta-100 px-4 py-3 font-semibold outline-none focus:border-magenta" />
+        <Tarjeta className="flex flex-col gap-4">
+          <Campo etiqueta="Título de la oferta" htmlFor="of-titulo">
+            <input id="of-titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)}
+              placeholder="Destacado a mitad de precio esta semana" className={claseCampo} />
+          </Campo>
+          <Campo etiqueta="Mensaje" htmlFor="of-mensaje">
+            <textarea id="of-mensaje" value={mensaje} onChange={(e) => setMensaje(e.target.value)} rows={4}
+              placeholder="Cuéntales la oferta…" className={claseCampo} />
+          </Campo>
 
-          {/* A quién. Sin marcar nada va a todos los que hayan aceptado. */}
-          <div className="mt-4 border-t border-black/5 pt-4">
-            <p className="mb-1 text-sm font-black text-tinta/70">¿A quién?</p>
-            <p className="mb-2 text-xs font-semibold text-tinta/50">
+          <div className="border-t border-linea pt-4">
+            <p className="text-lg font-bold">¿A quién?</p>
+            <p className="mb-2 text-[15px] text-tinta-suave">
               Sin marcar ninguno, va a todos los que hayan aceptado recibir ofertas.
             </p>
-            <label className="mb-2 flex items-center gap-2 rounded-xl bg-black/[0.03] px-3 py-2">
-              <Search size={15} className="shrink-0 text-tinta/40" />
-              <input
-                value={busca} onChange={(e) => setBusca(e.target.value)}
+            <label className="mb-2 flex min-h-tacto items-center gap-2 rounded-xl border border-linea-fuerte bg-white px-3 focus-within:border-magenta focus-within:ring-4 focus-within:ring-magenta/15">
+              <Search size={18} className="shrink-0 text-tinta-suave" aria-hidden />
+              <input value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar local"
                 placeholder={`Buscar entre ${locales.length} locales…`}
-                className="w-full bg-transparent text-sm font-semibold outline-none"
-              />
+                className="w-full bg-transparent text-base font-medium outline-none" />
             </label>
-            <div className="flex max-h-56 flex-col gap-1 overflow-y-auto">
+            <div className="flex max-h-72 flex-col overflow-y-auto">
               {locales
                 .filter((l) => contieneTexto(l.nombre, plegar(busca.trim())))
                 .slice(0, 60)
                 .map((l) => (
-                  <label key={l.id} className="flex items-center gap-2 rounded-lg px-1 py-1.5 text-sm font-semibold hover:bg-black/[0.03]">
-                    <input
-                      type="checkbox" checked={elegidos.has(l.id)}
+                  <label key={l.id} className="flex min-h-tacto items-center gap-3 rounded-xl px-2 text-base font-medium hover:bg-marfil-100">
+                    <input type="checkbox" checked={elegidos.has(l.id)}
                       onChange={() => setElegidos((p) => {
                         const n = new Set(p);
-                        n.has(l.id) ? n.delete(l.id) : n.add(l.id);
+                        if (n.has(l.id)) n.delete(l.id); else n.add(l.id);
                         return n;
                       })}
-                      className="h-4 w-4 shrink-0 accent-magenta"
-                    />
+                      className="h-6 w-6 shrink-0 accent-magenta" />
                     <span className="min-w-0 flex-1 truncate">{l.nombre}</span>
                     {/* Se marca quién NO puede recibirlo, para no elegirlo a ciegas. */}
-                    {!l.registrado && (
-                      <span className="shrink-0 text-xs font-black text-tinta/30">sin cuenta</span>
-                    )}
+                    {!l.registrado && <span className="shrink-0 text-sm font-semibold text-tinta-suave">sin cuenta</span>}
                   </label>
                 ))}
             </div>
             {elegidos.size > 0 && (
-              <button onClick={() => setElegidos(new Set())} className="mt-2 text-xs font-black text-magenta">
+              <button onClick={() => setElegidos(new Set())} className="mt-2 min-h-tacto text-base font-semibold text-magenta-700 underline">
                 Quitar la selección ({elegidos.size})
               </button>
             )}
           </div>
 
-          {/*
-            Lo que va a pasar de verdad, con los que se quedan fuera y por qué.
-            Un "enviado a 4" sin decir que 55 no lo reciben es un número que
-            engaña al que lo lee.
-          */}
+          {/* Lo que va a pasar de verdad, con los que se quedan fuera y por qué:
+              un "enviado a 4" sin decir que 55 no lo reciben engaña. */}
           {cuentas && (
-            <div className={`mt-4 rounded-xl p-3 text-sm font-bold ${
-              cuentas.conPermiso === 0 ? "bg-amber-50 text-amber-900" : "bg-magenta-50 text-magenta-700"}`}>
-              <p className="flex items-center gap-1.5 font-black">
-                <Users size={15} className="shrink-0" />
-                {cuentas.conPermiso === 0
-                  ? "Ahora mismo no lo recibiría nadie"
-                  : `Lo recibirán ${cuentas.conPermiso}`}
+            <div className={`rounded-xl p-3 text-base ${cuentas.conPermiso === 0 ? "bg-aviso-fondo text-aviso" : "bg-magenta-50 text-magenta-700"}`}>
+              <p className="flex items-center gap-1.5 font-bold">
+                <Users size={18} className="shrink-0" aria-hidden />
+                {cuentas.conPermiso === 0 ? "Ahora mismo no lo recibiría nadie" : `Lo recibirán ${cuentas.conPermiso}`}
               </p>
-              <p className="mt-1 text-xs font-semibold opacity-80">
+              <p className="mt-1 text-[15px]">
                 De {cuentas.locales} locales: {cuentas.registrados} tienen cuenta
                 {cuentas.sinPermiso > 0 && `, y ${cuentas.sinPermiso} de esos no han aceptado recibir ofertas`}
-                {cuentas.locales - cuentas.registrados > 0 &&
-                  `. Los ${cuentas.locales - cuentas.registrados} sin cuenta no reciben nada`}.
+                {cuentas.locales - cuentas.registrados > 0 && `. Los ${cuentas.locales - cuentas.registrados} sin cuenta no reciben nada`}.
               </p>
             </div>
           )}
 
-          {estado === "error" && <p className="mt-2 text-sm font-bold text-magenta">{resultado}</p>}
-          {estado === "ok" && (
-            <p className="mt-2 flex items-center gap-1.5 rounded-xl bg-oro/15 p-3 text-sm font-bold text-oro-600">
-              <Check size={16} /> {resultado}
-            </p>
-          )}
+          {estado === "error" && <Aviso tono="error">{resultado}</Aviso>}
+          {estado === "ok" && <Aviso tono="ok">{resultado}</Aviso>}
 
-          <button onClick={enviar} disabled={estado === "enviando" || !titulo.trim() || cuentas?.conPermiso === 0}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white transition active:scale-[0.98] disabled:opacity-40">
-            {estado === "enviando" ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />} {cuentas ? `Enviar a ${cuentas.conPermiso}` : "Enviar por email"}
-          </button>
-        </div>
+          <Boton ancho cargando={estado === "enviando"} disabled={!puedeEnviar} onClick={() => setConfirmando(true)}>
+            <Send size={20} aria-hidden /> {cuentas ? `Enviar a ${cuentas.conPermiso}` : "Enviar por email"}
+          </Boton>
+        </Tarjeta>
 
-        <p className="mt-4 text-center text-xs font-semibold text-tinta/50">
+        <p className="mt-4 text-sm text-tinta-suave">
           Solo lo reciben quienes tienen cuenta <strong>y han aceptado</strong> recibir ofertas, en su
           perfil o al registrarse. Los locales que solo tienen email en su ficha no reciben nada:
           ese correo vino de la app antigua y no trae ningún permiso detrás.
           En pruebas, Resend solo entrega a tu propio email hasta verificar el dominio.
         </p>
       </div>
-    </main>
+
+      <Hoja abierta={confirmando} onCerrar={() => setConfirmando(false)} titulo="¿Enviar esta oferta?"
+        pie={
+          <div className="grid gap-2">
+            <Boton ancho onClick={enviar}><Send size={20} aria-hidden /> Sí, enviar a {cuentas?.conPermiso ?? "todos"}</Boton>
+            <Boton ancho variante="contorno" onClick={() => setConfirmando(false)}>Todavía no</Boton>
+          </div>
+        }>
+        <p className="text-base">
+          Se enviará un email a <strong>{cuentas?.conPermiso ?? "todos los que aceptaron"}</strong>
+          {elegidos.size > 0 ? ` (de los ${elegidos.size} locales que has marcado)` : " (todos los que aceptaron ofertas)"}. No se puede deshacer.
+        </p>
+        <div className="mt-3 rounded-2xl border border-linea bg-marfil p-4">
+          <p className="text-lg font-bold">{titulo}</p>
+          {mensaje && <p className="mt-2 whitespace-pre-line text-base text-tinta-suave">{mensaje}</p>}
+        </div>
+      </Hoja>
+    </SeccionPanel>
   );
 }

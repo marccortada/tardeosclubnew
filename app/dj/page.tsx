@@ -1,332 +1,256 @@
 "use client";
+
 import Image from "next/image";
-
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import PanelHeader from "@/components/PanelHeader";
-import ServiciosExternos from "@/components/ServiciosExternos";
-import { useAuth } from "@/lib/useAuth";
-import { getMiDj, updateMiDj, subirAvatarDj } from "@/lib/tardeos";
-import ContenidoDj from "@/components/ContenidoDj";
-import CampoPlaylist from "@/components/CampoPlaylist";
-import SelectorEstilos from "@/components/SelectorEstilos";
-import { Disc3, BadgeCheck, Star, Music, Loader2, Pencil, Camera, Check, X, Instagram, Youtube, Music2, Phone } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  BadgeCheck, Star, Eye, EyeOff, ExternalLink, CalendarDays, Images, FileText, ChevronRight,
+  CheckCircle2, Circle, Share2, Check, MousePointerClick, MessageCircle,
+} from "lucide-react";
+import { SeccionPanel } from "@/components/panel/PanelShell";
+import { Etiqueta } from "@/components/ui/Chip";
+import Aviso from "@/components/admin/Aviso";
+import { claseBoton } from "@/components/Boton";
+import ServiciosExternos, { whatsappTardeos } from "@/components/ServiciosExternos";
+import { supabase } from "@/lib/supabase";
+import { hoyISO } from "@/lib/tardeos";
+import { formatFecha } from "@/lib/formato";
 import { tieneValoracion, valoracion } from "@/lib/reputacion";
+import { useDj, consultaTardeosDj, type TardeoDj } from "./contexto";
 
-type Redes = { instagram?: string; soundcloud?: string; youtube?: string; whatsapp?: string };
-
-export default function PanelDj() {
-  const { user, loading } = useAuth();
-  const [dj, setDj] = useState<any | null>(null);
-  const [cargando, setCargando] = useState(true);
-
-  // edición
-  const [editando, setEditando] = useState(false);
-  const [nombre, setNombre] = useState("");
-  const [bio, setBio] = useState("");
-  const [estilos, setEstilos] = useState<string[]>([]);
-  const [redes, setRedes] = useState<Redes>({});
-  const [playlist, setPlaylist] = useState("");
-  const [presskit, setPresskit] = useState("");
-  const [avatar, setAvatar] = useState<string | null>(null);
-  const [subiendo, setSubiendo] = useState(false);
-  const [guardando, setGuardando] = useState(false);
+/**
+ * Resumen del panel DJ: cómo está su ficha de un vistazo, qué le falta para
+ * que quede completa y dónde pincha próximamente. Cada cosa que falta es un
+ * enlace directo a la sección donde se arregla.
+ */
+export default function ResumenDj() {
+  const { dj, ruta, modoAdmin } = useDj();
+  const [proximos, setProximos] = useState<TardeoDj[] | null>(null);
+  const [nProximos, setNProximos] = useState<number | null>(null);
+  // null = cargando; "—" si no se pudo leer (no es lo mismo que no tener nada).
+  const [nContenido, setNContenido] = useState<number | string | null>(null);
+  // null = cargando; "—" si no se pudo leer (p. ej. falta el lote 34).
+  const [visitas, setVisitas] = useState<number | string | null>(null);
   const [error, setError] = useState("");
-  const fileRef = useRef<HTMLInputElement>(null);
-  const presskitRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!user) { setCargando(false); return; }
-    getMiDj(user.id).then((d) => { setDj(d); setCargando(false); });
-  }, [user]);
+    let vivo = true;
+    consultaTardeosDj(dj.id)
+      .gte("fecha", hoyISO())
+      .order("fecha", { ascending: true })
+      .range(0, 4)
+      .then(({ data, count, error: e }) => {
+        if (!vivo) return;
+        if (e) { setError("No se pudieron cargar tus próximos tardeos."); setProximos([]); return; }
+        setProximos((data as unknown as TardeoDj[]) ?? []);
+        setNProximos(count ?? 0);
+      });
+    supabase.from("dj_contenidos").select("id", { count: "exact", head: true }).eq("dj_id", dj.id)
+      .then(({ count, error: e }) => { if (vivo) setNContenido(e ? "—" : count ?? 0); });
+    // Visitas a la ficha en 30 días: solo el recuento (head), sin traer filas.
+    // La RLS de eventos_metrica deja al DJ leer las suyas y al admin todas.
+    const hace30 = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+    supabase.from("eventos_metrica").select("id", { count: "exact", head: true })
+      .eq("dj_id", dj.id).eq("tipo", "vista_dj").gte("created_at", hace30)
+      .then(({ count, error: e }) => { if (vivo) setVisitas(e ? "—" : count ?? 0); });
+    return () => { vivo = false; };
+  }, [dj.id]);
 
-  const abrirEdicion = () => {
-    setNombre(dj.nombre_artistico || "");
-    setBio(dj.bio || "");
-    setEstilos(Array.isArray(dj.estilos) ? dj.estilos : []);
-    setRedes(dj.redes && typeof dj.redes === "object" ? dj.redes : {});
-    setPlaylist(dj.playlist_url || "");
-    setPresskit(dj.presskit_url || "");
-    setAvatar(dj.avatar_url || null);
-    setEditando(true);
-  };
+  const redes = dj.redes ?? {};
+  const estilos = Array.isArray(dj.estilos) ? dj.estilos : [];
+  const inicial = (String(dj.nombre_artistico || "DJ").replace(/^DJ /i, "").match(/\p{L}|\p{N}/u)?.[0] ?? "D").toUpperCase();
 
-  const toggleEstilo = (e: string) =>
-    setEstilos((p) => (p.includes(e) ? p.filter((x) => x !== e) : [...p, e]));
-
-  const onFoto = async (file: File) => {
-    if (!dj) return;
-    setSubiendo(true);
-    const url = await subirAvatarDj(dj.id, file);
-    if (url) setAvatar(url);
-    setSubiendo(false);
-  };
-
-  const onPresskit = async (file: File) => {
-    if (!dj) return;
-    setSubiendo(true);
-    const url = await subirPressKitDj(dj.id, file);
-    if (url) setPresskit(url);
-    setSubiendo(false);
-  };
-
-  const guardar = async () => {
-    if (!dj) return;
-    setGuardando(true);
-    const redesLimpias: Redes = {};
-    (Object.keys(redes) as (keyof Redes)[]).forEach((k) => {
-      const v = (redes[k] || "").trim();
-      if (v) redesLimpias[k] = v;
-    });
-    const fields: Record<string, unknown> = {
-      playlist_url: playlist.trim() || null,
-      presskit_url: presskit.trim() || null,
-      nombre_artistico: nombre.trim() || dj.nombre_artistico,
-      bio: bio.trim() || null,
-      estilos,
-      redes: redesLimpias,
-      avatar_url: avatar,
-    };
-    const { error: e } = await updateMiDj(dj.id, fields);
-    setGuardando(false);
-    if (!e) {
-      setDj({ ...dj, ...fields });
-      setEditando(false);
-      setError("");
-    } else {
-      /**
-       * En la pantalla y en cristiano, no en un cuadro del navegador.
-       *
-       * Aquí había un alert() que decía "No se pudo guardar. ¿Has aplicado el
-       * SQL del avatar?" con el error técnico detrás. Eso lo veía el DJ, no
-       * nosotros: un diálogo del sistema preguntándole por un SQL que no sabe
-       * ni que existe.
-       */
-      setError("No se pudieron guardar los cambios. Inténtalo de nuevo en un momento.");
-    }
-  };
-
-  if (loading || cargando) {
-    return (
-      <main className="flex items-center justify-center gap-2 pt-24 text-tinta/50">
-        <Loader2 className="animate-spin" /> Cargando…
-      </main>
-    );
-  }
-
-  if (!user) {
-    return (
-      <main className="mx-auto max-w-lg px-4 pt-16 text-center">
-        <p className="text-lg font-bold text-tinta/70">Entra para ver tu perfil de DJ.</p>
-        <Link href="/perfil" className="mt-4 inline-block rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">Entrar</Link>
-      </main>
-    );
-  }
-
-  if (!dj) {
-    return (
-      <main className="pb-8">
-        <PanelHeader titulo="Perfil de DJ" volverHref="/perfil" />
-        <div className="mx-auto flex max-w-lg flex-col items-center gap-4 px-4 pt-16 text-center">
-          <span className="grid h-20 w-20 place-items-center rounded-full bg-tinta text-white"><Disc3 size={40} /></span>
-          <h2 className="font-display text-2xl font-black">Aún no eres DJ</h2>
-          <p className="font-semibold text-tinta/70">Crea tu perfil de DJ para ganar reputación y aparecer en los tardeos.</p>
-          <Link href="/unirse?rol=dj" className="rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">Crear mi perfil DJ</Link>
-        </div>
-      </main>
-    );
-  }
-
-  const inicial = String(dj.nombre_artistico || "DJ").replace("DJ ", "").charAt(0);
-  const avatarActual = editando ? avatar : dj.avatar_url;
-  const estilosActuales: string[] = Array.isArray(dj.estilos) ? dj.estilos : [];
+  // Lo que hace que una ficha "venda": cada punto lleva a donde se arregla.
+  const pasos = [
+    { ok: !!dj.avatar_url, texto: "Pon una foto tuya", href: ruta("/dj/perfil") },
+    { ok: !!dj.bio?.trim(), texto: "Escribe tu biografía", href: ruta("/dj/perfil") },
+    { ok: estilos.length > 0, texto: "Elige tus estilos de música", href: ruta("/dj/perfil") },
+    { ok: !!(redes.instagram || redes.soundcloud || redes.youtube || redes.whatsapp), texto: "Añade tus redes o un contacto", href: ruta("/dj/perfil") },
+    { ok: !!dj.playlist_url, texto: "Pega tu playlist", href: ruta("/dj/perfil") },
+    { ok: typeof nContenido === "number" && nContenido > 0, texto: "Sube una sesión, un vídeo o fotos", href: ruta("/dj/contenido") },
+    { ok: !!dj.presskit_url, texto: "Sube tu PressKit en PDF", href: ruta("/dj/presskit") },
+  ];
+  const hechos = pasos.filter((p) => p.ok).length;
+  const pct = Math.round((hechos / pasos.length) * 100);
 
   return (
-    <main className="pb-8">
-      <PanelHeader titulo="Perfil de DJ" volverHref="/perfil">
-        {dj.verificado ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-oro/20 px-3 py-1 text-xs font-black text-oro-600"><BadgeCheck size={14} /> Verificado</span>
-        ) : (
-          <span className="rounded-full bg-black/5 px-3 py-1 text-xs font-black text-tinta/50">Sin verificar</span>
+    <SeccionPanel titulo="Resumen" descripcion="Cómo está tu ficha y qué tienes por delante.">
+      {modoAdmin && <Aviso tono="aviso">Estás viendo el panel de {dj.nombre_artistico} como administración. Lo que cambies se guarda en su ficha.</Aviso>}
+
+      {/* Tarjeta de identidad */}
+      <section className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta md:p-6">
+        <div className="flex items-center gap-4">
+          {dj.avatar_url ? (
+            <Image src={dj.avatar_url} alt="" width={80} height={80} className="h-20 w-20 shrink-0 rounded-2xl object-cover ring-1 ring-linea" />
+          ) : (
+            <span className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-marfil-100 text-3xl font-bold text-tinta-suave" aria-hidden>{inicial}</span>
+          )}
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-xl font-bold leading-tight md:text-2xl">
+              <span className="truncate">{dj.nombre_artistico}</span>
+              {dj.verificado && <BadgeCheck size={22} className="shrink-0 text-magenta" aria-label="Verificado" />}
+            </h2>
+            <p className="mt-1 flex items-center gap-1.5 text-[15px] text-tinta-suave">
+              <Star size={16} className="text-oro-600" fill="currentColor" aria-hidden />
+              {tieneValoracion(dj.reputacion_score) ? `${valoracion(dj.reputacion_score)} de valoración` : "Aún sin valoraciones"}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {dj.verificado ? <Etiqueta tono="ok"><BadgeCheck size={14} aria-hidden /> Verificado</Etiqueta> : <Etiqueta tono="aviso">Sin verificar</Etiqueta>}
+              {dj.oculto ? <Etiqueta tono="neutro"><EyeOff size={14} aria-hidden /> Oculto al público</Etiqueta> : <Etiqueta tono="ok"><Eye size={14} aria-hidden /> Visible</Etiqueta>}
+            </div>
+          </div>
+        </div>
+        {dj.oculto && (
+          <p className="mt-4 rounded-xl bg-marfil-100 p-3 text-[15px] text-tinta">
+            Tu ficha está oculta: solo la ves tú. Si crees que es un error, escríbenos y lo revisamos.
+          </p>
         )}
-      </PanelHeader>
+        {!dj.verificado && !dj.oculto && (
+          <p className="mt-4 text-[15px] text-tinta-suave">
+            El sello de verificado lo pone el equipo de TardeosClub cuando comprueba que el perfil es tuyo.
+          </p>
+        )}
+        {dj.oculto && !modoAdmin && (
+          <a href={whatsappTardeos(`Hola, soy ${dj.nombre_artistico} (DJ) y mi ficha de TardeosClub aparece oculta. ¿Podéis revisarla?`)}
+            target="_blank" rel="noopener noreferrer" className={claseBoton("contorno", "pequeno", true, "mt-2")}>
+            <MessageCircle size={18} aria-hidden /> Escribir a TardeosClub
+          </a>
+        )}
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <Link href={`/djs/${dj.id}`} className={claseBoton("contorno", "pequeno", true)}>
+            <ExternalLink size={18} aria-hidden /> Ver mi ficha pública
+          </Link>
+          <BotonCompartir nombre={dj.nombre_artistico} url={`/djs/${dj.id}`} />
+        </div>
+      </section>
 
-      <div className="mx-auto max-w-2xl px-4 pt-5 md:px-8">
-        {/* Tarjeta principal */}
-        <section className="relative overflow-hidden rounded-3xl bg-tinta p-6 text-white shadow-tarjeta md:p-8">
-          <span className="bokeh" style={{ width: 120, height: 120, top: -20, right: 30, background: "#E10A5A", opacity: 0.5 }} />
-          <div className="relative flex items-center gap-4">
-            <div className="relative">
-              {avatarActual ? (
-                <Image src={avatarActual} alt="" width={64} height={64} className="h-16 w-16 rounded-2xl object-cover ring-2 ring-white/20" />
-              ) : (
-                <span className="grid h-16 w-16 place-items-center rounded-2xl bg-white/15 font-display text-2xl font-black text-oro">{inicial}</span>
-              )}
-              {editando && (
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full bg-magenta text-white ring-2 ring-tinta"
-                  aria-label="Cambiar foto"
-                >
-                  {subiendo ? <Loader2 size={15} className="animate-spin" /> : <Camera size={15} />}
-                </button>
-              )}
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => e.target.files?.[0] && onFoto(e.target.files[0])}
-              />
-            </div>
+      {/* Cifras sencillas */}
+      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <Cifra icono={MousePointerClick} valor={visitas} texto="Visitas a tu ficha (30 días)" />
+        <Cifra icono={CalendarDays} valor={nProximos} texto="Tardeos próximos" href={ruta("/dj/tardeos")} />
+        <Cifra icono={Images} valor={nContenido} texto="Sesiones y fotos" href={ruta("/dj/contenido")} />
+        <Cifra icono={Star} valor={tieneValoracion(dj.reputacion_score) ? valoracion(dj.reputacion_score) : "—"} texto="Valoración" />
+        <Cifra icono={FileText} valor={dj.presskit_url ? "Subido" : "No"} texto="PressKit" href={ruta("/dj/presskit")} />
+      </div>
 
-            <div className="flex-1">
-              {editando ? (
-                <input
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  placeholder="Nombre artístico"
-                  className="w-full rounded-xl bg-white/10 px-3 py-2 font-display text-xl font-black text-white outline-none ring-1 ring-white/20 placeholder:text-white/40"
-                />
-              ) : (
-                <h2 className="font-display text-2xl font-black leading-tight md:text-3xl">{dj.nombre_artistico}</h2>
-              )}
-              <p className="mt-1 inline-flex items-center gap-1 font-bold text-oro">
-                <Star size={16} fill="currentColor" /> {tieneValoracion(dj.reputacion_score) ? `${valoracion(dj.reputacion_score)} de reputación` : "Nuevo, aún sin reseñas"}
-              </p>
-            </div>
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        {/* Perfil completo */}
+        <section className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta md:p-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-lg font-bold">Tu perfil, al {pct} %</h2>
+            <span className="text-sm text-tinta-suave">{hechos} de {pasos.length}</span>
+          </div>
+          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-marfil-200" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Perfil completado">
+            <div className="h-full rounded-full bg-magenta transition-all" style={{ width: `${pct}%` }} />
+          </div>
+          {hechos === pasos.length ? (
+            <p className="mt-3 text-[15px] text-ok">Lo tienes todo. Así es como más te contratan.</p>
+          ) : (
+            <p className="mt-3 text-[15px] text-tinta-suave">Una ficha completa da confianza a los locales. Te falta:</p>
+          )}
+          <ul className="mt-2 flex flex-col">
+            {pasos.map((p) => (
+              <li key={p.texto}>
+                {p.ok ? (
+                  <span className="flex min-h-[44px] items-center gap-3 text-[15px] text-tinta-suave">
+                    <CheckCircle2 size={20} className="shrink-0 text-ok" aria-hidden /> <span>{p.texto}</span>
+                    <span className="sr-only">(hecho)</span>
+                  </span>
+                ) : (
+                  <Link href={p.href} className="flex min-h-[44px] items-center gap-3 rounded-lg text-[15px] font-semibold text-tinta hover:text-magenta-700">
+                    <Circle size={20} className="shrink-0 text-linea-fuerte" aria-hidden />
+                    <span className="flex-1">{p.texto}</span>
+                    <ChevronRight size={18} className="text-tinta-suave" aria-hidden />
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
 
-            {!editando && (
-              <button
-                onClick={abrirEdicion}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-white/15 px-3 py-2 text-sm font-extrabold text-white transition hover:bg-white/25"
-              >
-                <Pencil size={15} /> Editar
-              </button>
+        {/* Próximos tardeos */}
+        <section className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta md:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-bold">Dónde pinchas pronto</h2>
+            {(nProximos ?? 0) > 0 && (
+              <Link href={ruta("/dj/tardeos")} className="text-[15px] font-semibold text-magenta-700 hover:underline">Ver todos</Link>
             )}
           </div>
-        </section>
-
-        {/* Estilos */}
-        <section className="mt-5">
-          <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-tinta/60"><Music size={16} className="text-magenta" /> Estilos</h3>
-          {editando ? (
-            <div className="flex flex-wrap gap-2">
-              <SelectorEstilos valor={estilos} onChange={setEstilos} />
+          {error && <p className="mt-3 rounded-xl bg-error-fondo p-3 text-[15px] font-semibold text-error">{error}</p>}
+          {proximos === null ? (
+            <div className="mt-3 flex flex-col gap-2" aria-busy>
+              {[0, 1, 2].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-marfil-100" />)}
             </div>
-          ) : estilosActuales.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {estilosActuales.map((e) => (
-                <span key={e} className="rounded-full bg-magenta-50 px-4 py-2 text-sm font-extrabold text-magenta-700">{e}</span>
-              ))}
-            </div>
+          ) : proximos.length === 0 && !error ? (
+            <p className="mt-3 text-[15px] text-tinta-suave">
+              No tienes tardeos próximos. Los locales te añaden como DJ al publicar un tardeo: comparte tu ficha para que te encuentren.
+            </p>
           ) : (
-            <p className="text-sm font-semibold text-tinta/50">Aún no has elegido estilos.</p>
-          )}
-        </section>
-
-        {/* Biografía */}
-        <section className="mt-5 rounded-2xl bg-white p-5 shadow-tarjeta ring-1 ring-black/5">
-          <h3 className="mb-2 text-sm font-black text-tinta/60">Biografía</h3>
-          {editando ? (
-            <textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              rows={4}
-              placeholder="Cuéntale a la gente quién eres, dónde pinchas, tu rollo…"
-              className="w-full rounded-xl border-2 border-magenta-100 px-3 py-2 font-semibold outline-none transition focus:border-magenta"
-            />
-          ) : (
-            <p className="font-semibold text-tinta/80">{dj.bio || "Aún no has escrito tu biografía."}</p>
-          )}
-
-          {/* La playlist va con la bio: es parte de presentarse, no un dato de
-              contacto. Solo en modo edición, como el resto. */}
-          {editando && (
-            <div className="mt-3 flex flex-col gap-3">
-              <CampoPlaylist valor={playlist} onCambio={setPlaylist} />
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-black text-tinta/60">PressKit (PDF)</label>
-                <div className="flex flex-1 items-center gap-2">
-                  <input
-                    ref={presskitRef}
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    onChange={(e) => e.target.files?.[0] && onPresskit(e.target.files[0])}
-                  />
-                  <button
-                    onClick={() => presskitRef.current?.click()}
-                    className="flex-1 rounded-xl border-2 border-magenta-100 px-3 py-2 text-sm font-semibold text-tinta outline-none transition hover:bg-magenta-50"
-                  >
-                    {subiendo ? <Loader2 size={16} className="inline animate-spin" /> : "Subir archivo"}
-                  </button>
-                  {presskit && (
-                    <a href={presskit} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-oro/20 px-3 py-2 text-sm font-bold text-oro-600 underline">
-                      Ver PDF
-                    </a>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* Redes y contacto (solo en edición) */}
-        {editando && (
-          <section className="mt-5 rounded-2xl bg-white p-5 shadow-tarjeta ring-1 ring-black/5">
-            <h3 className="mb-3 text-sm font-black text-tinta/60">Redes y contacto</h3>
-            <div className="flex flex-col gap-3">
-              {([
-                { k: "instagram", label: "Instagram", icon: Instagram, ph: "usuario o enlace" },
-                { k: "soundcloud", label: "SoundCloud", icon: Music2, ph: "enlace a tu perfil" },
-                { k: "youtube", label: "YouTube", icon: Youtube, ph: "enlace a tu canal" },
-                { k: "whatsapp", label: "WhatsApp (contratación)", icon: Phone, ph: "34600000000" },
-              ] as const).map(({ k, label, icon: Ic, ph }) => (
-                <label key={k} className="flex items-center gap-2">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta"><Ic size={18} /></span>
-                  <input
-                    value={redes[k] || ""}
-                    onChange={(e) => setRedes((p) => ({ ...p, [k]: e.target.value }))}
-                    placeholder={`${label}: ${ph}`}
-                    className="w-full rounded-xl border-2 border-magenta-100 px-3 py-2.5 text-sm font-semibold outline-none focus:border-magenta"
-                  />
-                </label>
+            <ul className="mt-2 divide-y divide-linea">
+              {proximos.map((t) => (
+                <li key={t.id}>
+                  <Link href={`/tardeos/${t.id}`} className="flex min-h-[56px] items-center gap-3 py-2 hover:text-magenta-700">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-semibold">{t.titulo}</span>
+                      <span className="block truncate text-sm text-tinta-suave">
+                        {formatFecha(t.fecha)}{t.hora_inicio ? ` · ${t.hora_inicio.slice(0, 5)}` : ""}{t.locales?.nombre ? ` · ${t.locales.nombre}` : ""}
+                      </span>
+                    </span>
+                    <ChevronRight size={18} className="shrink-0 text-tinta-suave" aria-hidden />
+                  </Link>
+                </li>
               ))}
-            </div>
-          </section>
-        )}
-
-        {/* Botones de edición */}
-        {editando && (
-          <>
-          {error && (
-            <p className="mt-5 rounded-xl bg-magenta-50 p-3 text-sm font-bold text-magenta">{error}</p>
+            </ul>
           )}
-          <div className="mt-5 flex gap-3">
-            <button
-              onClick={() => setEditando(false)}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3.5 font-extrabold text-tinta/70 ring-1 ring-black/10"
-            >
-              <X size={18} /> Cancelar
-            </button>
-            <button
-              onClick={guardar}
-              disabled={guardando || subiendo}
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-magenta px-5 py-3.5 font-extrabold text-white transition active:scale-[0.98] disabled:opacity-60"
-            >
-              {guardando ? <Loader2 size={20} className="animate-spin" /> : <><Check size={20} /> Guardar cambios</>}
-            </button>
-          </div>
-          </>
-        )}
-
-        {!editando && <ServiciosExternos tipo="dj" />}
+        </section>
       </div>
-      {/* Sesiones, vídeos, flyers y fotos: §5.2 del documento. Es lo
-          que convierte la ficha de un DJ en algo que merezca
-          visitarse, más allá de su nombre y sus estilos. */}
-      <ContenidoDj djId={dj.id} />
-    </main>
+
+      {!modoAdmin && <ServiciosExternos tipo="dj" />}
+    </SeccionPanel>
+  );
+}
+
+function Cifra({
+  icono: Icono, valor, texto, href,
+}: { icono: typeof Star; valor: number | string | null; texto: string; href?: string }) {
+  const dentro = (
+    <>
+      <Icono size={20} className="text-magenta" aria-hidden />
+      <span className="mt-2 block text-2xl font-bold leading-none">{valor ?? "…"}</span>
+      <span className="mt-1 block text-sm text-tinta-suave">{texto}</span>
+    </>
+  );
+  const cls = "block rounded-2xl border border-linea bg-white p-4 shadow-tarjeta";
+  return href ? <Link href={href} className={`${cls} transition-colors hover:border-magenta/40`}>{dentro}</Link> : <div className={cls}>{dentro}</div>;
+}
+
+/**
+ * Compartir la ficha pública: menú nativo del móvil (WhatsApp, Instagram…) o,
+ * en escritorio, copiar el enlace. Con texto, que un icono suelto no se
+ * entiende.
+ */
+function BotonCompartir({ nombre, url }: { nombre: string; url: string }) {
+  const [hecho, setHecho] = useState<"" | "copiado" | "error">("");
+  const compartir = async () => {
+    const abs = window.location.origin + url;
+    const texto = `Mira mi perfil de DJ en TardeosClub: ${nombre}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: nombre, text: texto, url: abs }); } catch { /* canceló */ }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(abs);
+      setHecho("copiado");
+    } catch {
+      setHecho("error");
+    }
+    setTimeout(() => setHecho(""), 2500);
+  };
+  return (
+    <button type="button" onClick={compartir} className={claseBoton("contorno", "pequeno", true)} aria-live="polite">
+      {hecho === "copiado" ? <><Check size={18} className="text-ok" aria-hidden /> Enlace copiado</>
+        : hecho === "error" ? <>No se pudo copiar</>
+        : <><Share2 size={18} aria-hidden /> Compartir mi ficha</>}
+    </button>
   );
 }

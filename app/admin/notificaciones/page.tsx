@@ -1,10 +1,29 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import PanelHeader from "@/components/PanelHeader";
 import { supabase } from "@/lib/supabase";
-import { BellRing, Send, Loader2, Check, Users } from "lucide-react";
+import { SeccionPanel } from "@/components/panel/PanelShell";
 import SelectorSegmento, { SIN_SEGMENTAR, haySegmento, type Segmento } from "@/components/SelectorSegmento";
+import Boton from "@/components/Boton";
+import Campo, { claseCampo } from "@/components/ui/Campo";
+import Tarjeta from "@/components/ui/Tarjeta";
+import Hoja from "@/components/ui/Hoja";
+import Aviso from "@/components/admin/Aviso";
+import { BellRing, Send, Users } from "lucide-react";
+
+/**
+ * Misma regla que `urlInternaSegura` en el servidor: solo rutas de la propia
+ * app. Se comprueba aquí también para avisar ANTES de enviar; si no, el
+ * servidor la cambiaría en silencio por /tardeos y nadie se enteraría.
+ */
+const rutaValida = (u: string) =>
+  u.startsWith("/") && u[1] !== "/" && u[1] !== "\\" && !/[\s\u0000-\u001f]/.test(u) && u.length <= 500;
+
+const DESTINOS = [
+  { url: "/tardeos", label: "Lista de tardeos" },
+  { url: "/", label: "Portada" },
+  { url: "/mapa", label: "Mapa" },
+];
 
 /**
  * Megáfono del admin: manda una notificación push a todos los dispositivos que
@@ -14,11 +33,14 @@ import SelectorSegmento, { SIN_SEGMENTAR, haySegmento, type Segmento } from "@/c
 export default function AdminNotificaciones() {
   const [titulo, setTitulo] = useState("");
   const [mensaje, setMensaje] = useState("");
+  const [url, setUrl] = useState("/tardeos");
   const [enviando, setEnviando] = useState(false);
-  const [resultado, setResultado] = useState<{ enviadas: number; caducadas: number } | null>(null);
+  const [confirmando, setConfirmando] = useState(false);
+  const [resultado, setResultado] = useState<{ enviadas: number; caducadas: number; destinatarias?: number } | null>(null);
   const [error, setError] = useState("");
   const [segmento, setSegmento] = useState<Segmento>(SIN_SEGMENTAR);
   const [cuenta, setCuenta] = useState<{ destinatarias: number; total: number } | null>(null);
+  const [errorCuenta, setErrorCuenta] = useState("");
 
   /**
    * A cuántos va a llegar, ANTES de darle al botón.
@@ -28,17 +50,27 @@ export default function AdminNotificaciones() {
    * demasiado estrecho: "llegará a 0 de 40" se ve a tiempo.
    */
   const contar = useCallback(async (seg: Segmento) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch("/api/push/enviar", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titulo: "contar", soloContar: true, segmento: seg, accessToken: session?.access_token }),
-    });
-    if (res.ok) setCuenta(await res.json()); else setCuenta(null);
+    setErrorCuenta("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/push/enviar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo: "contar", soloContar: true, segmento: seg, accessToken: session?.access_token }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok) setCuenta(j);
+      else { setCuenta(null); setErrorCuenta(j.error || "No se pudo saber a cuántos llegará."); }
+    } catch {
+      setCuenta(null); setErrorCuenta("No se pudo saber a cuántos llegará.");
+    }
   }, []);
   useEffect(() => { contar(segmento); }, [contar, segmento]);
 
+  const urlLimpia = url.trim();
+  const urlMal = !rutaValida(urlLimpia);
+
   const enviar = async () => {
-    if (!titulo.trim()) return;
+    if (!titulo.trim() || urlMal) return;
     setEnviando(true); setError(""); setResultado(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -48,12 +80,12 @@ export default function AdminNotificaciones() {
         body: JSON.stringify({
           titulo: titulo.trim(),
           mensaje: mensaje.trim(),
-          url: "/tardeos",
+          url: urlLimpia,
           segmento,
           accessToken: session?.access_token,
         }),
       });
-      const j = await res.json();
+      const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error || "No se pudo enviar.");
       setResultado(j);
       setTitulo(""); setMensaje(""); contar(segmento);
@@ -61,52 +93,78 @@ export default function AdminNotificaciones() {
       setError(e instanceof Error ? e.message : "No se pudo enviar.");
     } finally {
       setEnviando(false);
+      setConfirmando(false);
     }
   };
 
+  const n = cuenta?.destinatarias;
+  const puede = Boolean(titulo.trim()) && !urlMal && n !== undefined && n > 0;
+
   return (
-    <main className="pb-10">
-      <PanelHeader titulo="Notificaciones push" volverHref="/admin" />
-      <div className="mx-auto max-w-lg px-4 pt-5 md:px-8">
-        {/* Vista previa, imitando una notificación del sistema */}
-        <p className="mb-2 text-sm font-black text-tinta/60">Así les sonará en el móvil</p>
-        <div className="mb-5 flex items-start gap-3 rounded-2xl bg-tinta p-4 text-white shadow-tarjeta">
-          <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-white/10">
-            <BellRing size={20} className="text-oro-400" />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate font-black leading-tight">{titulo || "Título de la notificación"}</p>
-            <p className="text-sm font-semibold text-white/80">{mensaje || "El mensaje que verán sin abrir la app."}</p>
-          </div>
-        </div>
+    <SeccionPanel
+      titulo="Notificaciones push"
+      descripcion="Le suena en el móvil a quien las haya aceptado, aunque tenga la web cerrada. Úsalo con cariño: quien recibe tres avisos que no van con él desactiva el cuarto."
+      ancho="estrecho"
+    >
+      <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="flex flex-col gap-4">
+          <Tarjeta className="flex flex-col gap-4">
+            <Campo etiqueta="Título" htmlFor="pu-titulo">
+              <input id="pu-titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} maxLength={60}
+                placeholder="¡Nuevo tardeo este sábado!" className={claseCampo} />
+            </Campo>
+            <Campo etiqueta="Mensaje" htmlFor="pu-mensaje" ayuda="Lo que se lee sin abrir la app. Una frase.">
+              <textarea id="pu-mensaje" value={mensaje} onChange={(e) => setMensaje(e.target.value)} rows={2} maxLength={160}
+                placeholder="Remember en la Sala Blau desde las 18:00" className={claseCampo} />
+            </Campo>
+            <Campo etiqueta="Al tocarla, abre" htmlFor="pu-url"
+              error={urlMal ? "Tiene que ser una página de TardeosClub: empieza por «/» (por ejemplo /tardeos/123)." : null}
+              ayuda="Una página de TardeosClub. Copia la parte de la dirección que va después del dominio.">
+              <input id="pu-url" value={url} onChange={(e) => setUrl(e.target.value)} inputMode="url"
+                className={claseCampo} aria-invalid={urlMal} />
+            </Campo>
+            <div className="-mt-2 flex flex-wrap gap-2">
+              {DESTINOS.map((d) => (
+                <button key={d.url} type="button" onClick={() => setUrl(d.url)} aria-pressed={urlLimpia === d.url}
+                  className={`min-h-[44px] rounded-full border px-4 text-[15px] font-semibold transition-colors ${
+                    urlLimpia === d.url ? "border-tinta bg-tinta text-white" : "border-linea-fuerte bg-white hover:border-tinta/50"}`}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </Tarjeta>
 
-        <div className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
-          <label className="mb-1 block text-sm font-black text-tinta/70">Título</label>
-          <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="¡Nuevo tardeo este sábado!"
-            className="w-full rounded-xl border-2 border-magenta-100 px-4 py-3 font-semibold outline-none focus:border-magenta" />
-          <label className="mb-1 mt-3 block text-sm font-black text-tinta/70">Mensaje</label>
-          <textarea value={mensaje} onChange={(e) => setMensaje(e.target.value)} rows={2} placeholder="Remember en la Sala Blau desde las 18:00…"
-            className="w-full rounded-xl border-2 border-magenta-100 px-4 py-3 font-semibold outline-none focus:border-magenta" />
-          <p className="mt-2 text-xs font-semibold text-tinta/50">
-            Al tocarla se abre la lista de tardeos. Úsalo con cariño: el que recibe tres avisos
-            que no van con él desactiva el cuarto.
-          </p>
-
-          <div className="mt-4 border-t border-black/5 pt-4">
-            <p className="mb-2 text-sm font-black text-tinta/70">¿A quién?</p>
-            <p className="mb-3 text-xs font-semibold text-tinta/50">
-              Sin marcar nada, va a todos. Lo que marques se exige a la vez: «Remember» + «Maresme»
-              es a quien le gusta el remember <em>y</em> sale por el Maresme.
+          <Tarjeta className="flex flex-col gap-3">
+            <h2 className="text-lg font-bold">¿A quién?</h2>
+            <p className="text-[15px] text-tinta-suave">
+              Sin marcar nada, va a todos. Lo que marques se exige a la vez: «Remember» + «Maresme» es a quien le gusta el
+              remember <strong>y</strong> sale por el Maresme. Quien no ha dicho sus gustos no recibe avisos segmentados.
             </p>
             <SelectorSegmento valor={segmento} onCambio={setSegmento} />
+          </Tarjeta>
+        </div>
+
+        <div className="flex flex-col gap-3 md:sticky md:top-4 md:self-start">
+          {/* Vista previa, imitando una notificación del sistema */}
+          <p className="text-[15px] font-semibold text-tinta-suave">Así se verá en el móvil</p>
+          <div className="flex items-start gap-3 rounded-2xl bg-tinta p-4 text-white shadow-tarjeta">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10">
+              <BellRing size={20} aria-hidden />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[13px] text-white/70">TardeosClub · ahora</p>
+              <p className="truncate font-bold leading-tight">{titulo || "Título de la notificación"}</p>
+              <p className="text-[15px] text-white/85">{mensaje || "El mensaje que verán sin abrir la app."}</p>
+            </div>
           </div>
+          <p className="text-sm text-tinta-suave">Al tocarla abre <strong className="break-all">{urlMal ? "—" : urlLimpia}</strong></p>
 
           {/* Cuántos lo recibirán, ANTES de darle. Con criterios estrechos, un
               "0 de 3" se ve a tiempo de aflojarlos. */}
           {cuenta && (
-            <p className={`mt-4 flex items-center gap-1.5 rounded-xl p-3 text-sm font-black ${
-              cuenta.destinatarias === 0 ? "bg-amber-50 text-amber-900" : "bg-magenta-50 text-magenta-700"}`}>
-              <Users size={16} className="shrink-0" />
+            <p className={`flex items-start gap-2 rounded-xl p-3 text-[15px] font-semibold ${
+              cuenta.destinatarias === 0 ? "bg-aviso-fondo text-aviso" : "bg-magenta-50 text-magenta-700"}`}>
+              <Users size={18} className="mt-0.5 shrink-0" aria-hidden />
               {cuenta.destinatarias === 0
                 ? haySegmento(segmento)
                   ? `Nadie encaja con esos criterios (hay ${cuenta.total} suscritos). Marca menos cosas.`
@@ -116,23 +174,40 @@ export default function AdminNotificaciones() {
                   : `Llegará a los ${cuenta.destinatarias} suscritos.`}
             </p>
           )}
-
-          <button onClick={enviar} disabled={enviando || !titulo.trim() || cuenta?.destinatarias === 0}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white transition active:scale-[0.98] disabled:opacity-40">
-            {enviando ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
-            {haySegmento(segmento)
-              ? `Enviar a ${cuenta?.destinatarias ?? "…"}`
-              : "Enviar a todos"}
-          </button>
+          {errorCuenta && <Aviso tono="error">{errorCuenta}</Aviso>}
+          {error && <Aviso tono="error">{error}</Aviso>}
           {resultado && (
-            <p className="mt-3 flex items-center justify-center gap-1.5 text-sm font-black text-oro-600">
-              <Check size={16} /> Enviadas: {resultado.enviadas}
-              {resultado.caducadas > 0 && ` · ${resultado.caducadas} suscripciones caducadas retiradas`}
-            </p>
+            <Aviso tono="ok">
+              Enviadas: {resultado.enviadas}
+              {resultado.destinatarias != null && resultado.destinatarias > resultado.enviadas && ` de ${resultado.destinatarias}`}.
+              {resultado.caducadas > 0 && ` Se retiraron ${resultado.caducadas} suscripciones caducadas.`}
+            </Aviso>
           )}
-          {error && <p className="mt-3 text-center text-sm font-bold text-magenta">{error}</p>}
+
+          <Boton ancho disabled={!puede} cargando={enviando} onClick={() => { setResultado(null); setError(""); setConfirmando(true); }}>
+            <Send size={20} aria-hidden /> {n ? `Enviar a ${n}` : "Enviar"}
+          </Boton>
+          {!titulo.trim() && <p className="text-center text-sm text-tinta-suave">Escribe un título para poder enviar.</p>}
         </div>
       </div>
-    </main>
+
+      <Hoja abierta={confirmando} onCerrar={() => !enviando && setConfirmando(false)} titulo="¿Enviar la notificación?"
+        pie={
+          <div className="grid gap-2">
+            <Boton ancho cargando={enviando} onClick={enviar}><Send size={20} aria-hidden /> Sí, enviar a {n}</Boton>
+            <Boton ancho variante="contorno" disabled={enviando} onClick={() => setConfirmando(false)}>Todavía no</Boton>
+          </div>
+        }>
+        <p className="text-base">
+          Vas a enviar a <strong>{n} {n === 1 ? "persona" : "personas"}</strong>
+          {haySegmento(segmento) ? " (con los criterios que has marcado)" : " (todos los suscritos)"}. Les sonará en el móvil y no se puede deshacer.
+        </p>
+        <div className="mt-3 rounded-2xl border border-linea bg-marfil p-4">
+          <p className="font-bold">{titulo}</p>
+          {mensaje && <p className="mt-1 text-[15px] text-tinta-suave">{mensaje}</p>}
+          <p className="mt-2 text-sm text-tinta-suave">Abre: <span className="break-all font-semibold text-tinta">{urlLimpia}</span></p>
+        </div>
+      </Hoja>
+    </SeccionPanel>
   );
 }

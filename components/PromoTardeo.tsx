@@ -38,11 +38,11 @@ export default function PromoTardeo({ valor, onCambio }: { valor: Promo; onCambi
   };
 
   return (
-    <div className="rounded-2xl bg-oro/10 p-4">
-      <p className="flex items-center gap-1.5 text-sm font-black text-tinta/80">
-        <Tag size={15} className="text-oro-600" /> Etiquetas
+    <div className="rounded-2xl border border-linea bg-white p-4">
+      <p className="flex items-center gap-1.5 text-[15px] font-semibold text-tinta">
+        <Tag size={15} className="text-magenta" /> Etiquetas
       </p>
-      <p className="mt-0.5 text-xs font-semibold text-tinta/55">
+      <p className="mt-0.5 text-sm text-tinta-suave">
         Rótulos cortos que se ven en la tarjeta. Para ofertas con código y fechas,
         usa las promociones de abajo.
       </p>
@@ -53,8 +53,8 @@ export default function PromoTardeo({ valor, onCambio }: { valor: Promo; onCambi
             key={e}
             type="button"
             onClick={() => alternar(e)}
-            className={`inline-flex min-h-[36px] items-center gap-1 rounded-full px-3 py-1.5 text-sm font-extrabold transition ${
-              valor.etiquetas.includes(e) ? "bg-oro text-tinta" : "bg-white text-tinta/70 ring-1 ring-oro/40"
+            className={`inline-flex min-h-[44px] items-center gap-1 rounded-full px-4 py-2 text-[15px] font-semibold transition ${
+              valor.etiquetas.includes(e) ? "bg-tinta text-white" : "bg-white text-tinta-suave ring-1 ring-linea-fuerte"
             }`}
           >
             {e} {valor.etiquetas.includes(e) && <X size={12} />}
@@ -70,7 +70,7 @@ export default function PromoTardeo({ valor, onCambio }: { valor: Promo; onCambi
           (e.target as HTMLInputElement).value = "";
         }}
         onBlur={(e) => { anadirLibre(e.target.value); e.target.value = ""; }}
-        className="mt-2 w-full rounded-xl border-2 border-oro/40 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-oro"
+        className="mt-2 w-full rounded-xl border border-linea-fuerte bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-magenta"
       />
     </div>
   );

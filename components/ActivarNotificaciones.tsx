@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import { Bell, BellRing, BellOff, Loader2, Share } from "lucide-react";
+import { claseBoton } from "@/components/Boton";
 
 /**
  * El navegador solo enseña el permiso de notificaciones si lo pide un gesto
@@ -85,9 +86,9 @@ export default function ActivarNotificaciones() {
 
   if (estado === "ios-sin-instalar") {
     return (
-      <div className="flex items-start gap-3 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
+      <div className="flex items-start gap-3 rounded-2xl border border-linea bg-white p-4">
         <Share size={22} className="mt-0.5 shrink-0 text-magenta" />
-        <p className="text-sm font-semibold text-tinta/80">
+        <p className="text-[15px] text-tinta-suave">
           Para recibir avisos de tardeos en tu iPhone, añade TardeosClub a tu pantalla
           de inicio: toca <b>Compartir</b> y luego <b>«Añadir a pantalla de inicio»</b>.
           Al abrirla desde ahí podrás activar las notificaciones.
@@ -96,13 +97,23 @@ export default function ActivarNotificaciones() {
     );
   }
 
-  if (estado === "no-soportado") return null;
+  if (estado === "no-soportado") {
+    return (
+      <div className="flex items-start gap-3 rounded-2xl border border-linea bg-white p-4">
+        <BellOff size={22} className="mt-0.5 shrink-0 text-tinta-suave" aria-hidden />
+        <p className="text-[15px] text-tinta-suave">
+          Este navegador no permite avisos. Prueba desde el móvil con Chrome o, en iPhone, con la app
+          añadida a la pantalla de inicio.
+        </p>
+      </div>
+    );
+  }
 
   if (estado === "denegado") {
     return (
-      <div className="flex items-start gap-3 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
-        <BellOff size={22} className="mt-0.5 shrink-0 text-tinta/40" />
-        <p className="text-sm font-semibold text-tinta/60">
+      <div className="flex items-start gap-3 rounded-2xl border border-linea bg-white p-4">
+        <BellOff size={22} className="mt-0.5 shrink-0 text-tinta-suave" />
+        <p className="text-[15px] text-tinta-suave">
           Tienes las notificaciones bloqueadas para esta web. Se reactivan desde los
           ajustes del navegador (el candado junto a la dirección).
         </p>
@@ -112,27 +123,27 @@ export default function ActivarNotificaciones() {
 
   if (estado === "activas") {
     return (
-      <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
-        <BellRing size={22} className="shrink-0 text-oro-600" />
-        <p className="text-sm font-bold text-tinta/80">Notificaciones activadas en este dispositivo.</p>
+      <div className="flex items-center gap-3 rounded-2xl border border-linea bg-white p-4">
+        <BellRing size={22} className="shrink-0 text-ok" aria-hidden />
+        <p className="text-[15px] font-semibold text-tinta">Notificaciones activadas en este dispositivo.</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
+    <div className="rounded-2xl border border-linea bg-white p-4">
       <button
         onClick={activar}
         disabled={ocupado}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-magenta py-3.5 font-extrabold text-white active:scale-[0.98] disabled:opacity-40"
+        className={claseBoton("primario", "normal", true)}
       >
-        {ocupado ? <Loader2 size={20} className="animate-spin" /> : <Bell size={20} />}
+        {ocupado ? <Loader2 size={20} className="animate-spin" aria-hidden /> : <Bell size={20} aria-hidden />}
         Avísame de los tardeos
       </button>
-      <p className="mt-2 text-center text-xs font-semibold text-tinta/50">
+      <p className="mt-2 text-center text-[14px] text-tinta-suave">
         Notificaciones en este dispositivo, como las de cualquier app. Se quitan cuando quieras.
       </p>
-      {error && <p className="mt-1 text-center text-xs font-bold text-magenta">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-center text-[15px] font-semibold text-error">{error}</p>}
     </div>
   );
 }

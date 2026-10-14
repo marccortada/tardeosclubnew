@@ -1,30 +1,42 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import PanelHeader from "@/components/PanelHeader";
 import { supabase } from "@/lib/supabase";
-import { plegar, contieneTexto } from "@/lib/texto";
+import { SeccionPanel } from "@/components/panel/PanelShell";
+import Paginacion, { usePaginado, useDiferido, Buscador, Filtros, EstadoLista } from "@/components/panel/Paginacion";
 import { PLANES, ETIQUETA, precioTexto, euroMes, vigente, diasRestantes, type Plan } from "@/lib/planes";
 import { SUSCRIPCION, combinacionInvalida } from "@/lib/estados";
-import { CLAVE_PLANES, setAjuste } from "@/lib/ajustes";
+import { CLAVE_PLANES, setAjuste, planesActivos } from "@/lib/ajustes";
 import { consumoDeTodos, type Consumo } from "@/lib/cuotas";
-import { Store, Disc3, Loader2, Euro, AlertTriangle, Check, Power } from "lucide-react";
+import Boton from "@/components/Boton";
+import Hoja from "@/components/ui/Hoja";
+import { Etiqueta } from "@/components/ui/Chip";
+import Aviso from "@/components/admin/Aviso";
+import { Store, Disc3, Loader2, Power, PowerOff } from "lucide-react";
+
+type Rol = "local" | "dj";
+type Filtro = "todas" | "activa" | "impago" | "sin_suscripcion" | "cancelada";
 
 type Ficha = {
   id: string;
   nombre: string;
-  rol: "local" | "dj";
   plan: Plan;
   plan_estado: string;
   plan_hasta: string | null;
   pago_proveedor: string | null;
   pago_referencia: string | null;
-  plan_notas: string | null;
   /** Solo los locales tienen estado de publicación; en un DJ es null. */
   estado: string | null;
   reclamado: boolean;
 };
+
+/** Quita lo que rompe la sintaxis de los filtros de PostgREST. */
+const limpiar = (s: string) => s.replace(/[,()*%\\"']/g, " ").replace(/\s+/g, " ").trim();
+
+const COLS = "id,plan,plan_estado,plan_hasta,pago_proveedor,pago_referencia";
+const tablaDe = (r: Rol) => (r === "local" ? "locales" : "djs");
+const nombreDe = (r: Rol) => (r === "local" ? "nombre" : "nombre_artistico");
 
 // Los estados salen de `lib/estados.ts` y no de una lista propia: esta pantalla
 // decía «Impago», el panel del local «pago pendiente» y colaboradores «oculto».
@@ -33,87 +45,158 @@ type Ficha = {
 /**
  * Quién paga qué.
  *
- * Se marca A MANO, y es deliberado mientras sean pocos: con veinte locales la
- * comisión de la pasarela es calderilla y lo caro es el tiempo de montar altas
- * y bajas automáticas. Los campos `pago_proveedor` y `pago_referencia` están
- * para anotar dónde está el cobro de verdad (PayPal, una transferencia, lo que
- * sea) y para que el día que se automatice haya dónde enganchar.
+ * Se marca A MANO, y es deliberado mientras sean pocos. Los campos
+ * `pago_proveedor` y `pago_referencia` están para anotar dónde está el cobro
+ * de verdad y para que el día que se automatice haya dónde enganchar.
  *
- * Esta pantalla ERA UNA MAQUETA: seis filas escritas en el código con nombres
- * inventados —"Sala Blau", "DJ Nando"— que parecían una cartera de clientes.
+ * HOY TODO ESTO ESTÁ APAGADO: no hay pasarela y las reglas de los planes
+ * (`planesActivos()`) están desactivadas. La pantalla existe para tenerla lista;
+ * por eso lo primero que se ve es el aviso de que no se cobra nada.
  */
 export default function AdminSuscripciones() {
-  const [fichas, setFichas] = useState<Ficha[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const [rol, setRol] = useState<Rol>("local");
+  const [filtro, setFiltro] = useState<Filtro>("todas");
+  const [texto, setTexto] = useState("");
+  const busca = useDiferido(texto);
+  const [cuentas, setCuentas] = useState<Partial<Record<Filtro, number>>>({});
+  const [totales, setTotales] = useState<{ local?: number; dj?: number }>({});
   const [guardando, setGuardando] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [busca, setBusca] = useState("");
-  const [filtro, setFiltro] = useState<"todas" | "pagando" | "impago" | "sin">("todas");
-  const [reglas, setReglas] = useState<boolean | null>(null);
-  const [cambiandoReglas, setCambiandoReglas] = useState(false);
+  const [aviso, setAviso] = useState<{ tono: "ok" | "error"; texto: string } | null>(null);
   const [consumos, setConsumos] = useState<Record<string, Consumo>>({});
+  const [resumen, setResumen] = useState<{ mrr: number; pagando: number; impagos: number; caducadas: number; extras: number } | null>(null);
 
-  const cargar = useCallback(async () => {
-    setCargando(true); setError("");
-    const cols = "id,plan,plan_estado,plan_hasta,pago_proveedor,pago_referencia,plan_notas";
-    // `estado` solo lo tienen los locales; en DJs no existe y llega undefined.
-    const colsLocal = `${cols},estado`;
-    const [l, d] = await Promise.all([
-      supabase.from("locales").select(`${colsLocal},nombre,owner_id`).order("nombre"),
-      supabase.from("djs").select(`${cols},nombre_artistico,profile_id`).order("nombre_artistico"),
-    ]);
-    if (l.error || d.error) {
-      const e = l.error ?? d.error;
-      // 42703/PGRST204 = el lote 33 aún no está pegado.
-      setError(e?.code === "42703" || e?.code === "PGRST204"
-        ? "Falta pegar el lote 33 (supabase/33_planes.sql)."
-        : (e?.message ?? "No se pudo cargar."));
-      setCargando(false); return;
-    }
-    const map = (x: any, rol: "local" | "dj"): Ficha => ({
-      id: x.id,
-      nombre: x.nombre ?? x.nombre_artistico ?? "",
-      rol,
-      plan: x.plan ?? "basic",
-      plan_estado: x.plan_estado ?? "sin_suscripcion",
-      plan_hasta: x.plan_hasta ?? null,
-      pago_proveedor: x.pago_proveedor ?? null,
-      pago_referencia: x.pago_referencia ?? null,
-      plan_notas: x.plan_notas ?? null,
-      estado: x.estado ?? null,
-      reclamado: Boolean(x.owner_id ?? x.profile_id),
-    });
-    const locales = (l.data ?? []).map((x) => map(x, "local"));
-    setFichas([...locales, ...(d.data ?? []).map((x) => map(x, "dj"))]);
-    setCargando(false);
+  // El interruptor general de las reglas de los planes.
+  const [reglas, setReglas] = useState<boolean | null>(null);
+  const [paso, setPaso] = useState<0 | 1 | 2>(0); // 0 = cerrado; 1 y 2 = las dos confirmaciones
+  const [cambiandoReglas, setCambiandoReglas] = useState(false);
 
-    // Los extras del mes, para poder cobrarlos. Va después de pintar: es
-    // información útil, no imprescindible, y no debe retrasar la pantalla.
-    try {
-      setConsumos(await consumoDeTodos(Object.fromEntries(locales.map((f) => [f.id, f.plan]))));
-    } catch { /* si falla, la pantalla sigue valiendo */ }
-  }, []);
+  useEffect(() => { planesActivos().then(setReglas).catch(() => setReglas(false)); }, []);
 
-  useEffect(() => { cargar(); }, [cargar]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- el constructor de consultas de supabase-js no se deja tipar genérico
+  const aplicar = (q: any, f: Filtro) => (f === "todas" ? q : q.eq("plan_estado", f));
+
+  const p = usePaginado<Ficha>(
+    (desde, hasta) => {
+      // `estado` solo lo tienen los locales; en DJs no existe.
+      const cols = rol === "local" ? `${COLS},estado,nombre,owner_id` : `${COLS},nombre_artistico,profile_id`;
+      let q = aplicar(supabase.from(tablaDe(rol)).select(cols, { count: "exact" }), filtro);
+      const l = limpiar(busca);
+      if (l) q = q.ilike(nombreDe(rol), `%${l}%`);
+      return q.order(nombreDe(rol)).order("id").range(desde, hasta).then((r: any) => ({
+        ...r,
+        data: (r.data ?? []).map((x: any): Ficha => ({
+          id: x.id,
+          nombre: x.nombre ?? x.nombre_artistico ?? "",
+          plan: x.plan ?? "basic",
+          plan_estado: x.plan_estado ?? "sin_suscripcion",
+          plan_hasta: x.plan_hasta ?? null,
+          pago_proveedor: x.pago_proveedor ?? null,
+          pago_referencia: x.pago_referencia ?? null,
+          estado: x.estado ?? null,
+          reclamado: Boolean(x.owner_id ?? x.profile_id),
+        })),
+        // 42703/PGRST204 = el lote 33 aún no está pegado.
+        error: r.error && (r.error.code === "42703" || r.error.code === "PGRST204")
+          ? { message: "falta pegar el lote 33 (supabase/33_planes.sql)." }
+          : r.error,
+      }));
+    },
+    [rol, filtro, busca],
+    25,
+  );
+
+  // Contadores de cada filtro, del tipo de ficha elegido.
+  const contar = () => {
+    const fs: Filtro[] = ["todas", "activa", "impago", "sin_suscripcion", "cancelada"];
+    Promise.all(fs.map((f) =>
+      aplicar(supabase.from(tablaDe(rol)).select("id", { count: "exact", head: true }), f)
+        .then((r: { count: number | null }) => [f, r.count ?? 0] as const),
+    )).then((rs) => setCuentas(Object.fromEntries(rs)));
+  };
+  useEffect(contar, [rol]);
 
   useEffect(() => {
-    supabase.from("ajustes").select("valor").eq("clave", CLAVE_PLANES).maybeSingle()
-      .then(({ data }) => setReglas(data?.valor === "true"));
+    Promise.all((["local", "dj"] as Rol[]).map((r) =>
+      supabase.from(tablaDe(r)).select("id", { count: "exact", head: true }).then((x) => [r, x.count ?? 0] as const),
+    )).then((rs) => setTotales(Object.fromEntries(rs)));
   }, []);
 
-  const alternarReglas = async () => {
+  /**
+   * Las cifras de arriba. Solo se piden las fichas marcadas al corriente (son
+   * pocas), no las tablas enteras.
+   *
+   * «Al corriente» significa al corriente Y dentro del periodo: una suscripción
+   * que caducó en marzo no puede seguir sumando al recurrente. Y el recurrente
+   * es el precio de siempre, no el de alta.
+   */
+  const calcularResumen = async () => {
+    const [l, d, il, id] = await Promise.all([
+      supabase.from("locales").select("id,plan,plan_hasta").eq("plan_estado", "activa"),
+      supabase.from("djs").select("id,plan,plan_hasta").eq("plan_estado", "activa"),
+      supabase.from("locales").select("id", { count: "exact", head: true }).eq("plan_estado", "impago"),
+      supabase.from("djs").select("id", { count: "exact", head: true }).eq("plan_estado", "impago"),
+    ]);
+    if (l.error || d.error) { setResumen(null); return; }
+    const activas = [...(l.data ?? []).map((x) => ({ ...x, local: true })), ...(d.data ?? []).map((x) => ({ ...x, local: false }))];
+    const pagando = activas.filter((f) => vigente("activa", f.plan_hasta));
+    let extras = 0;
+    try {
+      const locPagando = pagando.filter((f) => f.local);
+      if (locPagando.length) {
+        const c = await consumoDeTodos(Object.fromEntries(locPagando.map((f) => [f.id, f.plan])));
+        extras = Object.values(c).reduce((s, x) => s + x.euros, 0);
+      }
+    } catch { /* los extras son informativos: sin ellos la pantalla sigue valiendo */ }
+    setResumen({
+      mrr: Math.round(pagando.reduce((s, f) => s + euroMes((f.plan ?? "basic") as Plan), 0)),
+      pagando: pagando.length,
+      impagos: (il.count ?? 0) + (id.count ?? 0),
+      caducadas: activas.length - pagando.length,
+      extras,
+    });
+  };
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial; el estado se fija al llegar los datos
+  useEffect(() => { calcularResumen(); }, []);
+
+  // Los extras del mes de los locales de la página visible.
+  useEffect(() => {
+    if (rol !== "local" || !p.filas.length) return;
+    consumoDeTodos(Object.fromEntries(p.filas.map((f) => [f.id, f.plan])))
+      .then((c) => setConsumos((prev) => ({ ...prev, ...c })))
+      .catch(() => { /* informativo */ });
+  }, [rol, p.filas]);
+
+  const guardar = async (f: Ficha, campos: Partial<Ficha>) => {
+    // Se comprueba ANTES de mandarlo. El lote 41 también lo rechaza en la base
+    // —que es quien manda—, pero un error de Postgres en pantalla no explica
+    // qué hacer, y aquí sí se puede decir cuál de las dos casillas mover.
+    const choque = combinacionInvalida(campos.estado ?? f.estado, campos.plan_estado ?? f.plan_estado);
+    if (choque) { setAviso({ tono: "error", texto: choque }); return; }
+    setGuardando(f.id); setAviso(null);
+    const { data, error } = await supabase.from(tablaDe(rol)).update(campos).eq("id", f.id).select("id,plan,plan_estado");
+    setGuardando(null);
+    if (error) { setAviso({ tono: "error", texto: "No se pudo guardar: " + error.message }); return; }
+    // El trigger `proteger_plan` revierte sin dar error si no eres admin: hay
+    // que mirar lo que devuelve, no si falló.
+    const g = data?.[0] as { plan?: string } | undefined;
+    if (!g) { setAviso({ tono: "error", texto: "No se pudo guardar. ¿Tu cuenta es admin?" }); return; }
+    if (campos.plan && g.plan !== campos.plan) {
+      setAviso({ tono: "error", texto: "La base rechazó el cambio de plan. ¿Tu cuenta es admin?" }); return;
+    }
+    p.cambiar((x) => x.id === f.id, campos);
+    setAviso({ tono: "ok", texto: `Guardado: ${f.nombre}.` });
+    contar(); calcularResumen();
+  };
+
+  const cambiarReglas = async () => {
     const nuevo = !reglas;
-    if (nuevo && !confirm(
-      "Vas a ACTIVAR las reglas de los planes.\n\n" +
-      "A partir de ese momento, los locales en Basic dejan de enseñar su logo en " +
-      "el mapa y su sello de verificado: llevarán la chincheta de TardeosClub.\n\n" +
-      "Se puede volver a apagar cuando quieras. ¿Seguimos?"
-    )) return;
-    setCambiandoReglas(true); setError("");
+    setCambiandoReglas(true); setAviso(null);
     const { error: e } = await setAjuste(CLAVE_PLANES, nuevo ? "true" : "false");
     setCambiandoReglas(false);
-    if (e) { setError("No se pudo cambiar: " + e.message); return; }
+    setPaso(0);
+    if (e) { setAviso({ tono: "error", texto: "No se pudo cambiar: " + e.message }); return; }
     setReglas(nuevo);
+    setAviso({ tono: "ok", texto: nuevo ? "Reglas de los planes ACTIVADAS." : "Reglas de los planes apagadas. Todo vuelve a estar abierto para todos." });
     // La web cachea los ajustes 30 s; se le avisa para que se entere ya.
     const { data: { session } } = await supabase.auth.getSession();
     fetch("/api/revalidar", {
@@ -122,209 +205,202 @@ export default function AdminSuscripciones() {
     }).catch(() => {});
   };
 
-  const guardar = async (f: Ficha, campos: Record<string, unknown>) => {
-    // Se comprueba ANTES de mandarlo. El lote 41 también lo rechaza en la base
-    // —que es quien manda—, pero un error de Postgres en pantalla no explica
-    // qué hacer, y aquí sí se puede decir cuál de las dos casillas mover.
-    const choque = combinacionInvalida(
-      (campos.estado as string) ?? f.estado,
-      (campos.plan_estado as string) ?? f.plan_estado
-    );
-    if (choque) { setError(choque); return; }
-    setGuardando(f.id); setError("");
-    const tabla = f.rol === "local" ? "locales" : "djs";
-    const { data, error: e } = await supabase.from(tabla).update(campos).eq("id", f.id).select("id,plan,plan_estado");
-    setGuardando(null);
-    if (e) { setError(e.message); return; }
-    // El trigger `proteger_plan` revierte sin dar error si no eres admin: hay
-    // que mirar lo que devuelve, no si falló.
-    const g = data?.[0] as any;
-    if (!g) { setError("No se pudo guardar. ¿Tu cuenta es admin?"); return; }
-    if (campos.plan && g.plan !== campos.plan) {
-      setError("La base rechazó el cambio de plan. ¿Tu cuenta es admin?"); return;
-    }
-    setFichas((p) => p.map((x) => (x.id === f.id ? { ...x, ...campos } as Ficha : x)));
-  };
-
-  /**
-   * «Al corriente» ahora significa al corriente Y dentro del periodo.
-   *
-   * `plan_hasta` se guardaba desde el lote 33 y no lo miraba nadie: una
-   * suscripción que caducó en marzo seguía contando como activa aquí y
-   * sumando al recurrente. El dinero que enseñaba esta pantalla incluía a
-   * quien ya no paga.
-   */
-  const pagando = fichas.filter((f) => vigente(f.plan_estado, f.plan_hasta));
-  const impagos = fichas.filter((f) => f.plan_estado === "impago");
-  // Marcadas como activas pero con la fecha pasada. No es lo mismo que un
-  // impago: nadie ha devuelto un recibo, es que se acabó el periodo y no se ha
-  // renovado. Se enseñan aparte para poder ir a por ellas.
-  const caducadas = fichas.filter((f) => f.plan_estado === "activa" && !vigente(f.plan_estado, f.plan_hasta));
-  // El recurrente de verdad: el precio de siempre, no el de alta. Los 40 € de
-  // los dos primeros meses del Fundador no son ingreso recurrente, y contarlos
-  // como tal daría una previsión que baja sola sin que nadie se dé de baja.
-  //
-  // Se redondea porque la división puede dar decimales —un plan trimestral de
-  // 50 € son 16,66 al mes— y un panel de dinero con seis decimales se lee mal.
-  const mrr = Math.round(pagando.reduce((s, f) => s + euroMes(f.plan), 0));
-  const extras = pagando.reduce((s, f) => s + (consumos[f.id]?.euros ?? 0), 0);
-
-  const lista = fichas
-    .filter((f) =>
-      filtro === "todas" ? true
-      : filtro === "pagando" ? f.plan_estado === "activa"
-      : filtro === "impago" ? f.plan_estado === "impago"
-      : f.plan_estado === "sin_suscripcion")
-    .filter((f) => contieneTexto(f.nombre, plegar(busca.trim())));
+  const apagado = reglas === false;
 
   return (
-    <main className="pb-10">
-      <PanelHeader titulo="Suscripciones" volverHref="/admin" />
-      <div className="mx-auto max-w-3xl px-4 pt-5 md:px-8">
-
-        {/* El interruptor general.
-            Las reglas nacen APAGADAS: con 68 locales, 64 sin dueño y ninguno
-            pagando, encenderlas hoy solo le quitaría el logo a fichas nuestras
-            sin que nadie gane nada. Están escritas y probadas, esperando. */}
-        {reglas !== null && (
-          <section className={`mb-4 rounded-2xl p-4 ring-1 ${reglas ? "bg-oro/15 ring-oro/40" : "bg-white ring-black/5"}`}>
-            <div className="flex items-center gap-3">
-              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${reglas ? "bg-oro text-tinta" : "bg-magenta-50 text-magenta"}`}>
-                <Power size={20} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="font-black leading-tight">
-                  Reglas de los planes: {reglas ? "activadas" : "apagadas"}
-                </p>
-                <p className="text-xs font-semibold text-tinta/60">
-                  {reglas
-                    ? "Los Basic no enseñan su logo ni el sello. Los Pro y superiores, sí."
-                    : "Todos los locales enseñan logo y sello, paguen o no. Enciéndelo cuando tengas clientes."}
-                </p>
-              </div>
-              <button onClick={alternarReglas} disabled={cambiandoReglas}
-                className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-extrabold disabled:opacity-50 ${
-                  reglas ? "bg-white text-tinta/70 ring-1 ring-black/10" : "bg-magenta text-white"}`}>
-                {cambiandoReglas ? <Loader2 size={16} className="animate-spin" /> : reglas ? "Apagar" : "Activar"}
-              </button>
-            </div>
-          </section>
-        )}
-
-        <section className="mb-4 grid grid-cols-3 gap-3">
-          <div className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
-            <Euro size={20} className="text-magenta" />
-            <p className="mt-1 font-display text-2xl font-black leading-none">{mrr} €</p>
-            <p className="mt-1 text-xs font-bold text-tinta/60">
-              al mes{extras > 0 && <span className="text-oro-600"> +{extras} € extras</span>}
-            </p>
-          </div>
-          <div className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
-            <Check size={20} className="text-magenta" />
-            <p className="mt-1 font-display text-2xl font-black leading-none">{pagando.length}</p>
-            <p className="mt-1 text-xs font-bold text-tinta/60">al corriente</p>
-          </div>
-          <div className={`rounded-2xl p-4 shadow-tarjeta ring-1 ${impagos.length + caducadas.length ? "bg-oro/15 ring-oro/40" : "bg-white ring-black/5"}`}>
-            <AlertTriangle size={20} className={impagos.length ? "text-oro-600" : "text-tinta/30"} />
-            <p className="mt-1 font-display text-2xl font-black leading-none">{impagos.length}</p>
-            <p className="mt-1 text-xs font-bold text-tinta/60">
-              impagos
-              {caducadas.length > 0 && (
-                <span className="block text-oro-700">+{caducadas.length} caducadas</span>
-              )}
+    <SeccionPanel
+      titulo="Suscripciones"
+      descripcion="Planes de locales y DJs, marcados a mano. Sin pasarela de pago."
+      ancho="ancho"
+    >
+      {/* Lo primero que se ve, y sin ambigüedad: hoy aquí no se cobra nada. */}
+      {apagado && (
+        <section role="status" className="mb-5 flex items-start gap-3 rounded-2xl border-2 border-aviso/40 bg-aviso-fondo p-4 md:p-5">
+          <PowerOff size={28} className="mt-0.5 shrink-0 text-aviso" aria-hidden />
+          <div>
+            <p className="text-lg font-extrabold text-aviso md:text-xl">Suscripciones desactivadas: nadie paga ni se cobra nada</p>
+            <p className="mt-1 text-[15px] text-tinta">
+              No hay pasarela de pago y las reglas de los planes están apagadas: todos los locales y DJs tienen todas las
+              funciones, paguen o no. Lo que marques abajo es solo una anotación interna.
             </p>
           </div>
         </section>
+      )}
 
-        <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-          {([["todas","Todas"],["pagando","Al corriente"],["impago","Impagos"],["sin","Sin suscripción"]] as const).map(([k, l]) => (
-            <button key={k} onClick={() => setFiltro(k)}
-              className={`min-h-[44px] shrink-0 rounded-xl px-4 text-sm font-extrabold transition ${filtro === k ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100"}`}>
-              {l}
-            </button>
-          ))}
-        </div>
+      {/* El interruptor general. Nace APAGADO a propósito: encenderlo hoy solo
+          le quitaría el logo a fichas nuestras sin que nadie gane nada. */}
+      {reglas !== null && (
+        <section className={`mb-5 flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center ${reglas ? "border-oro/50 bg-oro/10" : "border-linea bg-white"}`}>
+          <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${reglas ? "bg-oro text-tinta" : "bg-marfil-100 text-tinta-suave"}`}>
+            <Power size={20} aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-bold">Reglas de los planes: {reglas ? "ACTIVADAS" : "apagadas"}</p>
+            <p className="text-[15px] text-tinta-suave">
+              {reglas
+                ? "Los Basic no enseñan su logo ni el sello de verificado. Los Pro y superiores, sí."
+                : "Todos enseñan logo y sello. Solo se enciende el día que haya clientes pagando."}
+            </p>
+          </div>
+          <Boton variante="contorno" tamano="pequeno" cargando={cambiandoReglas} onClick={() => setPaso(1)}>
+            {reglas ? "Apagar reglas" : "Activar reglas…"}
+          </Boton>
+        </section>
+      )}
 
-        <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Busca por nombre…"
-          className="mb-3 w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 font-semibold outline-none focus:border-magenta" />
+      {/* Cifras. Con todo apagado se enseñan igual, pero dicen lo que son. */}
+      <section className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[
+          { n: resumen ? `${resumen.mrr} €` : "…", t: apagado ? "al mes anotados (no se cobran)" : "al mes" },
+          { n: resumen?.pagando ?? "…", t: "al corriente" },
+          { n: resumen?.impagos ?? "…", t: "con pago pendiente" },
+          { n: resumen?.caducadas ?? "…", t: "caducadas sin renovar" },
+        ].map((k) => (
+          <div key={k.t} className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta">
+            <p className="text-2xl font-bold leading-none">{k.n}</p>
+            <p className="mt-1.5 text-sm text-tinta-suave">{k.t}</p>
+          </div>
+        ))}
+      </section>
+      {resumen && resumen.extras > 0 && (
+        <p className="-mt-3 mb-5 text-sm text-tinta-suave">
+          Además, {resumen.extras} € en extras del mes por encima del plan{apagado ? " (no se cobran)" : ""}.
+        </p>
+      )}
 
-        {error && <p className="mb-3 rounded-xl bg-magenta-50 p-3 text-sm font-bold text-magenta">{error}</p>}
+      <div className="mb-4 flex flex-col gap-3">
+        <Filtros<Rol>
+          valor={rol}
+          onCambiar={(r) => { setRol(r); setConsumos({}); }}
+          opciones={[
+            { clave: "local", label: "Locales", n: totales.local },
+            { clave: "dj", label: "DJs", n: totales.dj },
+          ]}
+        />
+        <Buscador valor={texto} onCambiar={setTexto} placeholder={rol === "local" ? "Buscar local por nombre…" : "Buscar DJ por nombre…"} />
+        <Filtros<Filtro>
+          valor={filtro}
+          onCambiar={setFiltro}
+          opciones={[
+            { clave: "todas", label: "Todas", n: cuentas.todas },
+            { clave: "activa", label: "Al corriente", n: cuentas.activa },
+            { clave: "impago", label: "Pago pendiente", n: cuentas.impago },
+            { clave: "sin_suscripcion", label: "Sin suscripción", n: cuentas.sin_suscripcion },
+            { clave: "cancelada", label: "Canceladas", n: cuentas.cancelada },
+          ]}
+        />
+      </div>
 
-        {cargando ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-tinta/50"><Loader2 className="animate-spin" /> Cargando…</div>
-        ) : lista.length === 0 ? (
-          <p className="rounded-2xl bg-white p-6 text-center font-bold text-tinta/50 ring-1 ring-black/5">Nada aquí.</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {lista.map((f) => (
-              <div key={f.id} className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
-                <div className="flex items-start gap-3">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta">
-                    {f.rol === "local" ? <Store size={18} /> : <Disc3 size={18} />}
+      {aviso && <Aviso tono={aviso.tono}>{aviso.texto}</Aviso>}
+
+      <EstadoLista cargando={p.cargando} error={p.error} filas={p.filas.length}
+        vacio={busca || filtro !== "todas" ? "Nada con esos filtros." : rol === "local" ? "No hay locales." : "No hay DJs."} />
+
+      {p.filas.length > 0 && (
+        <ul className={`flex flex-col gap-3 ${p.cargando ? "opacity-60" : ""}`}>
+          {p.filas.map((f) => {
+            const dias = diasRestantes(f.plan_hasta);
+            const c = consumos[f.id];
+            return (
+              <li key={f.id} className="flex flex-col gap-3 rounded-2xl border border-linea bg-white p-4 shadow-tarjeta lg:flex-row lg:items-center">
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-marfil-100 text-tinta-suave">
+                    {rol === "local" ? <Store size={20} aria-hidden /> : <Disc3 size={20} aria-hidden />}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <Link href={f.rol === "local" ? `/locales/${f.id}` : `/djs/${f.id}`}
-                      className="block truncate font-black leading-tight hover:text-magenta">{f.nombre}</Link>
-                    <p className="text-xs font-semibold text-tinta/50">
+                  <div className="min-w-0">
+                    <Link href={rol === "local" ? `/locales/${f.id}` : `/djs/${f.id}`} target="_blank"
+                      className="block truncate font-bold leading-tight hover:text-magenta-700">{f.nombre || "(sin nombre)"}</Link>
+                    <p className="text-sm text-tinta-suave">
                       {f.reclamado ? "Perfil reclamado" : "Sin reclamar · ficha nuestra"}
                       {f.pago_referencia && ` · ${f.pago_proveedor ?? "pago"}: ${f.pago_referencia}`}
                     </p>
-                    {/* Hasta cuándo está pagado. Solo se dice cuando importa:
-                        una fecha a seis meses vista no es información. */}
-                    {(() => {
-                      const dias = diasRestantes(f.plan_hasta);
-                      if (dias === null || f.plan_estado !== "activa") return null;
-                      if (dias < 0) return (
-                        <p className="mt-0.5 text-xs font-black text-magenta">
-                          Caducó hace {Math.abs(dias)} {Math.abs(dias) === 1 ? "día" : "días"} · ya no cuenta como al corriente
-                        </p>
-                      );
-                      if (dias <= 14) return (
-                        <p className="mt-0.5 text-xs font-black text-oro-700">
-                          {dias === 0 ? "Vence hoy" : `Vence en ${dias} ${dias === 1 ? "día" : "días"}`}
-                        </p>
-                      );
-                      return null;
-                    })()}
-                    {consumos[f.id] && (consumos[f.id].eventosMes > 0 || consumos[f.id].promosActivas > 0) && (
-                      <p className="mt-0.5 text-xs font-bold text-tinta/60">
-                        {consumos[f.id].eventosMes} eventos · {consumos[f.id].promosActivas} promos
-                        {consumos[f.id].euros > 0 && (
-                          <span className="ml-1 rounded-full bg-oro/20 px-2 py-0.5 font-black text-oro-700">
-                            +{consumos[f.id].euros} € a cobrar
-                          </span>
-                        )}
-                      </p>
-                    )}
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {/* Hasta cuándo está pagado. Solo se dice cuando importa:
+                          una fecha a seis meses vista no es información. */}
+                      {dias !== null && f.plan_estado === "activa" && dias < 0 && (
+                        <Etiqueta tono="error">Caducó hace {Math.abs(dias)} {Math.abs(dias) === 1 ? "día" : "días"}</Etiqueta>
+                      )}
+                      {dias !== null && f.plan_estado === "activa" && dias >= 0 && dias <= 14 && (
+                        <Etiqueta tono="aviso">{dias === 0 ? "Vence hoy" : `Vence en ${dias} ${dias === 1 ? "día" : "días"}`}</Etiqueta>
+                      )}
+                      {c && (c.eventosMes > 0 || c.promosActivas > 0) && (
+                        <Etiqueta>{c.eventosMes} eventos · {c.promosActivas} promos{c.euros > 0 ? ` · +${c.euros} € extras${apagado ? " (no se cobran)" : ""}` : ""}</Etiqueta>
+                      )}
+                    </div>
                   </div>
-                  {guardando === f.id && <Loader2 size={16} className="animate-spin text-magenta" />}
                 </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:w-[460px]">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[13px] font-semibold text-tinta-suave">Plan</span>
+                    <select value={f.plan} disabled={guardando === f.id} onChange={(e) => guardar(f, { plan: e.target.value as Plan })}
+                      className="min-h-[44px] rounded-xl border border-linea-fuerte bg-white px-3 text-[15px] font-semibold outline-none focus:border-magenta focus:ring-4 focus:ring-magenta/15">
+                      {/* La frase ENTERA, no el importe recurrente: «Fundador ·
+                          30 € al mes (alta aparte)» no dice que los dos primeros
+                          meses son 40. */}
+                      {PLANES.map((pl) => <option key={pl} value={pl}>{ETIQUETA[pl]} · {precioTexto(pl)}</option>)}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[13px] font-semibold text-tinta-suave">Estado del pago</span>
+                    <select value={f.plan_estado} disabled={guardando === f.id} onChange={(e) => guardar(f, { plan_estado: e.target.value })}
+                      className={`min-h-[44px] rounded-xl border px-3 text-[15px] font-semibold outline-none focus:border-magenta focus:ring-4 focus:ring-magenta/15 ${
+                        f.plan_estado === "impago" ? "border-aviso/50 bg-aviso-fondo" : "border-linea-fuerte bg-white"}`}>
+                      {SUSCRIPCION.map((e) => <option key={e.k} value={e.k}>{e.label}</option>)}
+                    </select>
+                  </label>
+                </div>
+                {guardando === f.id && <Loader2 size={18} className="animate-spin text-magenta" aria-label="Guardando" />}
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <select value={f.plan} onChange={(e) => guardar(f, { plan: e.target.value })}
-                    className="min-h-[44px] rounded-xl border-2 border-magenta-100 bg-white px-3 text-sm font-extrabold outline-none focus:border-magenta">
-                    {/* La frase ENTERA, no el importe recurrente.
-                        Aquí es donde alguien elige un plan, así que tiene que
-                        leer lo que cuesta: «Fundador · 30 € al mes (alta
-                        aparte)» no dice que los dos primeros meses son 40. */}
-                    {PLANES.map((p) => <option key={p} value={p}>{ETIQUETA[p]} · {precioTexto(p)}</option>)}
-                  </select>
-                  <select value={f.plan_estado} onChange={(e) => guardar(f, { plan_estado: e.target.value })}
-                    className={`min-h-[44px] rounded-xl border-2 px-3 text-sm font-extrabold outline-none ${
-                      f.plan_estado === "impago" ? "border-oro/60 bg-oro/10" : "border-magenta-100 bg-white"}`}>
-                    {SUSCRIPCION.map((e) => <option key={e.k} value={e.k}>{e.label}</option>)}
-                  </select>
-                </div>
-              </div>
-            ))}
+      <Paginacion pagina={p.pagina} total={p.total} porPagina={p.porPagina} onCambiar={p.setPagina} cargando={p.cargando} />
+
+      <p className="mt-5 text-sm text-tinta-suave">
+        Se marca a mano a propósito: con este volumen, montar altas y bajas automáticas cuesta más de lo que ahorra.
+      </p>
+
+      {/* Doble confirmación para ENCENDER: es lo que cambia lo que ve el público.
+          Para apagar basta una: devuelve la app a como está hoy. */}
+      <Hoja abierta={paso > 0} onCerrar={() => !cambiandoReglas && setPaso(0)}
+        titulo={reglas ? "¿Apagar las reglas de los planes?" : paso === 1 ? "Activar las reglas de los planes" : "Última confirmación"}
+        pie={
+          <div className="grid gap-2">
+            {reglas ? (
+              <Boton ancho cargando={cambiandoReglas} onClick={cambiarReglas}>Sí, apagarlas</Boton>
+            ) : paso === 1 ? (
+              <Boton ancho variante="contorno" onClick={() => setPaso(2)}>Entiendo las consecuencias, continuar</Boton>
+            ) : (
+              <Boton ancho variante="peligro" cargando={cambiandoReglas} onClick={cambiarReglas}>Sí, activar las reglas ahora</Boton>
+            )}
+            <Boton ancho variante={reglas || paso === 2 ? "contorno" : "primario"} disabled={cambiandoReglas} onClick={() => setPaso(0)}>
+              Cancelar
+            </Boton>
           </div>
+        }>
+        {reglas ? (
+          <p className="text-base">
+            Todos los locales y DJs volverán a enseñar su logo y su sello, paguen o no. Es como funciona la app hoy y se
+            puede volver a activar cuando quieras.
+          </p>
+        ) : paso === 1 ? (
+          <div className="flex flex-col gap-3 text-base">
+            <p>Si las activas, <strong>en cuanto guardes</strong>:</p>
+            <ul className="list-disc space-y-1 pl-5">
+              <li>Los locales en <strong>Basic</strong> (hoy, casi todos) dejan de enseñar su logo en el mapa y su sello de verificado: llevarán la chincheta de TardeosClub.</li>
+              <li>Lo que cada ficha puede usar (logo, sello y las funciones de pago del panel) pasa a depender del plan y del estado de pago marcados aquí.</li>
+              <li>Nadie recibe un cobro: no hay pasarela. Pero lo que ve el público cambia para todos a la vez.</li>
+            </ul>
+          </div>
+        ) : (
+          <p className="text-base">
+            ¿Seguro? Ahora mismo hay <strong>{resumen?.pagando ?? "…"}</strong> fichas al corriente. El resto pasa a funcionar
+            como Basic desde este momento. Se puede apagar después.
+          </p>
         )}
-
-        <p className="mt-5 text-center text-xs font-semibold text-tinta/50">
-          Se marca a mano a propósito. Con este volumen, montar altas y bajas automáticas
-          cuesta más de lo que ahorra.
-        </p>
-      </div>
-    </main>
+      </Hoja>
+    </SeccionPanel>
   );
 }

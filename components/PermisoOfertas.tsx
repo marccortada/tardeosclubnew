@@ -50,19 +50,19 @@ export default function PermisoOfertas({ userId }: { userId: string }) {
   };
 
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
+    <div className="rounded-2xl bg-white p-4 border border-linea shadow-tarjeta">
       <label className="flex items-start gap-3">
         <input
           type="checkbox" checked={valor} onChange={cambiar} disabled={guardando}
           className="mt-0.5 h-5 w-5 shrink-0 accent-magenta"
         />
         <span className="flex-1">
-          <span className="flex items-center gap-1.5 font-black leading-tight">
+          <span className="flex items-center gap-1.5 font-bold leading-tight">
             <Mail size={16} className="text-magenta" /> Ofertas y novedades por email
             {guardando && <Loader2 size={14} className="animate-spin text-magenta" />}
-            {guardado && <Check size={14} className="text-green-600" />}
+            {guardado && <Check size={14} className="text-ok" />}
           </span>
-          <span className="text-sm font-semibold text-tinta/55">
+          <span className="text-sm font-semibold text-tinta-suave">
             {valor
               ? "Te avisaremos de promociones. Puedes desmarcarlo cuando quieras."
               : "No te mandamos nada. Márcalo si quieres enterarte de las promociones."}

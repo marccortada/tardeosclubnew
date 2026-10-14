@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
-import { Store, Disc3, Check, Loader2, AlertTriangle, LogIn } from "lucide-react";
+import { entrarYVolver } from "@/lib/volver";
+import { Store, Check, Loader2, AlertTriangle, LogIn, BadgeCheck, ArrowRight } from "lucide-react";
+import Boton, { claseBoton } from "@/components/Boton";
 
 type Resultado = { ok: true; tipo: "local" | "dj"; nombre: string } | { ok: false; error: string };
 
@@ -26,13 +28,13 @@ function ReclamarContent() {
   };
 
   if (loading) {
-    return <main className="flex items-center justify-center gap-2 pt-24 text-tinta/50"><Loader2 className="animate-spin" /> Cargando…</main>;
+    return <main className="flex items-center justify-center gap-2 pt-24 text-tinta-suave"><Loader2 className="animate-spin" aria-hidden /> Cargando…</main>;
   }
 
   if (!token) {
     return (
       <Aviso titulo="Enlace incompleto">
-        A este enlace le falta el token. Pídele al equipo de TardeosClub que te mande uno nuevo.
+        A este enlace le falta el código de invitación. Pide al equipo de TardeosClub que te mande uno nuevo.
       </Aviso>
     );
   }
@@ -42,84 +44,83 @@ function ReclamarContent() {
   // esta se entera sola.
   if (!user) {
     return (
-      <main className="mx-auto max-w-lg px-4 pt-16 text-center">
-        <span className="mb-3 inline-grid h-16 w-16 place-items-center rounded-full bg-marca text-white"><LogIn size={30} /></span>
-        <h1 className="font-display text-3xl font-black">Te han invitado</h1>
-        <p className="mt-2 font-semibold text-tinta/70">
-          Entra con tu cuenta (o créala) y vuelve a este enlace para quedarte con tu ficha.
+      <Caja icono={<LogIn size={28} aria-hidden />} titulo="Te han invitado a TardeosClub">
+        <p className="text-[16px] text-tinta-suave">
+          Entra con tu cuenta (o créala) y te traemos de vuelta aquí para quedarte con tu ficha.
         </p>
-        <Link href="/perfil" className="mt-5 inline-block rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">
-          Entrar o crear cuenta
+        {/* Con ?volver= el acceso devuelve a esta misma invitación, token incluido. */}
+        <Link href={entrarYVolver(`/reclamar?token=${encodeURIComponent(token)}`)} className={claseBoton("primario", "normal", true, "mt-5 !min-h-[54px] !text-[18px]")}>
+          Entrar o crear cuenta <ArrowRight size={20} aria-hidden />
         </Link>
-        <p className="mt-4 text-xs font-semibold text-tinta/50">
-          Guarda este enlace: lo necesitarás justo después de entrar.
-        </p>
-      </main>
+      </Caja>
     );
   }
 
   if (res?.ok) {
     const esLocal = res.tipo === "local";
     return (
-      <main className="mx-auto flex max-w-lg flex-col items-center gap-4 px-4 pt-16 text-center">
-        <span className="grid h-20 w-20 place-items-center rounded-full bg-oro text-tinta"><Check size={44} /></span>
-        <h1 className="font-display text-3xl font-black">¡Ya es tuya!</h1>
-        <p className="font-semibold text-tinta/70">
-          <b>{res.nombre}</b> está enlazada con tu cuenta. Desde tu panel puedes editarla
+      <Caja icono={<Check size={30} aria-hidden />} tono="ok" titulo="¡Ya es tuya!">
+        <p className="text-[16px] text-tinta-suave">
+          <b className="text-tinta">{res.nombre}</b> está enlazada con tu cuenta. Desde tu panel puedes editarla
           {esLocal ? " y publicar tardeos." : " y ver en qué tardeos pinchas."}
         </p>
-        <Link href={esLocal ? "/local" : "/dj"} className="mt-2 rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">
-          Ir a mi panel
-        </Link>
-      </main>
+        <Link href={esLocal ? "/local" : "/dj"} className={claseBoton("primario", "normal", true, "mt-5")}>Ir a mi panel</Link>
+      </Caja>
     );
   }
 
   if (res && !res.ok) {
-    return (
-      <Aviso titulo="No se ha podido reclamar">
-        {res.error}
-      </Aviso>
-    );
+    return <Aviso titulo="No se ha podido reclamar">{res.error}</Aviso>;
   }
 
   return (
-    <main className="mx-auto max-w-lg px-4 pt-16 text-center">
-      <span className="mb-3 inline-grid h-16 w-16 place-items-center rounded-full bg-marca text-white"><Store size={30} /></span>
-      <h1 className="font-display text-3xl font-black">Reclama tu ficha</h1>
-      <p className="mt-2 font-semibold text-tinta/70">
-        Vas a enlazar la ficha con <b>{user.email}</b>. A partir de ahí la gestionas tú.
+    <Caja icono={<Store size={28} aria-hidden />} titulo="Reclama tu ficha">
+      <p className="text-[16px] text-tinta-suave">
+        Vas a enlazar la ficha con <b className="text-tinta">{user.email}</b>. A partir de ahí la gestionas tú.
       </p>
-      <button
-        onClick={reclamar}
-        disabled={reclamando}
-        className="mt-5 inline-flex items-center justify-center gap-2 rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white active:scale-[0.98] disabled:opacity-40"
-      >
-        {reclamando ? <Loader2 size={20} className="animate-spin" /> : <Disc3 size={20} />} Reclamar
-      </button>
-      <p className="mt-4 text-xs font-semibold text-tinta/50">
-        ¿No es tu cuenta? Sal de la sesión desde tu perfil y vuelve a abrir el enlace.
+      <Boton onClick={reclamar} cargando={reclamando} ancho className="mt-5">
+        <BadgeCheck size={20} aria-hidden /> Reclamar mi ficha
+      </Boton>
+      <p className="mt-3 text-[14px] text-tinta-suave">
+        ¿No es tu cuenta? Cierra sesión desde <Link href="/perfil" className="font-semibold underline">Mi cuenta</Link> y vuelve a abrir el enlace.
       </p>
+    </Caja>
+  );
+}
+
+function Caja({ icono, titulo, tono = "marca", children }: { icono: React.ReactNode; titulo: string; tono?: "marca" | "ok" | "error"; children: React.ReactNode }) {
+  // Franja de color arriba con el icono: rosa→naranja de la marca para la
+  // invitación, verde al terminar y rojo si algo falla.
+  const franja = { marca: "bg-fiesta", ok: "bg-ok", error: "bg-error" }[tono];
+  const color = { marca: "text-magenta", ok: "text-ok", error: "text-error" }[tono];
+  return (
+    <main className="mx-auto max-w-lg px-4 pb-12 pt-8 md:pt-16">
+      <div className="overflow-hidden rounded-[24px] border border-linea bg-white text-center shadow-elevada">
+        <div className={`${franja} flex justify-center px-6 pb-10 pt-7`}>
+          {tono === "marca" && <p className="font-script text-[24px] leading-none text-white">Tu ficha te espera</p>}
+        </div>
+        <div className="-mt-9 flex flex-col items-center px-6 pb-7 md:px-8 md:pb-8">
+          <span className={`grid h-[72px] w-[72px] place-items-center rounded-full border-4 border-white bg-white ${color} shadow-tarjeta`}>{icono}</span>
+          <h1 className="mb-2 mt-3 text-[26px] font-extrabold leading-tight tracking-tight">{titulo}</h1>
+          {children}
+        </div>
+      </div>
     </main>
   );
 }
 
 function Aviso({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <main className="mx-auto max-w-lg px-4 pt-16 text-center">
-      <span className="mb-3 inline-grid h-16 w-16 place-items-center rounded-full bg-tinta text-white"><AlertTriangle size={30} /></span>
-      <h1 className="font-display text-2xl font-black">{titulo}</h1>
-      <p className="mt-2 font-semibold text-tinta/70">{children}</p>
-      <Link href="/" className="mt-5 inline-block rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">
-        Volver al inicio
-      </Link>
-    </main>
+    <Caja icono={<AlertTriangle size={28} aria-hidden />} tono="error" titulo={titulo}>
+      <p className="text-[16px] text-tinta-suave">{children}</p>
+      <Link href="/" className={claseBoton("contorno", "normal", true, "mt-5")}>Volver al inicio</Link>
+    </Caja>
   );
 }
 
 export default function Reclamar() {
   return (
-    <Suspense fallback={<div className="p-8 text-center font-bold text-tinta/50">Cargando…</div>}>
+    <Suspense fallback={<div className="p-8 text-center font-semibold text-tinta-suave">Cargando…</div>}>
       <ReclamarContent />
     </Suspense>
   );

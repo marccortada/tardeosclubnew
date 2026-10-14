@@ -5,8 +5,11 @@ import { supabase } from "@/lib/supabase";
 import AddressSearch, { type Direccion } from "@/components/AddressSearch";
 import SelectorAdnLocal, { ADN_LOCAL_VACIO, type AdnLocal } from "@/components/SelectorAdnLocal";
 import SelectorEstilos from "@/components/SelectorEstilos";
+import Boton from "@/components/Boton";
+import Aviso from "@/components/admin/Aviso";
+import { claseCampo } from "@/components/ui/Campo";
 import {
-  Check, ArrowLeft, ArrowRight, Loader2, Store, Megaphone, Disc3,
+  Check, ArrowLeft, ArrowRight, Store, Megaphone, Disc3,
   MapPin, Phone, Mail, Instagram, Globe, FileText, Music, ListChecks,
 } from "lucide-react";
 
@@ -140,28 +143,31 @@ export default function AsistenteAlta({
       {/* Los pasos, a la vista siempre: saber cuántos quedan es lo que hace que
           no se abandone a la mitad. Se puede volver atrás tocando el número,
           pero no saltar hacia delante. */}
-      <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-black">
+      <ol className="flex flex-wrap items-center gap-x-2 gap-y-2 text-sm font-semibold" aria-label="Pasos">
         {PASOS.map((p, i) => (
           <li key={p} className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => i < paso && setPaso(i)}
-              className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${
-                i === paso ? "bg-magenta text-white" : i < paso ? "bg-oro text-tinta" : "bg-black/5 text-tinta/40"
+              disabled={i >= paso}
+              aria-current={i === paso ? "step" : undefined}
+              aria-label={i < paso ? `Volver al paso ${i + 1}: ${p}` : `Paso ${i + 1}: ${p}`}
+              className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-bold disabled:cursor-default ${
+                i === paso ? "bg-magenta text-white" : i < paso ? "bg-ok-fondo text-ok hover:bg-ok hover:text-white" : "bg-marfil-100 text-tinta-suave"
               }`}
             >
-              {i < paso ? <Check size={12} /> : i + 1}
+              {i < paso ? <Check size={16} aria-hidden /> : i + 1}
             </button>
-            <span className={i === paso ? "text-tinta" : "text-tinta/40"}>{p}</span>
-            {i < PASOS.length - 1 && <span className="mx-1 text-tinta/20">·</span>}
+            <span className={i === paso ? "text-tinta" : "text-tinta-suave"}>{p}</span>
+            {i < PASOS.length - 1 && <span className="mx-1 text-tinta-suave">·</span>}
           </li>
         ))}
       </ol>
 
-      <div className="rounded-3xl bg-white p-5 shadow-tarjeta ring-1 ring-black/5">
-        <p className="mb-4 flex items-center gap-2 font-display text-xl font-black">
-          <Icono size={22} className="text-magenta" /> {PASOS[paso]}
-        </p>
+      <div className="rounded-2xl border border-linea bg-white p-5 shadow-tarjeta md:p-6">
+        <h2 className="mb-4 flex items-center gap-2 text-xl font-bold">
+          <Icono size={22} className="text-magenta" aria-hidden /> {PASOS[paso]}
+        </h2>
 
         {/* ---------- Paso 1: quién es ---------- */}
         {paso === 0 && (
@@ -171,18 +177,18 @@ export default function AsistenteAlta({
               placeholder={esDj ? "DJ Nando" : tipo === "promotor" ? "Tardeos del Maresme" : "Sala Blau"} />
             {esLocal && (
               <div>
-                <p className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
-                  <MapPin size={15} className="text-magenta" /> Dirección <span className="text-magenta">*</span>
+                <p className="mb-1.5 flex items-center gap-2 text-[15px] font-semibold text-tinta">
+                  <MapPin size={16} className="text-tinta-suave" aria-hidden /> Dirección <span className="text-magenta" aria-label="obligatorio">*</span>
                 </p>
                 <AddressSearch inicial={nombre} onSelect={setDir}
                   placeholder="Busca el local por su nombre o su calle…" />
-                <p className="mt-1 text-xs font-semibold text-tinta/50">
+                <p className="mt-1.5 text-sm text-tinta-suave">
                   {dir ? `Elegido: ${dir.display}` : "De aquí salen el punto del mapa y la zona de los filtros."}
                 </p>
               </div>
             )}
             {tipo === "promotor" && (
-              <p className="rounded-xl bg-magenta-50/60 p-3 text-xs font-semibold text-tinta/60">
+              <p className="rounded-xl bg-marfil-100 p-3 text-[15px] text-tinta-suave">
                 Un promotor no lleva dirección: el sitio se elige en cada tardeo.
               </p>
             )}
@@ -190,7 +196,7 @@ export default function AsistenteAlta({
               type="email" placeholder="hola@ejemplo.com" />
             <Campo icon={Phone} label="Teléfono" valor={telefono} onChange={setTelefono}
               placeholder="+34 600 000 000" />
-            <p className="rounded-xl bg-black/[0.03] p-3 text-xs font-semibold text-tinta/55">
+            <p className="rounded-xl bg-marfil-100 p-3 text-[15px] text-tinta-suave">
               El email y el teléfono son para que <strong>tú</strong> puedas contactarle. No se crea
               ninguna cuenta: cuando la ficha esté lista podrás mandarle un enlace de invitación
               para que entre y se ponga su propia contraseña.
@@ -202,11 +208,11 @@ export default function AsistenteAlta({
         {paso === 1 && (
           esDj ? (
             <div>
-              <p className="mb-2 flex items-center gap-2 text-sm font-black text-tinta/70">
-                <Music size={15} className="text-magenta" /> Estilos que pincha
+              <p className="mb-2 flex items-center gap-2 text-[15px] font-semibold text-tinta">
+                <Music size={16} className="text-tinta-suave" aria-hidden /> Estilos que pincha
               </p>
               <SelectorEstilos valor={estilos} onChange={setEstilos} />
-              <p className="mt-2 text-xs font-semibold text-tinta/50">
+              <p className="mt-2 text-sm text-tinta-suave">
                 Es lo que hace que salga en las búsquedas por música y en las recomendaciones.
               </p>
             </div>
@@ -232,7 +238,7 @@ export default function AsistenteAlta({
             </div>
           ) : (
             <>
-              <p className="mb-3 text-xs font-semibold text-tinta/55">
+              <p className="mb-3 text-[15px] text-tinta-suave">
                 Esto es lo que hace que la ficha aparezca en los filtros y en las recomendaciones.
                 Se puede dejar en blanco y completarlo luego, pero mientras esté vacía, la ficha
                 no encaja con nada.
@@ -258,30 +264,20 @@ export default function AsistenteAlta({
           <Resumen {...{ tipo, nombre, email, telefono, dir, adn, estilos, descripcion, instagram, web }} />
         )}
 
-        {error && <p className="mt-3 text-sm font-bold text-magenta">{error}</p>}
+        {error && <div className="mt-4"><Aviso>{error}</Aviso></div>}
 
         <div className="mt-5 flex gap-2">
-          <button
-            onClick={() => (paso === 0 ? onCancelar() : setPaso(paso - 1))}
-            className="inline-flex items-center gap-1.5 rounded-2xl bg-white px-5 py-3.5 text-base font-extrabold text-tinta/60 ring-1 ring-magenta-100"
-          >
-            <ArrowLeft size={18} /> {paso === 0 ? "Cancelar" : "Atrás"}
-          </button>
+          <Boton variante="contorno" onClick={() => (paso === 0 ? onCancelar() : setPaso(paso - 1))} disabled={guardando}>
+            <ArrowLeft size={18} aria-hidden /> {paso === 0 ? "Cancelar" : "Atrás"}
+          </Boton>
           {paso < PASOS.length - 1 ? (
-            <button
-              onClick={() => setPaso(paso + 1)}
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-magenta py-3.5 text-lg font-extrabold text-white active:scale-[0.98]"
-            >
-              Siguiente <ArrowRight size={18} />
-            </button>
+            <Boton className="flex-1" onClick={() => setPaso(paso + 1)}>
+              Siguiente <ArrowRight size={18} aria-hidden />
+            </Boton>
           ) : (
-            <button
-              onClick={crear}
-              disabled={guardando}
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-marca py-3.5 text-lg font-extrabold text-white active:scale-[0.98] disabled:opacity-50"
-            >
-              {guardando ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />} Crear ficha
-            </button>
+            <Boton className="flex-1" onClick={crear} cargando={guardando}>
+              {!guardando && <Check size={18} aria-hidden />} Crear ficha
+            </Boton>
           )}
         </div>
       </div>
@@ -326,18 +322,18 @@ function Resumen(p: {
 
   return (
     <div>
-      <ul className="flex flex-col gap-1.5">
+      <ul className="divide-y divide-linea">
         {filas.map(([k, v]) => (
-          <li key={k} className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="shrink-0 font-black text-tinta/50">{k}</span>
+          <li key={k} className="flex items-baseline justify-between gap-3 py-2 text-[15px]">
+            <span className="shrink-0 text-tinta-suave">{k}</span>
             <span className={`min-w-0 truncate text-right font-semibold ${
-              v.startsWith("sin ") ? "text-tinta/35" : "text-tinta"}`}>{v}</span>
+              v.startsWith("sin ") ? "text-tinta-suave" : "text-tinta"}`}>{v}</span>
           </li>
         ))}
       </ul>
       {vacios > 0 && (
-        <p className="mt-3 flex items-start gap-1.5 rounded-xl bg-amber-50 p-3 text-xs font-bold text-amber-900">
-          <ListChecks size={14} className="mt-0.5 shrink-0" />
+        <p className="mt-3 flex items-start gap-2 rounded-xl bg-aviso-fondo p-3 text-[15px] font-semibold text-aviso">
+          <ListChecks size={18} className="mt-0.5 shrink-0" aria-hidden />
           Quedan {vacios} campos sin rellenar. La ficha se crea igual, pero cuanto más vacía,
           menos aparece en filtros y recomendaciones. Se puede completar después.
         </p>
@@ -354,14 +350,14 @@ function Campo({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
-        <Icon size={15} className="text-magenta" /> {label}
-        {obligatorio && <span className="text-magenta">*</span>}
+      <span className="mb-1.5 flex items-center gap-2 text-[15px] font-semibold text-tinta">
+        <Icon size={16} className="text-tinta-suave" aria-hidden /> {label}
+        {obligatorio && <span className="text-magenta" aria-label="obligatorio">*</span>}
       </span>
       <input
         type={type} value={valor} placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 text-base font-semibold outline-none transition focus:border-magenta"
+        className={claseCampo}
       />
     </label>
   );
@@ -374,13 +370,13 @@ function CampoLargo({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
-        <Icon size={15} className="text-magenta" /> {label}
+      <span className="mb-1.5 flex items-center gap-2 text-[15px] font-semibold text-tinta">
+        <Icon size={16} className="text-tinta-suave" aria-hidden /> {label}
       </span>
       <textarea
         value={valor} placeholder={placeholder} rows={3}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full resize-y rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 text-base font-semibold outline-none transition focus:border-magenta"
+        className={`${claseCampo} resize-y`}
       />
     </label>
   );

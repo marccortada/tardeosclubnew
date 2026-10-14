@@ -39,11 +39,22 @@ export default async function DjCompatibilidad({
 
   const { data } = await supabase.from("djs").select("id,nombre_artistico").eq("oculto", false);
 
-  const encontrado = (data ?? []).find((d) => {
-    const t = aTexto(d.nombre_artistico ?? "");
-    // Exacto, o el nombre seguido del trozo de id que añadía la web actual.
-    return t.length > 0 && (pedido === t || pedido.startsWith(`${t}-`));
-  });
+  const djs = (data ?? []).map((d) => ({ id: String(d.id).toLowerCase(), t: aTexto(d.nombre_artistico ?? "") }));
+  // Con `find` ganaba el primero que encajase: «dj» se quedaba enlaces de
+  // «dj-pepe-…». Se busca de lo más seguro a lo menos:
+  // 1) el nombre exacto;
+  // 2) el trozo final coincide con el inicio de un id (lo que añadía la web
+  //    actual para distinguir DJs con el mismo nombre); si hay varios, el que
+  //    además encaje por nombre;
+  // 3) el nombre más largo que encaje como prefijo.
+  const trozo = pedido.includes("-") ? pedido.slice(pedido.lastIndexOf("-") + 1) : "";
+  const encajaNombre = (t: string) => t.length > 0 && pedido.startsWith(`${t}-`);
+  const porId = /^[0-9a-f]{4,}$/.test(trozo) ? djs.filter((d) => d.id.startsWith(trozo)) : [];
+  const encontrado =
+    djs.find((d) => d.t.length > 0 && d.t === pedido) ??
+    porId.find((d) => encajaNombre(d.t)) ??
+    (porId.length === 1 ? porId[0] : undefined) ??
+    djs.filter((d) => encajaNombre(d.t)).sort((a, b) => b.t.length - a.t.length)[0];
 
   redirect(encontrado ? `/djs/${encontrado.id}` : "/colaboradores?ver=djs");
 }

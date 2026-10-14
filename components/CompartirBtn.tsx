@@ -8,12 +8,15 @@ export default function CompartirBtn({
   texto,
   url: urlProp,
   className = "",
+  etiqueta,
 }: {
   titulo: string;
   texto?: string;
   /** Ruta ("/tardeos/123") o URL absoluta. Si no se pasa, usa la página actual. */
   url?: string;
   className?: string;
+  /** Texto junto al icono. Sin él es un botón redondo solo con icono. */
+  etiqueta?: string;
 }) {
   const [copiado, setCopiado] = useState(false);
 
@@ -52,10 +55,13 @@ export default function CompartirBtn({
   return (
     <button
       onClick={(e) => compartir(e)}
-      aria-label="Compartir"
+      aria-label={etiqueta ? undefined : "Compartir"}
       className={className || "grid h-11 w-11 place-items-center rounded-full bg-white/90 text-tinta shadow transition hover:bg-white active:scale-95"}
     >
-      {copiado ? <Check size={22} className="text-magenta" /> : <Share2 size={22} />}
+      {copiado ? <Check size={etiqueta ? 18 : 22} className="text-ok" aria-hidden /> : <Share2 size={etiqueta ? 18 : 22} aria-hidden />}
+      {etiqueta && <span>{copiado ? "Enlace copiado" : etiqueta}</span>}
+      {/* Sin texto visible, el aviso de copiado se anuncia igual al lector. */}
+      {!etiqueta && copiado && <span className="sr-only" role="status">Enlace copiado</span>}
     </button>
   );
 }

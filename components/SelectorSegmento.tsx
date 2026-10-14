@@ -69,19 +69,20 @@ export default function SelectorSegmento({
     <div className="flex flex-col gap-3">
       {grupos.map((g) => (
         <div key={g.campo}>
-          <p className="mb-1.5 flex items-center gap-1.5 text-sm font-black text-tinta/70">
-            <g.icono size={15} className="text-magenta" /> {g.label}
+          <p className="mb-1.5 flex items-center gap-1.5 text-[15px] font-semibold text-tinta">
+            <g.icono size={16} className="text-magenta" aria-hidden /> {g.label}
           </p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {g.opciones.map((o) => (
               <button
                 key={o.k}
                 type="button"
                 onClick={() => alternar(g.campo, o.k)}
-                className={`rounded-full px-3 py-1.5 text-xs font-black transition ${
+                aria-pressed={valor[g.campo].includes(o.k)}
+                className={`inline-flex min-h-[44px] items-center rounded-full border px-4 text-[15px] font-semibold transition-colors ${
                   valor[g.campo].includes(o.k)
-                    ? "bg-marca text-white"
-                    : "bg-black/5 text-tinta/50 hover:bg-black/10"
+                    ? "border-tinta bg-tinta text-white"
+                    : "border-linea-fuerte bg-white text-tinta hover:border-tinta/50"
                 }`}
               >
                 {o.t}

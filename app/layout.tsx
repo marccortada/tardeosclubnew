@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Nunito, Playfair_Display, Caveat } from "next/font/google";
+import { Manrope, Dancing_Script } from "next/font/google";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
 // Solo la base (posicionado y animación de agrupar/desagrupar).
@@ -10,24 +10,20 @@ import BottomNav from "@/components/BottomNav";
 import SiteNav from "@/components/SiteNav";
 import RegistrarSW from "@/components/RegistrarSW";
 import InstalarApp from "@/components/InstalarApp";
+import CapturaErrores from "@/components/CapturaErrores";
 
-const nunito = Nunito({
+const manrope = Manrope({
   subsets: ["latin"],
-  variable: "--font-nunito",
-  weight: ["400", "600", "700", "800", "900"],
+  variable: "--font-manrope",
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
-const playfair = Playfair_Display({
+const dancing = Dancing_Script({
   subsets: ["latin"],
-  variable: "--font-playfair",
-  weight: ["600", "700", "800", "900"],
-  style: ["normal", "italic"],
-});
-
-const caveat = Caveat({
-  subsets: ["latin"],
-  variable: "--font-caveat",
-  weight: ["500", "600", "700"],
+  variable: "--font-dancing",
+  weight: ["500", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -58,19 +54,20 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#E10A5A",
+  themeColor: "#D61AA8",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${nunito.variable} ${playfair.variable} ${caveat.variable}`}>
-      <body className="font-sans min-h-screen bg-[#f5f3f4]">
+    <html lang="es" className={`${manrope.variable} ${dancing.variable}`}>
+      <body className="font-sans min-h-screen bg-marfil text-tinta antialiased">
         <RegistrarSW />
+        {/* Errores del navegador → /admin/errores (lote 57). No pinta nada. */}
+        <CapturaErrores />
         <SiteNav />
-        <div className="min-h-screen pb-24 md:pb-12">{children}</div>
+        <div className="min-h-screen">{children}</div>
         <BottomNav />
         {/* El aviso de instalar. Va DESPUÉS de la barra de abajo para quedar
             por encima de ella, y se pinta solo en móvil, una vez, y pasados

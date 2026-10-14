@@ -1,38 +1,57 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import PanelHeader from "@/components/PanelHeader";
+import { SeccionPanel } from "@/components/panel/PanelShell";
+import Paginacion, { Buscador, Filtros, useDiferido } from "@/components/panel/Paginacion";
+import Aviso from "@/components/admin/Aviso";
+import { Etiqueta } from "@/components/ui/Chip";
+import { claseBoton } from "@/components/Boton";
 import { plegar, contieneTexto } from "@/lib/texto";
 import { ETIQUETA } from "@/lib/planes";
+import { hoyISO } from "@/lib/tardeos";
 import {
-  cargarCrm, guardarSeguimiento, leToca, ESTADOS,
-  type FichaCrm, type EstadoCrm, type Seguimiento,
+  cargarCrm, guardarSeguimiento, leToca, leerAutores, crmACsv, ESTADOS, CANALES,
+  type FichaCrm, type EstadoCrm, type Seguimiento, type Canal,
 } from "@/lib/crm";
 import {
-  Store, Loader2, Instagram, Globe, Mail, Phone, Ticket, BadgeCheck,
-  CalendarClock, Facebook, AlertTriangle, Check,
+  Store, Instagram, Globe, Mail, Phone, Ticket, BadgeCheck, CalendarClock, Facebook, Check, Download, Loader2,
 } from "lucide-react";
 
+type Filtro = "toca" | "sin" | "interesados" | "clientes" | "todos";
+const POR_PAGINA = 25;
+
+const NOMBRE_CANAL: Record<Canal, string> = {
+  instagram: "Instagram", email: "Email", telefono: "Teléfono", whatsapp: "WhatsApp", presencial: "En persona", otro: "Otro",
+};
+
 /**
- * El CRM comercial: los 68 locales y a quién le toca hoy.
+ * El CRM comercial: los locales y a quién le toca hoy.
  *
  * ORDEN POR DEFECTO: primero los que tienen seguimiento vencido, después los
  * que no se han tocado nunca, y al final el resto. No es un capricho de
  * ordenación, es la pantalla entera: un CRM ordenado alfabéticamente obliga a
- * leerse los 68 para saber qué hacer, y por eso nadie los usa.
+ * leérselos todos para saber qué hacer, y por eso nadie los usa.
  *
- * Se guarda al momento, sin botón. Con 68 fichas y llamadas de dos minutos,
- * un "Guardar" por tarjeta es una cosa más que se olvida a media llamada.
+ * Se carga todo de una vez (son pocos cientos de locales, por lotes en
+ * lib/crm.ts) porque el orden depende de datos derivados; la lista se pagina
+ * de 25 en 25 en pantalla. Se guarda al momento, sin botón.
+ *
+ * El cliente quiere CONSERVAR este módulo y sus datos para compararlo con
+ * HubSpot: de ahí "Exportar CSV". No borrar nada de aquí sin hablarlo.
  */
 export default function AdminCrm() {
   const [fichas, setFichas] = useState<FichaCrm[]>([]);
   const [cargando, setCargando] = useState(true);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [busca, setBusca] = useState("");
-  const [filtro, setFiltro] = useState<"toca" | "sin" | "interesados" | "clientes" | "todos">("toca");
+  const [texto, setTexto] = useState("");
+  const busca = useDiferido(texto);
+  const [filtro, setFiltro] = useState<Filtro>("toca");
+  const [pagina, setPagina] = useState(1);
   const [guardado, setGuardado] = useState<string | null>(null);
+  const [exportando, setExportando] = useState(false);
+  const [okExport, setOkExport] = useState("");
 
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyISO();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -43,13 +62,34 @@ export default function AdminCrm() {
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
 
+  // Al cambiar filtro o búsqueda se vuelve a la primera página.
+  const elegirFiltro = (k: Filtro) => { setFiltro(k); setPagina(1); };
+  const escribir = (v: string) => { setTexto(v); setPagina(1); };
+
   /** Optimista: se pinta y luego se guarda. Si falla, se dice y se recarga. */
   const cambiar = async (f: FichaCrm, cambios: Partial<Seguimiento>) => {
     setFichas((p) => p.map((x) => (x.id === f.id ? { ...x, seg: { ...x.seg, ...cambios } } : x)));
     const err = await guardarSeguimiento(f.id, { ...f.seg, ...cambios });
-    if (err) { setAviso(err); cargar(); return; }
+    if (err) { setAviso(`No se guardó «${f.nombre}»: ${err}`); cargar(); return; }
     setGuardado(f.id);
-    setTimeout(() => setGuardado((g) => (g === f.id ? null : g)), 1200);
+    setTimeout(() => setGuardado((g) => (g === f.id ? null : g)), 1500);
+  };
+
+  const exportar = async () => {
+    setExportando(true); setOkExport("");
+    try {
+      const autores = await leerAutores(fichas);
+      const blob = new Blob([crmACsv(fichas, autores)], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `crm-tardeosclub-${hoy}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      setOkExport(`Exportados ${fichas.length} locales.`);
+    } catch (e) {
+      setAviso("No se pudo exportar: " + String(e));
+    }
+    setExportando(false);
   };
 
   const cuentas = useMemo(() => ({
@@ -57,6 +97,7 @@ export default function AdminCrm() {
     sin: fichas.filter((f) => f.seg.estado === "no_contactado").length,
     interesados: fichas.filter((f) => f.seg.estado === "interesado").length,
     clientes: fichas.filter((f) => f.planEstado === "activa").length,
+    todos: fichas.length,
   }), [fichas, hoy]);
 
   const lista = useMemo(() => {
@@ -78,86 +119,77 @@ export default function AdminCrm() {
       || b.tardeos - a.tardeos);
   }, [fichas, busca, filtro, hoy]);
 
+  // Al cambiar de estado una ficha puede salir del filtro: si la página se
+  // queda vacía, se pinta la última que exista.
+  const pag = Math.min(pagina, Math.max(1, Math.ceil(lista.length / POR_PAGINA)));
+  const visibles = lista.slice((pag - 1) * POR_PAGINA, pag * POR_PAGINA);
+
   return (
-    <main className="pb-16">
-      <PanelHeader titulo="CRM comercial" volverHref="/admin" />
-      <div className="mx-auto max-w-3xl px-4 pt-5 md:px-8">
+    <SeccionPanel
+      titulo="CRM comercial"
+      descripcion="Seguimiento de locales: a quién llamar hoy, qué dijo y cuándo volver."
+      acciones={
+        <button type="button" onClick={exportar} disabled={cargando || exportando || fichas.length === 0}
+          className={claseBoton("contorno", "pequeno")}>
+          {exportando ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Download size={18} aria-hidden />} Exportar CSV
+        </button>
+      }
+    >
+      <div aria-live="polite">
+        {aviso && <Aviso tono="aviso">{aviso}</Aviso>}
+        {okExport && <Aviso tono="ok">{okExport}</Aviso>}
+      </div>
 
-        {aviso && (
-          <p className="mb-4 flex items-start gap-2 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-900 ring-1 ring-amber-200">
-            <AlertTriangle size={18} className="mt-0.5 shrink-0" /> {aviso}
-          </p>
-        )}
-
-        <input
-          value={busca} onChange={(e) => setBusca(e.target.value)}
-          placeholder="Buscar local o zona…"
-          className="mb-3 w-full rounded-2xl bg-white px-4 py-3 font-semibold shadow-tarjeta ring-1 ring-black/5 outline-none focus:ring-2 focus:ring-magenta"
+      <div className="mb-4 flex flex-col gap-3">
+        <Buscador valor={texto} onCambiar={escribir} placeholder="Buscar local o zona…" />
+        <Filtros<Filtro>
+          valor={filtro}
+          onCambiar={elegirFiltro}
+          opciones={[
+            { clave: "toca", label: "Le toca hoy", n: cargando ? null : cuentas.toca },
+            { clave: "sin", label: "Sin contactar", n: cargando ? null : cuentas.sin },
+            { clave: "interesados", label: "Interesados", n: cargando ? null : cuentas.interesados },
+            { clave: "clientes", label: "Clientes", n: cargando ? null : cuentas.clientes },
+            { clave: "todos", label: "Todos", n: cargando ? null : cuentas.todos },
+          ]}
         />
+      </div>
 
-        <div className="no-scrollbar mb-4 flex gap-2 overflow-x-auto">
-          {([
-            ["toca", `Le toca (${cuentas.toca})`],
-            ["sin", `Sin contactar (${cuentas.sin})`],
-            ["interesados", `Interesados (${cuentas.interesados})`],
-            ["clientes", `Clientes (${cuentas.clientes})`],
-            ["todos", `Todos (${fichas.length})`],
-          ] as const).map(([k, label]) => (
-            <button
-              key={k} onClick={() => setFiltro(k)}
-              className={`shrink-0 rounded-full px-4 py-2 text-sm font-black transition ${
-                filtro === k ? "bg-marca text-white" : "bg-white text-tinta/60 ring-1 ring-black/5"}`}
-            >{label}</button>
+      {cargando ? (
+        <div className="flex flex-col gap-3" aria-busy>
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-[180px] animate-pulse rounded-2xl bg-white ring-1 ring-linea" />)}
+        </div>
+      ) : lista.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-linea-fuerte bg-white p-8 text-center text-[15px] text-tinta-suave">
+          {filtro === "toca" && !busca
+            ? "Hoy no le toca a nadie. Pon una fecha de «Volver el» a los que hayas contactado."
+            : "Ningún local con ese filtro."}
+        </p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {visibles.map((f) => (
+            <Tarjeta key={f.id} f={f} hoy={hoy} guardado={guardado === f.id} onCambio={(c) => cambiar(f, c)} />
           ))}
         </div>
+      )}
 
-        {cargando ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-tinta/50">
-            <Loader2 className="animate-spin" /> Cargando…
-          </div>
-        ) : lista.length === 0 ? (
-          <p className="rounded-2xl bg-white p-6 text-center font-bold text-tinta/50 ring-1 ring-black/5">
-            {filtro === "toca"
-              ? "Hoy no le toca a nadie. Pon una fecha de seguimiento a los que hayas contactado."
-              : "Ninguno con ese filtro."}
-          </p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {lista.map((f) => (
-              <Tarjeta
-                key={f.id} f={f} hoy={hoy} guardado={guardado === f.id}
-                onCambio={(c) => cambiar(f, c)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </main>
+      <Paginacion pagina={pag} total={lista.length} porPagina={POR_PAGINA} onCambiar={setPagina} />
+    </SeccionPanel>
   );
 }
 
 /**
- * El color de cada estado, y no el de la marca para los cuatro.
+ * El color de cada estado, y no el de la marca para los cuatro: un "no le
+ * interesa" y un "interesado" tienen que distinguirse de reojo.
  *
- * Con el magenta en todos, un "no le interesa" y un "interesado" se ven iguales
- * de reojo, que es como se lee una lista de 68. El color tiene que decir lo
- * mismo que la palabra: verde el que compra, gris el que no, y el "sin
- * contactar" apagado, porque es el estado de 64 de ellos y no significa que
- * hayas hecho nada.
- *
- * VIVE AQUÍ Y NO EN lib/crm.ts, aunque su sitio natural sería junto a ESTADOS:
- * Tailwind solo mira `app/` y `components/` (tailwind.config.ts), así que una
- * clase escrita en `lib/` se purga del CSS y llega al navegador sin existir.
- * No avisa nadie: compila, pasa los tipos, y el botón sale transparente.
+ * VIVE AQUÍ Y NO EN lib/crm.ts: Tailwind solo mira `app/` y `components/`, así
+ * que una clase escrita en `lib/` se purgaría del CSS sin avisar.
  */
 const COLOR: Record<EstadoCrm, string> = {
-  no_contactado: "bg-tinta/70 text-white",
-  contactado: "bg-marca text-white",
-  interesado: "bg-green-700 text-white",
-  // Relleno gris con la tinta a plena opacidad. Apagado sí, ilegible no: con
-  // el texto blanco daba 1,7:1 y con la tinta al 60 % se quedaba en 4,0, por
-  // debajo del 4,5:1 que pide un texto de 12 px en negrita.
-  no_interesado: "bg-tinta/20 text-tinta",
+  no_contactado: "border-tinta-suave bg-tinta-suave text-white",
+  contactado: "border-magenta bg-magenta text-white",
+  interesado: "border-ok bg-ok text-white",
+  no_interesado: "border-linea-fuerte bg-marfil-200 text-tinta",
 };
 
 function Tarjeta({
@@ -177,38 +209,23 @@ function Tarjeta({
   ].filter(Boolean) as { icono: typeof Globe; url: string; label: string }[];
 
   return (
-    <div className={`rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ${vencido ? "ring-magenta/40" : "ring-black/5"}`}>
+    <article className={`rounded-2xl border bg-white p-4 shadow-tarjeta ${vencido ? "border-magenta/40" : "border-linea"}`}>
       <div className="flex items-start gap-3">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta">
-          <Store size={22} />
+          <Store size={20} aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 font-black leading-tight">
+          <p className="flex items-center gap-1.5 text-[16px] font-bold leading-tight">
             <span className="truncate">{f.nombre}</span>
-            {guardado && <Check size={15} className="shrink-0 text-green-600" />}
+            {guardado && <span className="inline-flex shrink-0 items-center gap-0.5 text-sm font-semibold text-ok"><Check size={15} aria-hidden /> Guardado</span>}
           </p>
-          <p className="text-sm font-semibold text-tinta/60">
-            {f.zona || "Sin zona"} · {f.tardeos} tardeos
-          </p>
-          <div className="mt-1 flex flex-wrap gap-1.5">
-            {f.reclamado && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-oro/15 px-2 py-0.5 text-xs font-black text-oro-600">
-                <BadgeCheck size={12} /> Reclamado
-              </span>
-            )}
-            {f.planEstado === "activa" && (
-              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-black text-green-800">
-                Cliente · {ETIQUETA[f.plan]}
-              </span>
-            )}
-            {f.planEstado === "impago" && (
-              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-black text-red-800">Impago</span>
-            )}
-            {f.ticketera && (
-              <span className="rounded-full bg-black/5 px-2 py-0.5 text-xs font-black text-tinta/60">
-                Vende en {f.ticketera}
-              </span>
-            )}
+          <p className="text-sm text-tinta-suave">{f.zona || "Sin zona"} · {f.tardeos} {f.tardeos === 1 ? "tardeo" : "tardeos"}</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {vencido && <Etiqueta tono="marca">Le toca</Etiqueta>}
+            {f.reclamado && <Etiqueta tono="neutro"><BadgeCheck size={13} aria-hidden /> Reclamado</Etiqueta>}
+            {f.planEstado === "activa" && <Etiqueta tono="ok">Cliente · {ETIQUETA[f.plan]}</Etiqueta>}
+            {f.planEstado === "impago" && <Etiqueta tono="error">Impago</Etiqueta>}
+            {f.ticketera && <Etiqueta>Vende en {f.ticketera}</Etiqueta>}
           </div>
         </div>
       </div>
@@ -216,51 +233,56 @@ function Tarjeta({
       {/* Por dónde escribirle. Si no hay nada, se dice: es información. */}
       <div className="mt-3 flex flex-wrap gap-2">
         {canales.length === 0 ? (
-          <span className="text-sm font-bold text-tinta/40">Sin forma de contacto</span>
+          <span className="text-sm text-tinta-suave">Sin forma de contacto</span>
         ) : canales.map((c) => (
-          <a
-            key={c.url} href={c.url} target="_blank" rel="noopener noreferrer" title={c.label}
-            className="inline-flex items-center gap-1.5 rounded-full bg-black/5 px-3 py-1.5 text-xs font-black text-tinta/70 transition hover:bg-magenta hover:text-white"
-          >
-            <c.icono size={14} /> <span className="max-w-[11rem] truncate">{c.label}</span>
+          <a key={c.url} href={c.url} target="_blank" rel="noopener noreferrer" title={c.label}
+            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-linea-fuerte bg-white px-3 text-sm font-semibold text-tinta transition-colors hover:bg-marfil-100">
+            <c.icono size={15} aria-hidden /> <span className="max-w-[12rem] truncate">{c.label}</span>
           </a>
         ))}
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {ESTADOS.map((e) => (
-          <button
-            key={e.k} onClick={() => onCambio({ estado: e.k as EstadoCrm })}
-            className={`rounded-full px-3 py-1.5 text-xs font-black transition ${
-              f.seg.estado === e.k ? COLOR[e.k] : "bg-black/5 text-tinta/50 hover:bg-black/10"}`}
-          >{e.label}</button>
-        ))}
+      <div role="group" aria-label={`Estado comercial de ${f.nombre}`} className="mt-3 flex flex-wrap gap-1.5">
+        {ESTADOS.map((e) => {
+          const on = f.seg.estado === e.k;
+          return (
+            <button key={e.k} type="button" aria-pressed={on} onClick={() => onCambio({ estado: e.k as EstadoCrm })}
+              className={`min-h-[40px] rounded-full border px-3.5 text-sm font-semibold transition-colors ${
+                on ? COLOR[e.k] : "border-linea-fuerte bg-white text-tinta-suave hover:border-tinta/50 hover:text-tinta"}`}>
+              {e.label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <label className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black ring-1 ${
-          vencido ? "bg-magenta-50 text-magenta ring-magenta/30" : "bg-black/5 text-tinta/60 ring-transparent"}`}>
-          <CalendarClock size={14} />
+        <label className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold ${
+          vencido ? "border-magenta/40 bg-magenta-50 text-magenta-700" : "border-linea-fuerte bg-white text-tinta-suave"}`}>
+          <CalendarClock size={16} aria-hidden />
           Volver el
-          <input
-            type="date" value={f.seg.proximo_seguimiento ?? ""}
+          <input type="date" value={f.seg.proximo_seguimiento ?? ""}
             onChange={(ev) => onCambio({ proximo_seguimiento: ev.target.value || null })}
-            className="bg-transparent font-black outline-none"
-          />
+            className="bg-transparent font-semibold text-tinta outline-none" />
+        </label>
+        <label className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-linea-fuerte bg-white px-3 text-sm font-semibold text-tinta-suave">
+          Canal
+          <select value={f.seg.canal ?? ""} onChange={(ev) => onCambio({ canal: (ev.target.value || null) as Canal | null })}
+            className="bg-transparent font-semibold text-tinta outline-none">
+            <option value="">—</option>
+            {CANALES.map((c) => <option key={c} value={c}>{NOMBRE_CANAL[c]}</option>)}
+          </select>
         </label>
         {f.seg.ultimo_contacto && (
-          <span className="text-xs font-bold text-tinta/40">
+          <span className="text-sm text-tinta-suave">
             Último contacto: {new Date(f.seg.ultimo_contacto).toLocaleDateString("es-ES")}
           </span>
         )}
       </div>
 
       {/*
-        Sin estado propio: `defaultValue` con `key`. Las notas no se guardan en
-        cada tecla —serían cincuenta escrituras por nota— sino al salir del
-        campo, así que aquí no hace falta seguir lo que se teclea. La `key` es
-        lo que hace que el campo se rellene solo cuando el valor cambia por
-        fuera, por ejemplo al recargar después de un error.
+        Sin estado propio: `defaultValue` con `key`. Las notas se guardan al
+        salir del campo, no en cada tecla. La `key` hace que el campo se
+        rellene cuando el valor cambia por fuera (al recargar tras un error).
       */}
       <textarea
         key={f.seg.notas ?? ""}
@@ -269,10 +291,11 @@ function Tarjeta({
           const v = ev.currentTarget.value;
           if (v !== (f.seg.notas ?? "")) onCambio({ notas: v || null });
         }}
+        aria-label={`Notas de ${f.nombre}`}
         placeholder="Notas: con quién hablaste, qué dijo, qué le preocupa…"
         rows={2}
-        className="mt-3 w-full resize-y rounded-xl bg-black/[0.03] px-3 py-2 text-sm font-semibold outline-none ring-1 ring-black/5 focus:ring-2 focus:ring-magenta"
+        className="mt-3 w-full resize-y rounded-xl border border-linea-fuerte bg-white px-3 py-2 text-[15px] outline-none transition focus:border-magenta focus:ring-4 focus:ring-magenta/15"
       />
-    </div>
+    </article>
   );
 }

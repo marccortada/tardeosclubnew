@@ -44,6 +44,8 @@ export type FichaCrm = {
   zona: string | null;
   /** Lo que hiciste tú. */
   seg: Seguimiento;
+  /** Cuándo y quién tocó el seguimiento por última vez (solo lectura). */
+  meta: { actualizado_en: string | null; actualizado_por: string | null };
   /** Lo que pasó de verdad, derivado y no guardado. */
   reclamado: boolean;
   plan: Plan;
@@ -114,46 +116,86 @@ export function leToca(f: FichaCrm, hoy: string): boolean {
 }
 
 /**
- * Todo lo necesario para la pantalla, en tres consultas.
+ * Lee TODAS las filas de una consulta, de mil en mil.
  *
- * La de tardeos trae solo `local_id` y `fourvenues_url` de los que tienen
- * enlace: son 60 filas de 780, y sirve para dos cosas a la vez —contar cuántos
- * tardeos lleva cada uno y saber con qué ticketera vende ya—. Un local que ya
- * cobra por internet es otra conversación que uno que no.
+ * PostgREST corta cada respuesta a 1.000 filas sin avisar. Con unos 1.600
+ * tardeos, contar "cuántos tardeos lleva cada local" sobre una sola respuesta
+ * daba cifras de menos (y la ticketera de los más antiguos ni aparecía). La
+ * consulta debe venir ordenada por algo estable para que los lotes no se pisen.
+ */
+async function todas<T>(
+  consulta: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: { message: string; code?: string } | null }>,
+): Promise<{ data: T[]; error: { message: string; code?: string } | null }> {
+  const LOTE = 1000;
+  const filas: T[] = [];
+  for (let desde = 0; ; desde += LOTE) {
+    const { data, error } = await consulta(desde, desde + LOTE - 1);
+    if (error) return { data: filas, error };
+    filas.push(...(data ?? []));
+    if (!data || data.length < LOTE) return { data: filas, error: null };
+  }
+}
+
+/**
+ * Todo lo necesario para la pantalla, en tres lecturas (cada una por lotes).
+ *
+ * La de tardeos trae solo `local_id` y `fourvenues_url`, y sirve para dos
+ * cosas a la vez —contar cuántos tardeos lleva cada uno y saber con qué
+ * ticketera vende ya—. Un local que ya cobra por internet es otra
+ * conversación que uno que no.
  */
 export async function cargarCrm(): Promise<{ fichas: FichaCrm[]; error: string | null }> {
-  const { data: locales, error } = await supabase
+  type FilaLocal = {
+    id: string; nombre: string; zona: string | null; redes: unknown; email: string | null; telefono: string | null;
+    owner_id: string | null; plan: string | null; plan_estado: string | null;
+  };
+  const { data: locales, error } = await todas<FilaLocal>((d, h) => supabase
     .from("locales")
     .select("id,nombre,zona,redes,email,telefono,owner_id,plan,plan_estado")
-    .order("nombre");
+    .order("nombre").order("id").range(d, h) as unknown as PromiseLike<{ data: FilaLocal[] | null; error: { message: string } | null }>);
   if (error) return { fichas: [], error: error.message };
 
+  type FilaSeg = Seguimiento & { local_id: string; actualizado_en: string | null; actualizado_por: string | null };
+  type FilaTardeo = { local_id: string | null; fourvenues_url: string | null };
   const [seg, tardeos] = await Promise.all([
-    supabase.from("seguimiento_comercial").select("*"),
-    supabase.from("tardeos").select("local_id,fourvenues_url,fecha").order("fecha", { ascending: false }),
+    todas<FilaSeg>((d, h) => supabase.from("seguimiento_comercial").select("*").order("local_id").range(d, h) as unknown as
+      PromiseLike<{ data: FilaSeg[] | null; error: { message: string; code?: string } | null }>),
+    todas<FilaTardeo>((d, h) => supabase.from("tardeos").select("local_id,fourvenues_url")
+      .order("fecha", { ascending: false }).order("id").range(d, h) as unknown as
+      PromiseLike<{ data: FilaTardeo[] | null; error: { message: string } | null }>),
   ]);
 
   // Si falta el lote 35, la pantalla sigue valiendo para ver los contactos: lo
   // único que no se puede es apuntar nada. Mejor eso que una pantalla en blanco.
   const faltaTabla = seg.error?.code === "42P01" || seg.error?.code === "PGRST205";
-  const porLocal = new Map((seg.data ?? []).map((s) => [s.local_id as string, s as unknown as Seguimiento]));
+  // Solo los campos del seguimiento: la fila trae también local_id y las
+  // columnas de auditoría, que no deben volver a la base al guardar.
+  const porLocal = new Map(seg.data.map((s) => [s.local_id, {
+    seg: {
+      estado: s.estado, canal: s.canal, notas: s.notas,
+      proximo_seguimiento: s.proximo_seguimiento, ultimo_contacto: s.ultimo_contacto,
+    } as Seguimiento,
+    meta: { actualizado_en: s.actualizado_en ?? null, actualizado_por: s.actualizado_por ?? null },
+  }]));
 
   const cuenta = new Map<string, number>();
   const entradas = new Map<string, string>();
-  for (const t of tardeos.data ?? []) {
+  for (const t of tardeos.data) {
     if (!t.local_id) continue;
     cuenta.set(t.local_id, (cuenta.get(t.local_id) ?? 0) + 1);
     if (t.fourvenues_url && !entradas.has(t.local_id)) entradas.set(t.local_id, t.fourvenues_url);
   }
 
-  const fichas: FichaCrm[] = (locales ?? []).map((l) => {
+  const fichas: FichaCrm[] = locales.map((l) => {
     const redes = (l.redes ?? {}) as Record<string, string>;
     const url = entradas.get(l.id) ?? null;
+    const s = porLocal.get(l.id);
     return {
       id: l.id,
       nombre: l.nombre,
       zona: l.zona,
-      seg: porLocal.get(l.id) ?? SEG_VACIO,
+      seg: s?.seg ?? SEG_VACIO,
+      meta: s?.meta ?? { actualizado_en: null, actualizado_por: null },
       reclamado: Boolean(l.owner_id),
       plan: (l.plan ?? "basic") as Plan,
       planEstado: l.plan_estado ?? "sin_suscripcion",
@@ -168,7 +210,12 @@ export async function cargarCrm(): Promise<{ fichas: FichaCrm[]; error: string |
     };
   });
 
-  return { fichas, error: faltaTabla ? "Falta pegar el lote 35 (supabase/35_crm_comercial.sql)." : null };
+  const avisos = [
+    faltaTabla ? "Falta pegar el lote 35 (supabase/35_crm_comercial.sql)." : null,
+    !faltaTabla && seg.error ? "No se pudo leer el seguimiento: " + seg.error.message : null,
+    tardeos.error ? "No se pudieron contar los tardeos: " + tardeos.error.message : null,
+  ].filter(Boolean);
+  return { fichas, error: avisos.length ? avisos.join(" ") : null };
 }
 
 /**
@@ -194,8 +241,14 @@ export async function guardarSeguimiento(
   localId: string,
   cambios: Partial<Seguimiento>,
 ): Promise<string | null> {
-  const guardables = { ...cambios };
-  delete guardables.ultimo_contacto;
+  // Solo lo que se edita a mano; `ultimo_contacto` lo pone la base (ver arriba).
+  const guardables: Record<string, unknown> = {};
+  for (const k of ["estado", "canal", "notas", "proximo_seguimiento"] as const) {
+    if (k in cambios) guardables[k] = cambios[k];
+  }
+  // Quién lo tocó, para el histórico y la exportación. La base no lo rellena sola.
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user.id) guardables.actualizado_por = session.user.id;
   const { data, error } = await supabase
     .from("seguimiento_comercial")
     .upsert({ local_id: localId, ...guardables }, { onConflict: "local_id" })
@@ -206,4 +259,53 @@ export async function guardarSeguimiento(
       : error.message;
   }
   return data?.length ? null : "No se guardó: solo los administradores pueden.";
+}
+
+/* ------------------------------------------------------------------------
+ * Exportar a CSV
+ *
+ * El cliente quiere revisar el CRM junto a HubSpot antes de decidir nada, así
+ * que la exportación lleva TODO: ids, contactos, estado comercial, notas y
+ * fechas, y quién lo tocó por última vez.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Una celda CSV segura. Entre comillas siempre, y si empieza por = + - @
+ * (o tabulador/retorno) se le antepone un apóstrofo: Excel y Sheets
+ * ejecutarían esa celda como fórmula al abrir el fichero.
+ */
+export function celdaCsv(v: unknown): string {
+  let s = v === null || v === undefined ? "" : String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
+const ETIQUETA_ESTADO: Record<string, string> = Object.fromEntries(ESTADOS.map((e) => [e.k, e.label]));
+
+/** Todas las fichas a CSV (con BOM para que Excel lea bien las tildes). */
+export function crmACsv(fichas: FichaCrm[], autores: Map<string, string>): string {
+  const cab = [
+    "id_local", "nombre", "zona", "estado_comercial", "canal", "notas",
+    "proximo_seguimiento", "ultimo_contacto", "actualizado_en", "actualizado_por",
+    "reclamado", "plan", "plan_estado", "email", "telefono", "instagram", "web", "facebook",
+    "ticketera", "enlace_entradas", "tardeos",
+  ];
+  const filas = fichas.map((f) => [
+    f.id, f.nombre, f.zona, ETIQUETA_ESTADO[f.seg.estado] ?? f.seg.estado, f.seg.canal, f.seg.notas,
+    f.seg.proximo_seguimiento, f.seg.ultimo_contacto, f.meta.actualizado_en,
+    f.meta.actualizado_por ? autores.get(f.meta.actualizado_por) ?? f.meta.actualizado_por : null,
+    f.reclamado ? "sí" : "no", f.plan, f.planEstado, f.email, f.telefono, f.instagram, f.web, f.facebook,
+    f.ticketera, f.entradas, f.tardeos,
+  ]);
+  return "\uFEFF" + [cab, ...filas].map((r) => r.map(celdaCsv).join(",")).join("\r\n");
+}
+
+/** Emails de quienes tocaron el seguimiento (pocos: solo los admins). */
+export async function leerAutores(fichas: FichaCrm[]): Promise<Map<string, string>> {
+  const ids = [...new Set(fichas.map((f) => f.meta.actualizado_por).filter(Boolean))] as string[];
+  const m = new Map<string, string>();
+  if (!ids.length) return m;
+  const { data } = await supabase.from("profiles").select("id,email").in("id", ids);
+  (data ?? []).forEach((p: { id: string; email: string | null }) => m.set(p.id, p.email ?? p.id));
+  return m;
 }

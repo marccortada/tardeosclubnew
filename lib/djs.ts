@@ -17,13 +17,19 @@ export const TIPOS_CONTENIDO = [
   { k: "foto", label: "Foto", pie: "De cabina o de directo" },
 ] as const;
 
-/** Lo que ha subido un DJ, lo último primero. */
-export async function getContenidos(djId: string): Promise<Contenido[]> {
+/**
+ * Lo que ha subido un DJ, lo último primero. El error sube con la lista: si
+ * no, un fallo de lectura se pintaba como «no has subido nada».
+ */
+export async function getContenidos(djId: string): Promise<{ data: Contenido[]; error: string | null }> {
   const { data, error } = await supabase
     .from("dj_contenidos").select("*").eq("dj_id", djId)
-    .order("created_at", { ascending: false });
-  if (error) registrar("djs", "no se pudo cargar el contenido del DJ", error);
-  return (data as Contenido[]) ?? [];
+    .order("created_at", { ascending: false }).order("id");
+  if (error) {
+    registrar("djs", "no se pudo cargar el contenido del DJ", error);
+    return { data: [], error: error.message };
+  }
+  return { data: (data as Contenido[]) ?? [], error: null };
 }
 
 export async function anadirContenido(djId: string, tipo: string, url: string, titulo: string) {

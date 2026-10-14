@@ -3,7 +3,14 @@
 import { useEffect, useRef } from "react";
 import type { Map as LeafletMap } from "leaflet";
 
-export default function MiniMapa({ lat, lng }: { lat: number; lng: number }) {
+export default function MiniMapa({
+  lat, lng, alto = 160,
+}: {
+  lat: number;
+  lng: number;
+  /** En px. La ficha del local lo quiere algo más alto que el editor. */
+  alto?: number;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
 
@@ -17,6 +24,9 @@ export default function MiniMapa({ lat, lng }: { lat: number; lng: number }) {
         zoomControl: false,
         scrollWheelZoom: false,
         attributionControl: false,
+        // En el móvil arrastrar con un dedo movía el mapa en vez de la página
+        // y la ficha se quedaba "atascada" a media altura.
+        dragging: !L.Browser.mobile,
       }).setView([lat, lng], 15);
       mapRef.current = map;
 
@@ -26,11 +36,11 @@ export default function MiniMapa({ lat, lng }: { lat: number; lng: number }) {
         className: "",
         html: `<div style="position:relative;width:44px;height:50px">
           <div style="display:grid;place-items:center;width:44px;height:42px;border-radius:14px;
-            border:3px solid #E10A5A;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.35)">
+            border:3px solid #D61AA8;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.35)">
             <img src="/branding/pin-logo.png" style="width:34px;height:auto;display:block" alt=""/>
           </div>
           <div style="position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:0;height:0;
-            border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #E10A5A"></div>
+            border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #D61AA8"></div>
         </div>`,
         iconSize: [44, 50],
         iconAnchor: [22, 50],
@@ -46,5 +56,5 @@ export default function MiniMapa({ lat, lng }: { lat: number; lng: number }) {
     };
   }, [lat, lng]);
 
-  return <div ref={ref} className="w-full" style={{ height: 160 }} />;
+  return <div ref={ref} className="relative z-0 w-full" style={{ height: alto }} />;
 }

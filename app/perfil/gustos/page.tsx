@@ -3,11 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import PanelHeader from "@/components/PanelHeader";
+import { MarcoCuenta, CargandoCuenta, useDatosCuenta } from "@/components/panel/CuentaNav";
+import Boton, { claseBoton } from "@/components/Boton";
 import SelectorAdnTardicola from "@/components/SelectorAdnTardicola";
-import { useAuth } from "@/lib/useAuth";
 import { getAdn, guardarAdn, tieneAdn, ADN_VACIO, type AdnTardicola } from "@/lib/tardicola";
-import { Loader2 } from "lucide-react";
 
 /**
  * Editar los gustos cuando quieras.
@@ -18,7 +17,7 @@ import { Loader2 } from "lucide-react";
  * decir qué le gusta.
  */
 export default function MisGustos() {
-  const { user, loading } = useAuth();
+  const { user, loading, datos } = useDatosCuenta();
   const router = useRouter();
   const [adn, setAdn] = useState<AdnTardicola>(ADN_VACIO);
   const [cargando, setCargando] = useState(true);
@@ -43,48 +42,41 @@ export default function MisGustos() {
     const { error: e } = await guardarAdn(user.id, adn);
     setGuardando(false);
     if (e) { setError("No se pudo guardar: " + e.message); return; }
-    // De vuelta a la cuenta. El botón está al final de siete apartados: dejarle
-    // ahí obliga a subir hasta la flecha de salir, que es justo el momento en el
-    // que uno cree que no ha guardado.
+    // De vuelta a la cuenta: el botón está al final de varios apartados y
+    // quedarse aquí hace dudar de si se guardó.
     router.push("/perfil");
   };
 
-  if (loading || cargando) {
-    return <main className="flex items-center justify-center gap-2 pt-24 text-tinta/50"><Loader2 className="animate-spin" /> Cargando…</main>;
-  }
+  if (loading || cargando) return <CargandoCuenta />;
 
   if (!user) {
     return (
       <main className="mx-auto max-w-lg px-4 pt-16 text-center">
-        <p className="text-lg font-bold text-tinta/70">Entra en tu cuenta para editar tus gustos.</p>
-        <Link href="/perfil" className="mt-4 inline-block rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white">Ir a entrar</Link>
+        <p className="text-lg font-semibold">Entra en tu cuenta para editar tus gustos.</p>
+        <Link href="/perfil" className={claseBoton("primario", "normal", false, "mt-4")}>Entrar</Link>
       </main>
     );
   }
 
   return (
-    <main className="pb-28 md:pb-12">
-      <PanelHeader titulo="Mis gustos" volverHref="/perfil" />
-      <div className="mx-auto max-w-lg px-4 pt-5 md:px-8">
-        <p className="mb-4 font-semibold text-tinta/60">
-          {tieneAdn(adn)
-            ? "Cámbialo cuando quieras. Se usa para proponerte planes que encajan y para no llenarte de avisos que no te interesan."
-            : "Marca lo que te suene y te propondremos planes que encajan, en vez de una lista sin más."}
-        </p>
-
+    <MarcoCuenta
+      titulo="Mis gustos"
+      descripcion={tieneAdn(adn)
+        ? "Cámbialos cuando quieras. Sirven para proponerte planes que encajan y no llenarte de avisos."
+        : "Marca lo que te suene y te propondremos planes que encajan, en vez de una lista sin más."}
+      datos={datos}
+    >
+      <div className="max-w-2xl">
         <SelectorAdnTardicola adn={adn} onCambio={setAdn} />
 
-        {error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
+        {error && <p role="alert" className="mt-4 rounded-xl bg-error-fondo p-3 text-[15px] font-semibold text-error">{error}</p>}
 
-        <button
-          onClick={guardar}
-          disabled={guardando}
-          className="mt-5 w-full rounded-2xl bg-magenta px-6 py-4 text-lg font-extrabold text-white transition hover:brightness-105 disabled:opacity-60"
-        >
-          {guardando ? "Guardando…" : "Guardar y volver"}
-        </button>
-
+        {/* Fijo abajo en el móvil (encima de la barra de navegación) para no
+            tener que bajar hasta el final para guardar. */}
+        <div className="sticky bottom-[76px] z-10 mt-6 rounded-2xl border border-linea bg-white/95 p-3 shadow-elevada backdrop-blur md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+          <Boton onClick={guardar} cargando={guardando} ancho>Guardar mis gustos</Boton>
+        </div>
       </div>
-    </main>
+    </MarcoCuenta>
   );
 }

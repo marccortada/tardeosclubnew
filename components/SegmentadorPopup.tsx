@@ -20,8 +20,9 @@ function Chip({ activo, children, onClick }: { activo: boolean; children: React.
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-[40px] rounded-full px-3.5 py-2 text-sm font-extrabold transition ${
-        activo ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100 hover:ring-magenta"
+      aria-pressed={activo}
+      className={`inline-flex min-h-[44px] items-center rounded-full border px-4 text-[15px] font-semibold transition-colors ${
+        activo ? "border-tinta bg-tinta text-white" : "border-linea-fuerte bg-white text-tinta hover:border-tinta/50"
       }`}
     >
       {children}
@@ -64,20 +65,21 @@ export default function SegmentadorPopup({
   ].filter(Boolean);
 
   return (
-    <div className="mt-4 rounded-2xl bg-magenta-50/50 p-3 ring-1 ring-magenta-100">
+    <div className="rounded-2xl border border-linea bg-marfil p-3">
       <button
         type="button"
         onClick={() => setAbierto((v) => !v)}
-        className="flex w-full items-center gap-2 text-left text-sm font-black text-tinta/70"
+        aria-expanded={abierto}
+        className="flex min-h-[44px] w-full items-center gap-2 text-left text-[15px] font-semibold text-tinta"
       >
-        <Users size={15} className="text-magenta" />
+        <Users size={18} className="text-magenta" aria-hidden />
         <span className="flex-1">Acotar por gustos {partes.length > 0 && `(${partes.length})`}</span>
-        <ChevronDown size={16} className={abierto ? "rotate-180" : ""} />
+        <ChevronDown size={18} className={`transition-transform ${abierto ? "rotate-180" : ""}`} aria-hidden />
       </button>
 
       {/* El resumen se ve SIEMPRE, abierto o cerrado: es la única defensa contra
           montar una campaña imposible sin darse cuenta. */}
-      <p className="mt-1.5 text-xs font-semibold text-tinta/55">
+      <p className="mt-1 text-sm text-tinta-suave">
         {partes.length === 0
           ? "Sin acotar: le sale a todo el mundo que cumpla lo de arriba."
           : `Solo a quien cumpla TODO: ${partes.join(" · ")}. Quien no haya dicho sus gustos no lo verá.`}
@@ -86,7 +88,7 @@ export default function SegmentadorPopup({
       {abierto && (
         <div className="mt-3 flex flex-col gap-3">
           <div>
-            <p className="mb-1.5 text-xs font-black uppercase tracking-wide text-tinta/45">Música</p>
+            <p className="mb-1.5 text-[13px] font-semibold uppercase tracking-wide text-tinta-suave">Música</p>
             <div className="flex flex-wrap gap-2">
               {FAMILIAS.map((fam) => (
                 <Chip key={fam.id} activo={puesto("musica", fam.id)} onClick={() => alternar("musica", fam.id)}>
@@ -97,18 +99,18 @@ export default function SegmentadorPopup({
             <button
               type="button"
               onClick={() => setFamiliaAbierta((a) => (a ? null : FAMILIAS[0].id))}
-              className="mt-1.5 text-xs font-bold text-magenta"
+              className="mt-1 min-h-[44px] text-sm font-semibold text-magenta-700 underline"
             >
               {familiaAbierta ? "Ocultar estilos concretos" : "Afinar por estilo concreto"}
             </button>
             {/* Pedir la familia ya alcanza a quien marcó un estilo suyo, así que
                 bajar al estilo solo tiene sentido para campañas muy finas. */}
             {familiaAbierta && (
-              <div className="mt-2 flex flex-col gap-2 rounded-xl bg-white p-3">
+              <div className="mt-2 flex flex-col gap-2 rounded-xl border border-linea bg-white p-3">
                 <div className="flex flex-wrap gap-1.5">
                   {FAMILIAS.map((f) => (
-                    <button key={f.id} type="button" onClick={() => setFamiliaAbierta(f.id)}
-                      className={`rounded-full px-3 py-1 text-xs font-black ${familiaAbierta === f.id ? "bg-tinta text-white" : "bg-black/5 text-tinta/60"}`}>
+                    <button key={f.id} type="button" onClick={() => setFamiliaAbierta(f.id)} aria-pressed={familiaAbierta === f.id}
+                      className={`min-h-[40px] rounded-full px-3 text-sm font-semibold ${familiaAbierta === f.id ? "bg-magenta-50 text-magenta-700" : "bg-marfil-100 text-tinta-suave"}`}>
                       {f.nombre}
                     </button>
                   ))}
@@ -124,7 +126,7 @@ export default function SegmentadorPopup({
           </div>
 
           <div>
-            <p className="mb-1.5 text-xs font-black uppercase tracking-wide text-tinta/45">Tipo de plan</p>
+            <p className="mb-1.5 text-[13px] font-semibold uppercase tracking-wide text-tinta-suave">Tipo de plan</p>
             <div className="flex flex-wrap gap-2">
               {TIPOS_EVENTO.map((v) => (
                 <Chip key={v} activo={puesto("tiposEvento", v)} onClick={() => alternar("tiposEvento", v)}>{v}</Chip>
@@ -133,7 +135,7 @@ export default function SegmentadorPopup({
           </div>
 
           <div>
-            <p className="mb-1.5 text-xs font-black uppercase tracking-wide text-tinta/45">Edad</p>
+            <p className="mb-1.5 text-[13px] font-semibold uppercase tracking-wide text-tinta-suave">Edad</p>
             <div className="flex flex-wrap gap-2">
               {PUBLICOS.map((v) => (
                 <Chip key={v} activo={puesto("edades", v)} onClick={() => alternar("edades", v)}>{v}</Chip>
@@ -142,7 +144,7 @@ export default function SegmentadorPopup({
           </div>
 
           <div>
-            <p className="mb-1.5 text-xs font-black uppercase tracking-wide text-tinta/45">Zona</p>
+            <p className="mb-1.5 text-[13px] font-semibold uppercase tracking-wide text-tinta-suave">Zona</p>
             <div className="flex flex-wrap gap-2">
               {ZONAS.map((z) => (
                 <Chip key={z} activo={puesto("zonas", z)} onClick={() => alternar("zonas", z)}>{z}</Chip>

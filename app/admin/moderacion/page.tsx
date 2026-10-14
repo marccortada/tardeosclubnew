@@ -1,212 +1,283 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import PanelHeader from "@/components/PanelHeader";
-import { getResenasPendientes, moderarResena, MOTIVOS_RECHAZO, etiquetaMotivo,
-  type MotivoRechazo, type Resena } from "@/lib/resenas";
-import { Check, X, Star, Loader2, Flag, AlertTriangle, ExternalLink } from "lucide-react";
-import { denunciasPendientes, resolverDenuncia, MOTIVOS, type Denuncia } from "@/lib/denuncias";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+import { SeccionPanel } from "@/components/panel/PanelShell";
+import Paginacion, { usePaginado, Filtros, EstadoLista } from "@/components/panel/Paginacion";
+import Boton from "@/components/Boton";
+import Hoja from "@/components/ui/Hoja";
+import Aviso from "@/components/admin/Aviso";
+import { Etiqueta } from "@/components/ui/Chip";
+import {
+  consultaResenasPendientes, moderarResena, MOTIVOS_RECHAZO, etiquetaMotivo,
+  type MotivoRechazo, type Resena,
+} from "@/lib/resenas";
+import { consultaDenunciasPendientes, resolverDenuncia, MOTIVOS, type Denuncia } from "@/lib/denuncias";
+import { Check, X, Star, Flag, ExternalLink, Undo2 } from "lucide-react";
 
-export default function AdminModeracion() {
-  const [tab, setTab] = useState<"resenas" | "flyers">("resenas");
-  const [resenas, setResenas] = useState<Resena[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [moderando, setModerando] = useState<string | null>(null);
-  const [errorR, setErrorR] = useState<string | null>(null);
-  /** Cuál está con el motivo de rechazo abierto. */
-  const [rechazando, setRechazando] = useState<string | null>(null);
-  const [denuncias, setDenuncias] = useState<Denuncia[]>([]);
-  const [errorD, setErrorD] = useState<string | null>(null);
-  const [resolviendo, setResolviendo] = useState<string | null>(null);
+type Tab = "resenas" | "flyers";
 
-  useEffect(() => {
-    getResenasPendientes().then((r) => { setResenas(r); setCargando(false); });
-    denunciasPendientes().then(({ filas, error }) => { setDenuncias(filas); setErrorD(error); });
-  }, []);
+/** useSearchParams() exige Suspense en una página de cliente. */
+export default function AdminModeracionPagina() {
+  return <Suspense fallback={null}><AdminModeracion /></Suspense>;
+}
 
-  /**
-   * Aprobar o rechazar.
-   *
-   * NO se quita de la lista antes de tiempo, como se hacía. Con seguridad de
-   * fila, un update que no alcanza ninguna fila responde bien sin escribir
-   * nada: la reseña desaparecía de la pantalla y seguía pendiente para
-   * siempre, sin que nadie volviera a verla.
-   */
-  const moderar = async (r: Resena, aprobar: boolean, motivo?: MotivoRechazo) => {
-    setModerando(r.id); setErrorR(null);
-    const res = await moderarResena(r.id, aprobar, motivo);
-    setModerando(null);
-    if (!res.ok) { setErrorR(res.error ?? "No se pudo moderar."); return; }
-    setResenas((p) => p.filter((x) => x.id !== r.id));
-    setRechazando(null);
+/**
+ * Moderación: reseñas (pendientes + apeladas) y flyers denunciados, cada cola
+ * paginada en el servidor. Se entra directo a flyers con ?tab=flyers.
+ */
+function AdminModeracion() {
+  const router = useRouter();
+  const tab: Tab = useSearchParams().get("tab") === "flyers" ? "flyers" : "resenas";
+  const [cuentas, setCuentas] = useState<{ resenas?: number; flyers?: number }>({});
+
+  const contar = () => {
+    Promise.all([
+      supabase.from("resenas").select("id", { count: "exact", head: true }).in("estado", ["pendiente", "apelada"]),
+      supabase.from("denuncias_flyer").select("id", { count: "exact", head: true }).eq("estado", "pendiente"),
+    ]).then(([r, d]) => setCuentas({ resenas: r.error ? undefined : r.count ?? 0, flyers: d.error ? undefined : d.count ?? 0 }));
   };
+  useEffect(contar, []);
+
+  return (
+    <SeccionPanel
+      titulo="Reseñas y flyers"
+      descripcion="Lo que la gente escribe o denuncia, antes de que salga (o siga) en la web."
+    >
+      <div className="mb-4">
+        <Filtros<Tab>
+          valor={tab}
+          onCambiar={(t) => router.replace(t === "flyers" ? "/admin/moderacion?tab=flyers" : "/admin/moderacion", { scroll: false })}
+          opciones={[
+            { clave: "resenas", label: "Reseñas", n: cuentas.resenas },
+            { clave: "flyers", label: "Flyers denunciados", n: cuentas.flyers },
+          ]}
+        />
+      </div>
+      {tab === "resenas" ? <ColaResenas alCambiar={contar} /> : <ColaFlyers alCambiar={contar} />}
+    </SeccionPanel>
+  );
+}
+
+/* ------------------------------ Reseñas ------------------------------ */
+
+function ColaResenas({ alCambiar }: { alCambiar: () => void }) {
+  const p = usePaginado<Resena>(consultaResenasPendientes, ["resenas"], 25);
+  const [accion, setAccion] = useState<{ r: Resena; aprobar: boolean } | null>(null);
+  const [motivo, setMotivo] = useState<MotivoRechazo | null>(null);
+  const [obrando, setObrando] = useState(false);
+  const [error, setError] = useState("");
+  const [ok, setOk] = useState("");
+
+  const abrir = (r: Resena, aprobar: boolean) => { setAccion({ r, aprobar }); setMotivo(null); };
 
   /**
-   * Resolver una denuncia.
-   *
-   * NO se quita de la lista antes de tiempo. Con las reseñas se hace así
-   * —desaparece al pulsar— y ahí da igual, pero una denuncia que parece
-   * resuelta y no lo está desaparece de la cola para siempre y nadie vuelve a
-   * mirarla. Aquí se espera a que la base confirme.
+   * NO se quita de la lista antes de tiempo. Con seguridad de fila, un update
+   * que no alcanza ninguna fila responde bien sin escribir nada: la reseña
+   * desaparecía de la pantalla y seguía pendiente para siempre.
    */
-  const resolver = async (d: Denuncia, estado: "retirado" | "desestimado") => {
-    setResolviendo(d.id); setErrorD(null);
-    const r = await resolverDenuncia(d.id, estado, "");
-    setResolviendo(null);
-    if (!r.ok) { setErrorD(r.error ?? "No se pudo resolver."); return; }
-    setDenuncias((p) => p.filter((x) => x.id !== d.id));
+  const confirmar = async () => {
+    if (!accion) return;
+    if (!accion.aprobar && !motivo) return;
+    setObrando(true); setError(""); setOk("");
+    const res = await moderarResena(accion.r.id, accion.aprobar, motivo ?? undefined);
+    setObrando(false);
+    if (!res.ok) { setAccion(null); setError(res.error ?? "No se pudo moderar."); return; }
+    setOk(accion.aprobar ? "Reseña aprobada: ya se ve en la ficha." : `Reseña rechazada por «${etiquetaMotivo(motivo)}». Su autor verá el motivo.`);
+    p.quitar((x) => x.id === accion.r.id);
+    setAccion(null);
+    alCambiar();
+    if (p.filas.length === 1 && p.total > 1) p.recargar();
   };
 
   return (
-    <main className="pb-10">
-      <PanelHeader titulo="Moderación" volverHref="/admin" />
-      <div className="mx-auto max-w-3xl px-4 pt-5 md:px-8">
-        <div className="mb-4 flex gap-2">
-          <button onClick={() => setTab("resenas")}
-            className={`min-h-[44px] flex-1 rounded-xl text-sm font-extrabold transition ${tab === "resenas" ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100"}`}>
-            Reseñas ({resenas.length})
-          </button>
-          <button onClick={() => setTab("flyers")}
-            className={`min-h-[44px] flex-1 rounded-xl text-sm font-extrabold transition ${tab === "flyers" ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100"}`}>
-            Flyers ({denuncias.length})
-          </button>
-        </div>
+    <>
+      {error && <Aviso>{error}</Aviso>}
+      {ok && <Aviso tono="ok">{ok}</Aviso>}
+      <EstadoLista cargando={p.cargando} error={p.error} filas={p.filas.length} vacio="No hay reseñas por moderar. Todo al día." />
 
-        {tab === "resenas" && (
-          cargando ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-tinta/50"><Loader2 className="animate-spin" /> Cargando…</div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {errorR && (
-                <p className="flex items-start gap-2 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-900 ring-1 ring-amber-200">
-                  <AlertTriangle size={18} className="mt-0.5 shrink-0" /> {errorR}
-                </p>
-              )}
-              {resenas.map((r) => (
-                <div key={r.id} className={`rounded-2xl p-4 shadow-tarjeta ring-1 ${
-                  r.estado === "apelada" ? "bg-oro/10 ring-oro/40" : "bg-white ring-black/5"}`}>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="min-w-0 truncate font-black">
-                      {r.profiles?.display_name || "Tardícola"}
-                      <span className="font-semibold text-tinta/50"> · reseña a un {r.objetivo_tipo}</span>
-                    </p>
-                    <span className="inline-flex shrink-0 items-center gap-0.5 text-sm font-black text-oro-600">{r.puntuacion} <Star size={14} fill="currentColor" /></span>
-                  </div>
-                  {r.comentario && <p className="mt-1 text-sm font-semibold text-tinta/70">{r.comentario}</p>}
-
-                  {/* Una apelación llega con su historia: qué se decidió, por
-                      qué, y qué contesta. Sin eso hay que decidir a ciegas
-                      sobre algo que ya se decidió una vez. */}
-                  {r.estado === "apelada" && (
-                    <div className="mt-2 rounded-xl bg-white p-3 ring-1 ring-oro/30">
-                      <p className="text-xs font-black uppercase tracking-wide text-oro-700">
-                        Apela el rechazo por «{etiquetaMotivo(r.motivo_rechazo)}»
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-tinta/75">{r.apelacion}</p>
-                    </div>
-                  )}
-
-                  {rechazando === r.id ? (
-                    <div className="mt-3">
-                      <p className="mb-1.5 text-sm font-black text-tinta/70">¿Por qué se rechaza?</p>
-                      <div className="flex flex-col gap-1.5">
-                        {MOTIVOS_RECHAZO.map((m) => (
-                          <button key={m.k} onClick={() => moderar(r, false, m.k)} disabled={moderando === r.id}
-                            className="rounded-xl bg-black/[0.03] px-3 py-2.5 text-left text-sm font-bold transition hover:bg-black/[0.06] disabled:opacity-40">
-                            {m.label}
-                          </button>
-                        ))}
-                      </div>
-                      <button onClick={() => setRechazando(null)}
-                        className="mt-2 text-xs font-black text-tinta/50">Cancelar</button>
-                    </div>
-                  ) : (
-                    <div className="mt-3 flex gap-2">
-                      <button onClick={() => moderar(r, true)} disabled={moderando === r.id}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-magenta py-2.5 text-sm font-extrabold text-white disabled:opacity-40">
-                        {moderando === r.id ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Aprobar
-                      </button>
-                      <button onClick={() => setRechazando(r.id)} disabled={moderando === r.id}
-                        className="flex items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-tinta/70 ring-1 ring-black/10 disabled:opacity-40">
-                        <X size={16} /> Rechazar
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-              {resenas.length === 0 && !errorR && <p className="rounded-2xl bg-white p-4 text-center text-sm font-bold text-tinta/50 ring-1 ring-black/5">Sin reseñas pendientes ✅</p>}
-            </div>
-          )
-        )}
-
-        {tab === "flyers" && (
-          <>
-            {errorD && (
-              <p className="mb-3 flex items-start gap-2 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-900 ring-1 ring-amber-200">
-                <AlertTriangle size={18} className="mt-0.5 shrink-0" /> {errorD}
+      <ul className={`flex flex-col gap-3 ${p.cargando ? "opacity-60" : ""}`}>
+        {p.filas.map((r) => {
+          const apelada = r.estado === "apelada";
+          const enlace = r.objetivo_tipo === "dj" ? `/djs/${r.objetivo_id}` : `/locales/${r.objetivo_id}`;
+          return (
+            <li key={r.id} className={`rounded-2xl border bg-white p-4 shadow-tarjeta md:p-5 ${apelada ? "border-aviso/40" : "border-linea"}`}>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[17px] font-bold">{r.profiles?.display_name || "Tardícola"}</p>
+                <span className="inline-flex items-center gap-0.5 text-[15px] font-bold" aria-label={`${r.puntuacion} de 5 estrellas`}>
+                  {r.puntuacion} <Star size={15} className="text-oro" fill="currentColor" aria-hidden />
+                </span>
+                {apelada ? <Etiqueta tono="aviso"><Undo2 size={13} aria-hidden /> Apelada</Etiqueta> : <Etiqueta>Nueva</Etiqueta>}
+              </div>
+              <p className="mt-1 text-[15px] text-tinta-suave">
+                Reseña a un {r.objetivo_tipo === "dj" ? "DJ" : "local"} · {new Date(r.created_at).toLocaleDateString("es-ES")} ·{" "}
+                <Link href={enlace} target="_blank" className="inline-flex items-center gap-1 font-semibold text-magenta-700 hover:underline">
+                  ver la ficha <ExternalLink size={13} aria-hidden />
+                </Link>
               </p>
-            )}
-            <div className="flex flex-col gap-3">
-              {denuncias.map((d) => {
-                const motivo = MOTIVOS.find((m) => m.k === d.motivo);
-                // La prueba es la que se guardó AL DENUNCIAR, no la de ahora:
-                // si el local ha cambiado el flyer, hay que ver la denunciada.
-                const prueba = d.flyer_url ?? d.tardeos?.flyer_url ?? null;
-                const cambiado = Boolean(d.flyer_url && d.tardeos?.flyer_url && d.flyer_url !== d.tardeos.flyer_url);
-                return (
-                  <div key={d.id} className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
-                    <div className="flex gap-3">
-                      {prueba && (
-                        // eslint-disable-next-line @next/next/no-img-element -- es una prueba congelada, no una imagen del producto
-                        <img src={prueba} alt="" className="h-24 w-20 shrink-0 rounded-xl object-cover ring-1 ring-black/5" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="inline-flex items-center gap-1.5 font-black leading-tight">
-                          <Flag size={14} className="shrink-0 text-magenta" />
-                          {motivo?.label ?? d.motivo}
-                        </p>
-                        <p className="truncate text-sm font-semibold text-tinta/60">
-                          {d.tardeos?.titulo ?? "Tardeo borrado"}
-                        </p>
-                        {d.mensaje && (
-                          <p className="mt-1 rounded-lg bg-black/[0.03] p-2 text-sm font-semibold text-tinta/75">
-                            {d.mensaje}
-                          </p>
-                        )}
-                        {cambiado && (
-                          <p className="mt-1 text-xs font-black text-oro-600">
-                            El local ha cambiado el flyer desde la denuncia. Arriba está el denunciado.
-                          </p>
-                        )}
-                        <Link href={`/tardeos/${d.tardeo_id}`} target="_blank"
-                          className="mt-1 inline-flex items-center gap-1 text-xs font-black text-magenta">
-                          Ver el tardeo <ExternalLink size={11} />
-                        </Link>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex gap-2">
-                      <button onClick={() => resolver(d, "retirado")} disabled={resolviendo === d.id}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-magenta py-2.5 text-sm font-extrabold text-white disabled:opacity-40">
-                        {resolviendo === d.id ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Tienen razón
-                      </button>
-                      <button onClick={() => resolver(d, "desestimado")} disabled={resolviendo === d.id}
-                        className="flex items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-tinta/70 ring-1 ring-black/10 disabled:opacity-40">
-                        <X size={16} /> Está bien
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-              {denuncias.length === 0 && !errorD && (
-                <p className="rounded-2xl bg-white p-4 text-center text-sm font-bold text-tinta/50 ring-1 ring-black/5">
-                  Sin flyers reportados ✅
-                </p>
+              <p className="mt-2 text-base">{r.comentario || <span className="text-tinta-suave">Sin comentario, solo puntuación.</span>}</p>
+
+              {/* Una apelación llega con su historia: qué se decidió, por qué y
+                  qué contesta. Sin eso se decide a ciegas. */}
+              {apelada && (
+                <div className="mt-3 rounded-xl bg-aviso-fondo p-3">
+                  <p className="text-sm font-bold text-aviso">Apela el rechazo por «{etiquetaMotivo(r.motivo_rechazo)}»</p>
+                  <p className="mt-1 text-[15px]">{r.apelacion}</p>
+                </div>
               )}
+
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <Boton tamano="pequeno" onClick={() => abrir(r, true)}><Check size={18} aria-hidden /> Aprobar</Boton>
+                <Boton tamano="pequeno" variante="contorno" onClick={() => abrir(r, false)}><X size={18} aria-hidden /> Rechazar</Boton>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      <Paginacion pagina={p.pagina} total={p.total} porPagina={p.porPagina} onCambiar={p.setPagina} cargando={p.cargando} />
+
+      <Hoja
+        abierta={!!accion}
+        onCerrar={() => !obrando && setAccion(null)}
+        titulo={accion?.aprobar ? "¿Aprobar la reseña?" : "¿Por qué se rechaza?"}
+        pie={
+          <div className="grid gap-2">
+            {accion?.aprobar
+              ? <Boton ancho cargando={obrando} onClick={confirmar}>Sí, publicarla</Boton>
+              : <Boton variante="peligro" ancho cargando={obrando} disabled={!motivo} onClick={confirmar}>Rechazar la reseña</Boton>}
+            <Boton variante="contorno" ancho disabled={obrando} onClick={() => setAccion(null)}>Cancelar</Boton>
+          </div>
+        }
+      >
+        {accion?.aprobar ? (
+          <p className="text-base">La reseña de <strong>{accion.r.profiles?.display_name || "Tardícola"}</strong> se publica en la ficha y cuenta para la nota media.</p>
+        ) : (
+          <fieldset>
+            <legend className="mb-3 text-[15px] text-tinta-suave">El autor verá este motivo y podrá apelar.</legend>
+            <div className="flex flex-col gap-2">
+              {MOTIVOS_RECHAZO.map((m) => (
+                <label key={m.k}
+                  className={`flex min-h-[48px] cursor-pointer items-center gap-3 rounded-xl border px-4 text-base font-semibold transition-colors ${
+                    motivo === m.k ? "border-magenta bg-magenta-50" : "border-linea-fuerte bg-white hover:bg-marfil"}`}>
+                  <input type="radio" name="motivo" value={m.k} checked={motivo === m.k} onChange={() => setMotivo(m.k)} className="h-5 w-5 accent-magenta" />
+                  {m.label}
+                </label>
+              ))}
             </div>
-          </>
+          </fieldset>
         )}
-      </div>
-    </main>
+      </Hoja>
+    </>
+  );
+}
+
+/* ------------------------------ Flyers ------------------------------ */
+
+function ColaFlyers({ alCambiar }: { alCambiar: () => void }) {
+  const p = usePaginado<Denuncia>(consultaDenunciasPendientes, ["flyers"], 25);
+  const [accion, setAccion] = useState<{ d: Denuncia; estado: "retirado" | "desestimado" } | null>(null);
+  const [obrando, setObrando] = useState(false);
+  const [error, setError] = useState("");
+  const [ok, setOk] = useState("");
+
+  /**
+   * Se espera a que la base confirme: una denuncia que parece resuelta y no lo
+   * está desaparece de la cola y nadie vuelve a mirarla.
+   */
+  const confirmar = async () => {
+    if (!accion) return;
+    setObrando(true); setError(""); setOk("");
+    const r = await resolverDenuncia(accion.d.id, accion.estado, "");
+    setObrando(false);
+    if (!r.ok) { setAccion(null); setError(r.error ?? "No se pudo resolver."); return; }
+    setOk(accion.estado === "retirado"
+      ? "Denuncia aceptada. Avisa al local para que cambie el flyer."
+      : "Denuncia desestimada: el flyer se queda como está.");
+    p.quitar((x) => x.id === accion.d.id);
+    setAccion(null);
+    alCambiar();
+    if (p.filas.length === 1 && p.total > 1) p.recargar();
+  };
+
+  return (
+    <>
+      {error && <Aviso>{error}</Aviso>}
+      {ok && <Aviso tono="ok">{ok}</Aviso>}
+      <EstadoLista cargando={p.cargando} error={p.error} filas={p.filas.length} vacio="No hay flyers denunciados. Todo al día." />
+
+      <ul className={`flex flex-col gap-3 ${p.cargando ? "opacity-60" : ""}`}>
+        {p.filas.map((d) => {
+          const motivo = MOTIVOS.find((m) => m.k === d.motivo);
+          // La prueba es la que se guardó AL DENUNCIAR, no la de ahora: si el
+          // local ha cambiado el flyer, hay que ver el denunciado.
+          const prueba = d.flyer_url ?? d.tardeos?.flyer_url ?? null;
+          const cambiado = Boolean(d.flyer_url && d.tardeos?.flyer_url && d.flyer_url !== d.tardeos.flyer_url);
+          return (
+            <li key={d.id} className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta md:p-5">
+              <div className="flex gap-4">
+                {prueba ? (
+                  <a href={prueba} target="_blank" rel="noopener noreferrer" className="shrink-0" aria-label="Ver el flyer denunciado a tamaño completo">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- es una prueba congelada, no una imagen del producto */}
+                    <img src={prueba} alt="" className="h-32 w-24 rounded-xl object-cover ring-1 ring-linea" />
+                  </a>
+                ) : (
+                  <span className="grid h-32 w-24 shrink-0 place-items-center rounded-xl bg-marfil-100 text-center text-sm text-tinta-suave">Sin imagen</span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-1.5 text-[17px] font-bold leading-tight">
+                    <Flag size={16} className="shrink-0 text-magenta" aria-hidden /> {motivo?.label ?? d.motivo}
+                  </p>
+                  <p className="mt-1 text-[15px] font-semibold">{d.tardeos?.titulo ?? "Tardeo borrado"}</p>
+                  <p className="text-sm text-tinta-suave">
+                    Denunciado el {new Date(d.created_at).toLocaleDateString("es-ES")}
+                    {d.tardeos?.fecha ? ` · tardeo del ${new Date(d.tardeos.fecha + "T12:00:00").toLocaleDateString("es-ES")}` : ""}
+                  </p>
+                  {d.mensaje && <p className="mt-2 rounded-xl bg-marfil-100 p-3 text-[15px]">«{d.mensaje}»</p>}
+                  {cambiado && (
+                    <p className="mt-2 text-sm font-semibold text-aviso">El local ha cambiado el flyer desde la denuncia. La imagen es la denunciada.</p>
+                  )}
+                  <Link href={`/tardeos/${d.tardeo_id}`} target="_blank"
+                    className="mt-2 inline-flex min-h-[40px] items-center gap-1.5 text-[15px] font-semibold text-magenta-700 hover:underline">
+                    Ver el tardeo <ExternalLink size={14} aria-hidden />
+                  </Link>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <Boton tamano="pequeno" onClick={() => setAccion({ d, estado: "retirado" })}><Check size={18} aria-hidden /> Tienen razón</Boton>
+                <Boton tamano="pequeno" variante="contorno" onClick={() => setAccion({ d, estado: "desestimado" })}><X size={18} aria-hidden /> El flyer está bien</Boton>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      <Paginacion pagina={p.pagina} total={p.total} porPagina={p.porPagina} onCambiar={p.setPagina} cargando={p.cargando} />
+
+      <Hoja
+        abierta={!!accion}
+        onCerrar={() => !obrando && setAccion(null)}
+        titulo={accion?.estado === "retirado" ? "¿Dar la razón a la denuncia?" : "¿Desestimar la denuncia?"}
+        pie={
+          <div className="grid gap-2">
+            <Boton ancho cargando={obrando} onClick={confirmar}>
+              {accion?.estado === "retirado" ? "Sí, tienen razón" : "Sí, el flyer está bien"}
+            </Boton>
+            <Boton variante="contorno" ancho disabled={obrando} onClick={() => setAccion(null)}>Cancelar</Boton>
+          </div>
+        }
+      >
+        {accion?.estado === "retirado" ? (
+          <p className="text-base">
+            La denuncia se cierra como aceptada. El flyer <strong>no se quita solo</strong>: pide al local que lo cambie
+            o edítalo tú desde el tardeo.
+          </p>
+        ) : (
+          <p className="text-base">La denuncia se cierra y el flyer de <strong>{accion?.d.tardeos?.titulo ?? "este tardeo"}</strong> sigue publicado.</p>
+        )}
+      </Hoja>
+    </>
   );
 }

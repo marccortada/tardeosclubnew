@@ -25,19 +25,12 @@ export default function AvisoLegal() {
         <li><strong>Nombre comercial:</strong> {nombreComercial}</li>
         <li>
           <strong>Titular:</strong>{" "}
-          {razonSocial || <em>pendiente de constituir la entidad legal</em>}
+          {razonSocial || <span className="pendiente">Pendiente</span>}
         </li>
-        <li><strong>NIF/CIF:</strong> {nif || <em>pendiente</em>}</li>
-        <li><strong>Domicilio:</strong> {domicilio || <em>pendiente</em>}</li>
+        <li><strong>NIF/CIF:</strong> {nif || <span className="pendiente">Pendiente</span>}</li>
+        <li><strong>Domicilio:</strong> {domicilio || <span className="pendiente">Pendiente</span>}</li>
         <li><strong>Contacto:</strong> <a href={`mailto:${emailContacto}`}>{emailContacto}</a></li>
       </ul>
-      {!razonSocial && (
-        <p>
-          <strong>Aviso:</strong> la entidad titular está en proceso de constitución. Estos datos
-          se completarán antes del lanzamiento comercial. Mientras tanto, para cualquier asunto
-          puedes escribirnos al correo de contacto y te responderemos.
-        </p>
-      )}
 
       <h2>2. Qué hacemos y qué no</h2>
       <p>

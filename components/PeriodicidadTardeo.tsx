@@ -47,8 +47,8 @@ export default function PeriodicidadTardeo({
   const fechaMala = Boolean(fecha) && !esFecha(fecha);
 
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
-      <p className="mb-2 flex items-center gap-2 text-sm font-black text-tinta/70">
+    <div className="rounded-2xl bg-white p-4 border border-linea shadow-tarjeta">
+      <p className="mb-2 flex items-center gap-2 text-[15px] font-semibold text-tinta">
         <Repeat size={16} className="text-magenta" /> ¿Se repite?
       </p>
 
@@ -59,10 +59,10 @@ export default function PeriodicidadTardeo({
             type="button"
             onClick={() => onCambio({ ...valor, cada: f.k })}
             title={f.pie}
-            className={`rounded-full px-3 py-1.5 text-xs font-black transition ${
+            className={`min-h-[44px] rounded-full px-4 py-2 text-[15px] font-semibold transition ${
               valor.cada === f.k
-                ? "bg-marca text-white"
-                : "bg-black/5 text-tinta/50 hover:bg-black/10"
+                ? "bg-tinta text-white"
+                : "bg-white text-tinta ring-1 ring-linea-fuerte hover:ring-tinta/40"
             }`}
           >
             {f.label}
@@ -73,7 +73,7 @@ export default function PeriodicidadTardeo({
       {repite && (
         <>
           <label className="mt-3 block">
-            <span className="mb-1 flex items-center gap-2 text-sm font-black text-tinta/70">
+            <span className="mb-1 flex items-center gap-2 text-[15px] font-semibold text-tinta">
               <CalendarRange size={15} className="text-magenta" /> Hasta el
             </span>
             <input
@@ -81,14 +81,14 @@ export default function PeriodicidadTardeo({
               value={valor.hasta}
               min={fecha || undefined}
               onChange={(e) => onCambio({ ...valor, hasta: e.target.value })}
-              className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-3 text-base font-semibold outline-none transition focus:border-magenta"
+              className="w-full rounded-xl border border-linea-fuerte bg-white px-4 py-3 text-base font-semibold outline-none transition focus:border-magenta"
             />
           </label>
 
           {/* Lo que va a pasar, en fechas de verdad. */}
           <div className="mt-3 rounded-xl bg-magenta-50/60 p-3">
             {!fecha ? (
-              <p className="text-sm font-bold text-tinta/60">
+              <p className="text-sm font-bold text-tinta-suave">
                 Pon primero la fecha del tardeo y aquí verás los días que se crean.
               </p>
             ) : fechaMala ? (
@@ -99,7 +99,7 @@ export default function PeriodicidadTardeo({
               </p>
             ) : !valor.hasta ? (
               <>
-                <p className="text-sm font-bold text-tinta/60">
+                <p className="text-sm font-bold text-tinta-suave">
                   Elige hasta cuándo y aquí verás los días que se crean.
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -107,30 +107,30 @@ export default function PeriodicidadTardeo({
                     <button
                       key={a.meses} type="button"
                       onClick={() => onCambio({ ...valor, hasta: masMeses(fecha, a.meses) })}
-                      className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-magenta ring-1 ring-magenta-100 transition hover:bg-magenta-50"
+                      className="min-h-[44px] rounded-full bg-white px-4 py-2 text-[15px] font-semibold text-magenta-700 ring-1 ring-linea-fuerte transition hover:bg-magenta-50"
                     >{a.label}</button>
                   ))}
                 </div>
               </>
             ) : (
               <>
-                <p className="text-sm font-black text-tinta">
+                <p className="text-sm font-bold text-tinta">
                   Se crearán {fechas.length} {fechas.length === 1 ? "tardeo" : "tardeos"}:
                 </p>
-                <p className="mt-1 text-sm font-semibold leading-relaxed text-tinta/70">
+                <p className="mt-1 text-sm font-semibold leading-relaxed text-tinta-suave">
                   {fechas.map(fechaCorta).join(" · ")}
                 </p>
                 {/* Cada uno es independiente: quien lo crea tiene que saberlo
                     ANTES, porque después son cinco fichas que se editan una a
                     una y nadie espera eso de algo que pidió como "repetir". */}
-                <p className="mt-2 text-xs font-semibold text-tinta/50">
+                <p className="mt-2 text-sm text-tinta-suave">
                   Cada uno se crea por separado: podrás editarlos o borrarlos de uno en uno.
                 </p>
               </>
             )}
 
             {tope && (
-              <p className="mt-2 flex items-start gap-1.5 text-xs font-black text-oro-600">
+              <p className="mt-2 flex items-start gap-1.5 text-xs font-bold text-aviso">
                 <AlertTriangle size={13} className="mt-0.5 shrink-0" />
                 Son más de {MAXIMO}. Se crearán los {MAXIMO} primeros; para el resto, repite
                 el proceso desde la última fecha.

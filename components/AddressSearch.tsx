@@ -77,12 +77,12 @@ export default function AddressSearch({
 
   if (sel) {
     return (
-      <div className="rounded-xl border-2 border-oro/50 bg-oro/5 p-3">
+      <div className="rounded-xl border-2 border-ok/40 bg-ok-fondo p-3">
         <div className="flex items-start gap-2">
-          <Check size={18} className="mt-0.5 shrink-0 text-oro-600" />
+          <Check size={18} className="mt-0.5 shrink-0 text-ok" />
           <div className="min-w-0 text-sm">
             <p className="font-bold text-tinta">{sel.display}</p>
-            <p className="mt-0.5 font-semibold text-tinta/60">
+            <p className="mt-0.5 font-semibold text-tinta-suave">
               {sel.cp && `CP ${sel.cp} · `}Zona: <b>{sel.zona || "—"}</b>
             </p>
           </div>
@@ -99,7 +99,7 @@ export default function AddressSearch({
 
   return (
     <div ref={box} className="relative">
-      <div className="flex items-center gap-2 rounded-xl border-2 border-magenta-100 bg-white pl-3 focus-within:border-magenta">
+      <div className="flex items-center gap-2 rounded-xl border border-linea-fuerte bg-white pl-3 focus-within:border-magenta">
         <MapPin size={18} className="shrink-0 text-magenta" />
         <input
           value={q}
@@ -112,7 +112,7 @@ export default function AddressSearch({
           type="button"
           onClick={buscar}
           disabled={q.trim().length < 3 || loading}
-          className="my-1.5 mr-1.5 flex shrink-0 items-center gap-1.5 rounded-lg bg-magenta px-3 py-2 text-sm font-extrabold text-white transition hover:brightness-105 disabled:opacity-40"
+          className="my-1.5 mr-1.5 flex shrink-0 items-center gap-1.5 rounded-lg bg-magenta px-3 py-2 text-sm font-semibold text-white transition hover:brightness-105 disabled:opacity-40"
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
           Buscar
@@ -120,14 +120,14 @@ export default function AddressSearch({
       </div>
 
       {error && (
-        <p className="mt-1.5 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700">{error}</p>
+        <p className="mt-1.5 rounded-xl bg-error-fondo p-3 text-xs font-bold text-error">{error}</p>
       )}
 
       {/* Sin resultados hay que decirlo Y decir qué hacer, para que no parezca
           que el buscador está roto cuando lo que pasa es que ese sitio no está
           fichado con ese nombre. */}
       {!loading && !error && buscado && res.length === 0 && (
-        <p className="mt-1.5 rounded-xl bg-magenta-50 p-3 text-xs font-semibold text-tinta/70">
+        <p className="mt-1.5 rounded-xl bg-magenta-50 p-3 text-sm text-tinta-suave">
           No encontramos «{buscado}». Prueba con la calle y el número, o añade la ciudad.
         </p>
       )}
@@ -139,7 +139,7 @@ export default function AddressSearch({
               <button
                 type="button"
                 onClick={() => elegir(d)}
-                className="flex w-full items-start gap-2 border-b border-black/5 p-3 text-left text-sm font-semibold text-tinta/80 hover:bg-magenta-50"
+                className="flex w-full items-start gap-2 border-b border-black/5 p-3 text-left text-sm font-semibold text-tinta-suave hover:bg-magenta-50"
               >
                 <MapPin size={16} className="mt-0.5 shrink-0 text-magenta" />
                 <span>{d.display}</span>

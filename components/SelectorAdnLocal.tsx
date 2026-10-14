@@ -21,6 +21,18 @@ export const ADN_LOCAL_VACIO: AdnLocal = {
   ambiente: [], publico: [], dressCode: "", horarioHabitual: "",
 };
 
+const Bloque = ({ icono: Icono, titulo, pista, children }: {
+  icono: typeof Store; titulo: string; pista?: string; children: React.ReactNode;
+}) => (
+  <div>
+    <label className="mb-1.5 flex items-center gap-1.5 text-[15px] font-semibold text-tinta">
+      <Icono size={15} className="text-magenta" /> {titulo}
+    </label>
+    {pista && <p className="mb-1.5 text-sm text-tinta-suave">{pista}</p>}
+    {children}
+  </div>
+);
+
 /**
  * Cómo es el sitio, no qué pasa en él esta tarde.
  *
@@ -47,21 +59,9 @@ export default function SelectorAdnLocal({
   };
 
   const chip = (activo: boolean) =>
-    `min-h-[44px] rounded-full px-4 py-2 text-sm font-extrabold transition ${
-      activo ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100 hover:ring-magenta"
+    `min-h-[44px] rounded-full px-4 py-2 text-sm font-semibold transition ${
+      activo ? "bg-magenta text-white" : "bg-white text-tinta-suave ring-1 ring-linea hover:ring-magenta"
     }`;
-
-  const Bloque = ({ icono: Icono, titulo, pista, children }: {
-    icono: typeof Store; titulo: string; pista?: string; children: React.ReactNode;
-  }) => (
-    <div>
-      <label className="mb-1.5 flex items-center gap-1.5 text-sm font-black text-tinta/70">
-        <Icono size={15} className="text-magenta" /> {titulo}
-      </label>
-      {pista && <p className="mb-1.5 text-xs font-semibold text-tinta/50">{pista}</p>}
-      {children}
-    </div>
-  );
 
   // Lo escrito a mano que no está entre las sugerencias.
   const tipoLibre = adn.tipoLocal && !TIPOS_LOCAL.some((s) => mismoValor(s, adn.tipoLocal)) ? adn.tipoLocal : "";
@@ -84,7 +84,7 @@ export default function SelectorAdnLocal({
             value={otroTipo} onChange={(e) => setOtroTipo(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (otroTipo.trim()) { set("tipoLocal", otroTipo.trim()); setOtroTipo(""); } } }}
             placeholder="Otro…"
-            className="min-w-0 flex-1 rounded-xl border-2 border-magenta-100 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-magenta"
+            className="min-w-0 flex-1 rounded-xl border border-linea-fuerte bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-magenta"
           />
         </div>
       </Bloque>
@@ -95,10 +95,10 @@ export default function SelectorAdnLocal({
             value={adn.aforo}
             onChange={(e) => set("aforo", e.target.value.replace(/[^0-9]/g, ""))}
             inputMode="numeric" placeholder="Ej: 250"
-            className="w-36 rounded-xl border-2 border-magenta-100 bg-white px-4 py-2.5 font-semibold outline-none focus:border-magenta"
+            className="w-36 rounded-xl border border-linea-fuerte bg-white px-4 py-2.5 font-semibold outline-none focus:border-magenta"
           />
           {tamano && (
-            <span className="rounded-full bg-magenta-50 px-3 py-1.5 text-sm font-extrabold text-magenta-700">{tamano}</span>
+            <span className="rounded-full bg-magenta-50 px-3 py-1.5 text-sm font-semibold text-magenta-700">{tamano}</span>
           )}
         </div>
       </Bloque>
@@ -148,7 +148,7 @@ export default function SelectorAdnLocal({
           value={adn.horarioHabitual}
           onChange={(e) => set("horarioHabitual", e.target.value)}
           placeholder="Vie a Dom, 18:00–02:00"
-          className="w-full rounded-xl border-2 border-magenta-100 bg-white px-4 py-2.5 font-semibold outline-none focus:border-magenta"
+          className="w-full rounded-xl border border-linea-fuerte bg-white px-4 py-2.5 font-semibold outline-none focus:border-magenta"
         />
       </Bloque>
     </div>

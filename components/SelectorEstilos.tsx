@@ -46,7 +46,7 @@ export default function SelectorEstilos({
               type="button"
               onClick={() => alternar(v)}
               aria-label={`Quitar ${v}`}
-              className="inline-flex items-center gap-1 rounded-full bg-magenta px-3 py-1.5 text-sm font-extrabold text-white"
+              className="inline-flex items-center gap-1 rounded-full bg-magenta px-3 py-1.5 text-sm font-semibold text-white"
             >
               {v} <X size={13} />
             </button>
@@ -59,26 +59,26 @@ export default function SelectorEstilos({
           const n = cuantos(fam.id);
           const desplegada = abierta === fam.id;
           return (
-            <div key={fam.id} className="rounded-2xl ring-1 ring-magenta-100">
+            <div key={fam.id} className="rounded-2xl ring-1 ring-linea">
               <button
                 type="button"
                 onClick={() => setAbierta(desplegada ? null : fam.id)}
-                className="flex min-h-[44px] w-full items-center justify-between gap-2 px-4 py-2.5 text-sm font-extrabold text-tinta/80"
+                className="flex min-h-[44px] w-full items-center justify-between gap-2 px-4 py-2.5 text-sm font-semibold text-tinta-suave"
               >
                 <span>
                   {fam.nombre}
                   {n > 0 && <span className="ml-2 text-magenta">{n}</span>}
                 </span>
-                <ChevronDown size={18} className={`shrink-0 text-tinta/40 transition ${desplegada ? "rotate-180" : ""}`} />
+                <ChevronDown size={18} className={`shrink-0 text-tinta-suave transition ${desplegada ? "rotate-180" : ""}`} />
               </button>
 
               {desplegada && (
-                <div className="border-t border-magenta-100 p-3">
+                <div className="border-t border-linea p-3">
                   {fam.grupos.map((g, i) => (
                     <div key={g.nombre ?? i} className={i ? "mt-3" : ""}>
                       {/* Solo Electrónica tiene subgrupos. */}
                       {g.nombre && (
-                        <p className="mb-1.5 text-xs font-black uppercase tracking-wide text-tinta/45">{g.nombre}</p>
+                        <p className="mb-1.5 text-[13px] font-semibold uppercase tracking-wide text-tinta-suave">{g.nombre}</p>
                       )}
                       <div className="flex flex-wrap gap-2">
                         {g.estilos.map((e) => {
@@ -89,8 +89,8 @@ export default function SelectorEstilos({
                               key={v}
                               type="button"
                               onClick={() => alternar(v)}
-                              className={`min-h-[44px] rounded-full px-4 py-2 text-sm font-extrabold transition ${
-                                on ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100 hover:ring-magenta"
+                              className={`min-h-[44px] rounded-full px-4 py-2 text-sm font-semibold transition ${
+                                on ? "bg-magenta text-white" : "bg-white text-tinta-suave ring-1 ring-linea hover:ring-magenta"
                               }`}
                             >
                               {e}

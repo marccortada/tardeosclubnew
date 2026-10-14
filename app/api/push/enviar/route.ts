@@ -1,16 +1,17 @@
 import webpush from "web-push";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { autorizarAdmin } from "@/lib/apiAuth";
+import { autorizarAdmin, endpointPushPermitido, urlInternaSegura } from "@/lib/apiAuth";
+import { encajaSegmento } from "@/lib/segmentacion";
 
 export const runtime = "nodejs";
 
 /**
- * Manda una notificación push a todos los dispositivos suscritos.
+ * Manda una notificación push a los dispositivos suscritos, a todos o solo a
+ * los que encajan con un segmento de gustos.
  *
  * Solo admin: esto le suena el móvil a toda la base de usuarios, así que es
- * el equivalente a un megáfono. El envío por segmentos (solo locales, solo
- * DJs...) puede venir después: la tabla ya guarda profile_id para eso.
+ * el equivalente a un megáfono.
  */
 export async function POST(req: Request) {
   let body: {
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
 
   // La sesión ANTES que la configuración: qué falta en el servidor no es
   // asunto de un visitante anónimo.
-  const auth = await autorizarAdmin(body.accessToken);
+  const auth = await autorizarAdmin(body.accessToken, req);
   if (auth instanceof NextResponse) return auth;
 
   const URL_SB = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -42,15 +43,26 @@ export async function POST(req: Request) {
   if (!titulo) return NextResponse.json({ error: "La notificación necesita un título." }, { status: 400 });
   const mensaje = (body.mensaje ?? "").trim();
   // Solo rutas internas: una notificación nuestra jamás debe abrir una web ajena.
-  const url = body.url?.startsWith("/") ? body.url : "/tardeos";
+  const url = urlInternaSegura(body.url);
 
   webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:hola@tardeosclub.app", VAPID_PUB, VAPID_PRIV);
 
   const admin = createClient(URL_SB, SERVICE_ROLE);
-  const { data: subs, error } = await admin
-    .from("push_suscripciones")
-    .select("id,endpoint,p256dh,auth,profile_id");
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Por lotes de 1000: PostgREST corta cada respuesta a 1000 filas y, de una
+  // vez, a partir de la suscripción 1001 nadie recibía el aviso.
+  type Sub = { id: string; endpoint: string; p256dh: string; auth: string; profile_id: string | null };
+  const subs: Sub[] = [];
+  const LOTE = 1000;
+  for (let desde = 0; ; desde += LOTE) {
+    const { data, error } = await admin
+      .from("push_suscripciones")
+      .select("id,endpoint,p256dh,auth,profile_id")
+      .order("id")
+      .range(desde, desde + LOTE - 1);
+    if (error) return NextResponse.json({ error: "No se pudieron leer las suscripciones. Inténtalo otra vez." }, { status: 500 });
+    subs.push(...((data ?? []) as Sub[]));
+    if (!data || data.length < LOTE) break;
+  }
 
   /**
    * A quién le toca, según su ADN.
@@ -71,7 +83,11 @@ export async function POST(req: Request) {
   const seg = body.segmento ?? {};
   const hayCriterios = Object.values(seg).some((v) => Array.isArray(v) && v.length > 0);
 
-  let destinatarias = subs ?? [];
+  // Defensa en profundidad: aunque la tabla tuviera un endpoint raro, nunca se
+  // hace una petición a un host que no sea un servicio de push conocido.
+  const subsValidas = subs.filter((s) => endpointPushPermitido(s.endpoint));
+
+  let destinatarias = subsValidas;
   if (hayCriterios) {
     const ids = [...new Set(destinatarias.map((s) => s.profile_id).filter(Boolean))] as string[];
     const { data: perfiles } = ids.length
@@ -79,24 +95,28 @@ export async function POST(req: Request) {
       : { data: [] as { id: string; musica: string[] | null; tipos_evento: string[] | null; publico: string | null; zonas: string[] | null }[] };
     const porId = new Map((perfiles ?? []).map((p) => [p.id, p]));
 
-    const cruza = (pedido: string[] | undefined, suyo: string[]) =>
-      !pedido?.length || suyo.some((x) => pedido.includes(x));
+    // La MISMA regla que los pop-ups (lib/segmentacion): pedir una familia
+    // ("Electrónica") alcanza a quien marcó solo un estilo de ella ("Afro
+    // House"). Antes aquí se exigía coincidencia exacta y la familia entera se
+    // quedaba sin su público más interesado.
+    const segmento = {
+      seg_musica: seg.musica, seg_tipos_evento: seg.tiposEvento, seg_edades: seg.edades, seg_zonas: seg.zonas,
+    };
 
     destinatarias = destinatarias.filter((s) => {
       if (!s.profile_id) return false;            // sin cuenta no hay gustos que mirar
       const p = porId.get(s.profile_id);
       if (!p) return false;
-      return cruza(seg.musica, p.musica ?? [])
-        && cruza(seg.tiposEvento, p.tipos_evento ?? [])
-        && cruza(seg.edades, p.publico ? [p.publico] : [])
-        && cruza(seg.zonas, p.zonas ?? []);
+      return encajaSegmento(segmento, {
+        musica: p.musica ?? [], tiposEvento: p.tipos_evento ?? [], publico: p.publico ?? null, zonas: p.zonas ?? [],
+      } as Parameters<typeof encajaSegmento>[1]);
     });
   }
 
   // Contar antes de enviar: quien manda un aviso a miles de móviles tiene
   // derecho a saber a cuántos va ANTES de darle al botón.
   if (body.soloContar) {
-    return NextResponse.json({ destinatarias: destinatarias.length, total: subs?.length ?? 0 });
+    return NextResponse.json({ destinatarias: destinatarias.length, total: subsValidas.length });
   }
 
   if (!destinatarias.length) return NextResponse.json({ enviadas: 0, caducadas: 0, destinatarias: 0 });

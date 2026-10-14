@@ -20,9 +20,11 @@ import { etiquetaPublicacion } from "@/lib/estados";
  * se publica sola sería mentir. Es lo que hace que la revisión sea rápida.
  */
 export default function FichaPendiente({
-  estado, local,
+  estado, local, hrefEditar = "/local/editar",
 }: {
   estado: string | null | undefined;
+  /** A dónde lleva "Completar la ficha" (con ?id= si hay varias fichas). */
+  hrefEditar?: string;
   local: { nombre?: string; direccion?: string | null; descripcion?: string | null;
            logo_url?: string | null; telefono?: string | null; musica?: unknown[] | null;
            tipo?: string | null };
@@ -48,13 +50,13 @@ export default function FichaPendiente({
   const faltan = puntos.filter((p) => !p.ok).length;
 
   return (
-    <section className="mt-5 rounded-2xl bg-oro/10 p-5 ring-1 ring-oro/40">
-      <p className="flex items-center gap-2 font-display text-lg font-black">
-        <AlertTriangle size={19} className="shrink-0 text-oro-600" />
+    <section className="rounded-2xl border border-aviso/25 bg-aviso-fondo p-5">
+      <p className="flex items-center gap-2 text-lg font-bold">
+        <AlertTriangle size={20} className="shrink-0 text-aviso" aria-hidden />
         Tu ficha todavía no se ve en la web
       </p>
 
-      <p className="mt-1 text-sm font-semibold text-tinta/75">
+      <p className="mt-1.5 text-[15px] text-tinta">
         {impago ? (
           <>
             Está <b>{etiquetaPublicacion(estado).toLowerCase()}</b> porque hay un recibo sin
@@ -77,17 +79,17 @@ export default function FichaPendiente({
 
       {!impago && !retirada && (
         <>
-          <p className="mt-4 text-sm font-black text-tinta/70">
+          <p className="mt-4 text-[15px] font-semibold">
             {faltan === 0
               ? "Lo tienes todo puesto. Solo falta que la revisemos."
               : `Completar esto hace la revisión más rápida (${faltan} por poner):`}
           </p>
-          <ul className="mt-2 flex flex-col gap-1.5">
+          <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
             {puntos.map((p) => (
-              <li key={p.texto} className={`flex items-center gap-2 text-sm font-semibold ${p.ok ? "text-tinta/45" : "text-tinta/80"}`}>
+              <li key={p.texto} className="flex items-center gap-2 text-[15px] text-tinta-suave">
                 {p.ok
-                  ? <Check size={15} className="shrink-0 text-green-600" />
-                  : <Circle size={15} className="shrink-0 text-oro-600" />}
+                  ? <Check size={16} className="shrink-0 text-ok" aria-label="Hecho" />
+                  : <Circle size={16} className="shrink-0 text-aviso" aria-label="Falta" />}
                 {p.texto}
               </li>
             ))}
@@ -95,10 +97,10 @@ export default function FichaPendiente({
 
           {faltan > 0 && (
             <Link
-              href="/local/editar"
-              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-tinta px-4 py-2.5 text-sm font-black text-white active:scale-[0.98]"
+              href={hrefEditar}
+              className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-tinta px-4 text-[15px] font-bold text-white hover:bg-tinta/90"
             >
-              <Pencil size={15} /> Completar la ficha
+              <Pencil size={16} aria-hidden /> Completar la ficha
             </Link>
           )}
         </>

@@ -1,6 +1,8 @@
 import { Resend } from "resend";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { pasaLimite, respuestaLimite, tokenDe } from "@/lib/apiAuth";
+import { registrar } from "@/lib/registro";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -20,7 +22,8 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Cuerpo inválido." }, { status: 400 });
   }
-  const { titulo = "", mensaje = "", accessToken, localIds, soloContar } = body;
+  const { titulo = "", mensaje = "", localIds, soloContar } = body;
+  const accessToken = tokenDe(req, body.accessToken);
   if (!titulo.trim() && !soloContar) return NextResponse.json({ error: "Falta el título de la oferta." }, { status: 400 });
   if (!accessToken) return NextResponse.json({ error: "No autenticado." }, { status: 401 });
 
@@ -82,22 +85,26 @@ export async function POST(req: Request) {
     });
   }
 
+  // Tope de envíos por admin: máx. 6 por hora (cada envío puede ser masivo).
+  if (!(await pasaLimite(`oferta:${uid}`, 6))) return respuestaLimite("envíos de ofertas");
+
   // 3) Enviar con Resend (en lotes de 100)
   const resend = new Resend(RESEND_API_KEY);
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto">
-      <div style="background:linear-gradient(135deg,#E10A5A,#F5B301);padding:28px;border-radius:20px 20px 0 0;color:#fff">
+      <div style="background:linear-gradient(135deg,#FF3DCF,#FAC72E);padding:28px;border-radius:20px 20px 0 0;color:#fff">
         <p style="margin:0;font-weight:800;letter-spacing:.5px">TARDEOSCLUB · OFERTA</p>
         <h1 style="margin:6px 0 0;font-size:26px">${escapeHtml(titulo)}</h1>
       </div>
       <div style="background:#fff;padding:24px;border:1px solid #eee;border-top:0;border-radius:0 0 20px 20px">
         <p style="font-size:16px;color:#2A1721;white-space:pre-line">${escapeHtml(mensaje)}</p>
-        <a href="https://tardeosclub.com" style="display:inline-block;margin-top:16px;background:#E10A5A;color:#fff;text-decoration:none;font-weight:800;padding:12px 22px;border-radius:14px">Ir a TardeosClub</a>
+        <a href="https://tardeosclub.com" style="display:inline-block;margin-top:16px;background:#D61AA8;color:#fff;text-decoration:none;font-weight:800;padding:12px 22px;border-radius:14px">Ir a TardeosClub</a>
         <p style="margin-top:20px;font-size:12px;color:#999">Recibes este email por ser local de TardeosClub. Sal, conecta y vive el tardeo.</p>
       </div>
     </div>`;
 
   let enviados = 0;
+  let fallidos = 0;
   try {
     for (let i = 0; i < emails.length; i += 100) {
       const chunk = emails.slice(i, i + 100).map((to) => ({
@@ -107,14 +114,20 @@ export async function POST(req: Request) {
         html,
       }));
       const { error } = await resend.batch.send(chunk);
-      if (!error) enviados += chunk.length;
+      if (error) {
+        fallidos += chunk.length;
+        registrar("enviar-oferta", `Resend rechazó un lote de ${chunk.length} emails`, error);
+      } else {
+        enviados += chunk.length;
+      }
     }
   } catch (e: unknown) {
+    registrar("enviar-oferta", "excepción al enviar con Resend", e);
     const message = e instanceof Error ? e.message : "Error enviando emails.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message, enviados, fallidos }, { status: 500 });
   }
 
-  return NextResponse.json({ enviados, total: emails.length, ...cuentas });
+  return NextResponse.json({ enviados, fallidos, total: emails.length, ...cuentas });
 }
 
 function escapeHtml(s: string) {

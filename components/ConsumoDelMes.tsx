@@ -35,8 +35,8 @@ export default function ConsumoDelMes({
 
   if (!reglasActivas || cargando || !c) {
     return cargando && reglasActivas ? (
-      <p className="mt-4 flex items-center gap-2 text-sm font-bold text-tinta/40">
-        <Loader2 size={14} className="animate-spin" /> Contando lo del mes…
+      <p className="flex items-center gap-2 text-[15px] text-tinta-suave">
+        <Loader2 size={16} className="animate-spin" aria-hidden /> Contando lo del mes…
       </p>
     ) : null;
   }
@@ -64,26 +64,26 @@ export default function ConsumoDelMes({
   ];
 
   return (
-    <section className="mt-6 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
+    <section className="rounded-2xl border border-linea bg-white p-5 shadow-tarjeta">
       <div className="mb-3 flex items-baseline justify-between gap-2">
-        <p className="font-display text-lg font-black">Tu plan {ETIQUETA[p]}</p>
+        <p className="text-lg font-bold">Tu plan {ETIQUETA[p]}</p>
         {c.euros > 0 && (
-          <p className="text-sm font-black text-oro-600">+{c.euros} € este mes</p>
+          <p className="text-[15px] font-bold text-aviso">+{c.euros} € este mes</p>
         )}
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2.5">
         {filas.map(({ icono: Icono, etiqueta, usado, incluido, demas, precio }) => (
           <div key={etiqueta} className="flex items-center gap-3">
-            <Icono size={17} className="shrink-0 text-magenta" />
-            <span className="min-w-0 flex-1 text-sm font-bold text-tinta/70">{etiqueta}</span>
-            <span className="shrink-0 text-sm font-black">
+            <Icono size={18} className="shrink-0 text-magenta" aria-hidden />
+            <span className="min-w-0 flex-1 text-[15px] text-tinta-suave">{etiqueta}</span>
+            <span className="shrink-0 text-[15px] font-bold">
               {usado}
-              {incluido != null && <span className="font-bold text-tinta/40"> de {incluido}</span>}
-              {incluido == null && <span className="font-bold text-tinta/40"> · sin límite</span>}
+              {incluido != null && <span className="font-medium text-tinta-suave"> de {incluido}</span>}
+              {incluido == null && <span className="font-medium text-tinta-suave"> · sin límite</span>}
             </span>
             {demas > 0 && (
-              <span className="shrink-0 rounded-full bg-oro/20 px-2 py-0.5 text-xs font-black text-oro-700">
+              <span className="shrink-0 rounded-full bg-aviso-fondo px-2 py-0.5 text-[13px] font-semibold text-aviso">
                 +{demas * precio} €
               </span>
             )}
@@ -92,11 +92,11 @@ export default function ConsumoDelMes({
       </div>
 
       {c.euros > 0 ? (
-        <p className="mt-3 text-xs font-semibold text-tinta/55">
+        <p className="mt-3 text-sm text-tinta-suave">
           Lo que te pasas se suma a la cuota del mes que viene. No se cobra suelto.
         </p>
       ) : (
-        <p className="mt-3 text-xs font-semibold text-tinta/55">
+        <p className="mt-3 text-sm text-tinta-suave">
           Todo dentro de lo incluido.
         </p>
       )}

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { registrar } from "./registro";
 
 // Solo servidor. Usa la service role key, que nunca sale del servidor.
@@ -12,7 +13,8 @@ export type Autorizado = { uid: string; esAdmin: boolean };
  *
  * Devuelve NextResponse si hay que cortar, o { uid, esAdmin } si pasa.
  */
-export async function autorizarLocalOAdmin(accessToken?: string): Promise<NextResponse | Autorizado> {
+export async function autorizarLocalOAdmin(tokenCuerpo?: string, req?: Request): Promise<NextResponse | Autorizado> {
+  const accessToken = tokenDe(req, tokenCuerpo);
   const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!URL || !SERVICE_ROLE) {
@@ -47,7 +49,8 @@ export async function autorizarLocalOAdmin(accessToken?: string): Promise<NextRe
  * darse de alta. Sigue habiendo puerta —hay que tener cuenta— y el tope por
  * hora se cuenta igual, que es lo que protege la cuota de Google.
  */
-export async function autorizarUsuario(accessToken?: string): Promise<NextResponse | Autorizado> {
+export async function autorizarUsuario(tokenCuerpo?: string, req?: Request): Promise<NextResponse | Autorizado> {
+  const accessToken = tokenDe(req, tokenCuerpo);
   const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!URL || !SERVICE_ROLE) {
@@ -71,13 +74,78 @@ export async function autorizarUsuario(accessToken?: string): Promise<NextRespon
  * la base de usuarios, como mandar una notificación push a todo el mundo: eso
  * no es algo que deba poder hacer un local.
  */
-export async function autorizarAdmin(accessToken?: string): Promise<NextResponse | Autorizado> {
-  const auth = await autorizarLocalOAdmin(accessToken);
+export async function autorizarAdmin(tokenCuerpo?: string, req?: Request): Promise<NextResponse | Autorizado> {
+  const auth = await autorizarLocalOAdmin(tokenCuerpo, req);
   if (auth instanceof NextResponse) return auth;
   if (!auth.esAdmin) {
     return NextResponse.json({ error: "Solo para administradores." }, { status: 403 });
   }
   return auth;
+}
+
+/**
+ * Token de sesión de la petición: cabecera `Authorization: Bearer <token>` si
+ * viene, y si no el del cuerpo (`accessToken`), que es lo que usa el cliente
+ * actual. Compatible hacia atrás: pasar solo el token del cuerpo sigue valiendo.
+ */
+export function tokenDe(req?: Request, tokenCuerpo?: string): string | undefined {
+  const cab = req?.headers.get("authorization");
+  const m = cab ? /^Bearer\s+(.+)$/i.exec(cab.trim()) : null;
+  return m?.[1] || tokenCuerpo || undefined;
+}
+
+/**
+ * ¿La petición trae el secreto de cron correcto en la cabecera `x-cron-secret`?
+ * Solo cabecera (nunca en la URL, que acaba en logs) y comparación en tiempo
+ * constante. Con distinta longitud se compara el secreto consigo mismo para no
+ * dar pistas por tiempo y se devuelve false.
+ */
+export function secretoCronValido(req: Request): boolean {
+  const esperado = process.env.CRON_SECRET;
+  if (!esperado) return false;
+  const dado = req.headers.get("x-cron-secret") ?? "";
+  const a = Buffer.from(dado);
+  const b = Buffer.from(esperado);
+  if (a.length !== b.length) {
+    timingSafeEqual(b, b);
+    return false;
+  }
+  return timingSafeEqual(a, b);
+}
+
+// ---------- Push: validación de entradas ----------
+const HOSTS_PUSH_EXACTOS = ["fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com"];
+const HOSTS_PUSH_SUFIJOS = [".notify.windows.com", ".push.apple.com", ".fcm.googleapis.com", ".push.services.mozilla.com"];
+
+/**
+ * ¿Es un endpoint de push de un servicio conocido? Exige https y que el host
+ * sea exactamente uno de la lista o un subdominio de ella. Evita que el
+ * servidor haga peticiones a direcciones arbitrarias (SSRF) al enviar.
+ */
+export function endpointPushPermitido(endpoint: unknown): boolean {
+  if (typeof endpoint !== "string") return false;
+  let u: URL;
+  try {
+    u = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:" || u.username || u.password) return false;
+  const h = u.hostname.toLowerCase();
+  return HOSTS_PUSH_EXACTOS.includes(h) || HOSTS_PUSH_SUFIJOS.some((s) => h.endsWith(s));
+}
+
+/**
+ * Ruta interna segura para abrir desde una notificación: una sola "/" inicial
+ * y el segundo carácter no puede ser "/" ni "\\" (`//evil.com`, `/\\evil.com`).
+ * Si no cumple, devuelve el valor por defecto.
+ */
+export function urlInternaSegura(url: unknown, porDefecto = "/tardeos"): string {
+  if (typeof url !== "string" || url.length > 500) return porDefecto;
+  if (!url.startsWith("/")) return porDefecto;
+  if (url[1] === "/" || url[1] === "\\") return porDefecto;
+  if (/[\u0000-\u001f]/.test(url)) return porDefecto;
+  return url;
 }
 
 // ---------- Límite de uso ----------

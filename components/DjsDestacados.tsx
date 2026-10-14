@@ -1,48 +1,22 @@
-import Image from "next/image";
-import Link from "next/link";
-import { BadgeCheck, Star, Disc3, ArrowRight } from "lucide-react";
-import { tieneValoracion, valoracion } from "@/lib/reputacion";
+import DjCard from "@/components/DjCard";
+import { CabeceraSeccion } from "@/components/CarruselTardeos";
 
+/**
+ * DJs destacados en portada. Misma tarjeta que el directorio: foto grande o
+ * degradado con iniciales, nombre completo y estilos.
+ */
 export default function DjsDestacados({ djs }: { djs: any[] }) {
   if (!djs || djs.length === 0) return null;
 
   return (
-    <section className="mx-auto max-w-6xl px-4 pt-10 md:px-8">
-      <div className="mb-3 flex items-end justify-between">
-        <h2 className="flex items-center gap-2 font-display text-2xl font-black md:text-3xl">
-          DJs destacados <Disc3 size={22} className="text-magenta" />
-        </h2>
-        <Link href="/colaboradores?ver=djs" className="inline-flex items-center gap-1 text-sm font-extrabold text-magenta -mr-2 rounded-lg px-2 py-2.5">
-          Ver todos <ArrowRight size={16} />
-        </Link>
-      </div>
-
-      <div className="flex gap-3 overflow-x-auto pb-2">
-        {djs.map((dj) => {
-          const inicial = String(dj.nombre_artistico || "DJ").replace("DJ ", "").charAt(0);
-          return (
-            <Link
-              key={dj.id}
-              href={`/djs/${dj.id}`}
-              className="flex w-28 shrink-0 flex-col items-center gap-1.5 rounded-3xl bg-white p-3 text-center shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg"
-            >
-              {dj.avatar_url ? (
-                <Image src={dj.avatar_url} alt="" width={64} height={64} className="h-16 w-16 rounded-full object-cover ring-2 ring-magenta-100" />
-              ) : (
-                <span className="grid h-16 w-16 place-items-center rounded-full bg-marca font-display text-2xl font-black text-white">{inicial}</span>
-              )}
-              <p className="inline-flex items-center gap-0.5 text-sm font-black leading-tight line-clamp-1">
-                {dj.nombre_artistico}
-                {dj.verificado && <BadgeCheck size={13} className="shrink-0 text-oro-600" />}
-              </p>
-              {tieneValoracion(dj.reputacion_score) && (
-                <span className="inline-flex items-center gap-0.5 text-xs font-black text-oro-600">
-                  <Star size={11} fill="currentColor" /> {valoracion(dj.reputacion_score)}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+    <section className="pt-10 md:pt-14">
+      <CabeceraSeccion titulo="DJs destacados" subtitulo="Quién pone la música" href="/colaboradores?ver=djs" />
+      <div className="no-scrollbar carousel-bleed flex gap-3 overflow-x-auto pb-3 md:gap-4">
+        {djs.map((dj) => (
+          <div key={dj.id} className="w-[42vw] max-w-[200px] shrink-0 sm:w-48">
+            <DjCard dj={dj} />
+          </div>
+        ))}
       </div>
     </section>
   );

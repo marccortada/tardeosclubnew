@@ -17,6 +17,22 @@ import { PLANES, type Plan } from "./planes";
  * mes salen de `tardeos.created_at`, las promociones activas de `promociones`.
  * Una tabla de consumos que hay que mantener en sincronía con la realidad se
  * desincroniza; contar la realidad no.
+ *
+ * QUÉ SE CUENTA: tardeos del local en estado publicado o programado, creados
+ * desde la medianoche (Madrid) del día 1.
+ *
+ * QUÉ NO SE CUENTA TODAVÍA:
+ *  - Los borradores (a propósito: no están a la vista de nadie). Si un borrador
+ *    se publica otro mes, cuenta en el mes en que se CREÓ, no en el que sale.
+ *  - Un tardeo publicado y luego borrado, cancelado o despublicado deja de
+ *    contar: se cuenta lo que hay, no lo que se llegó a publicar.
+ *  - Las series cuentan una vez por fecha: «cada semana hasta diciembre» son
+ *    16 eventos. Es lo que ve el público, pero habrá que decidir si el modelo
+ *    de Marc las cobra así.
+ *  - Los tardeos que crea un admin en nombre del local sí cuentan (se cuenta
+ *    por `local_id`, no por quién los creó).
+ *  - Pop-ups ADN y destacados del mes: tienen cuota en CUOTAS pero aquí aún no
+ *    se cuentan ni se cobran.
  */
 
 export type Cuota = {
@@ -64,8 +80,52 @@ export function inicioDeMes(d = new Date()): string {
   return `${madrid.slice(0, 7)}-01`;
 }
 
+/**
+ * Instante UTC (ISO) en el que empieza el mes en curso en Madrid.
+ *
+ * `${dia}T00:00:00Z` era la medianoche de Londres: los tardeos creados entre
+ * las 00:00 y las 02:00 del día 1 (hora de verano) se contaban en el mes
+ * anterior. Se calcula el desfase real de Madrid para esa fecha.
+ */
+export function inicioDeMesUTC(d = new Date()): string {
+  const [y, m] = inicioDeMes(d).split("-").map(Number);
+  const pared = (ms: number) => {
+    const p = Object.fromEntries(
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: "Europe/Madrid", hourCycle: "h23",
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit",
+      }).formatToParts(new Date(ms)).map((x) => [x.type, x.value])
+    );
+    return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+  };
+  const nominal = Date.UTC(y, m - 1, 1);
+  let ms = nominal - (pared(nominal) - nominal);
+  ms = nominal - (pared(ms) - ms); // segunda pasada por si cae junto a un cambio de hora
+  return new Date(ms).toISOString();
+}
+
+/** Estados que cuentan como evento publicado este mes. Un borrador no. */
+const ESTADOS_QUE_CUENTAN = ["publicado", "programado"];
+
 const plan = (p: string | null | undefined): Plan =>
   (PLANES as readonly string[]).includes(p ?? "") ? (p as Plan) : "basic";
+
+/** Promociones activas de un local, incluidas las que cuelgan de alguno de sus tardeos. */
+async function promocionesDeLocal(localId: string): Promise<any[]> {
+  const columnas = "id,activa,desde,hasta,limite_usos,usos";
+  const propias = await supabase.from("promociones").select(columnas).eq("activa", true).eq("local_id", localId);
+  const filas: any[] = propias.data ?? [];
+  // Los tardeos del local con alguna promoción propia colgada: se piden por ids, en trozos.
+  const { data: tardeos } = await supabase.from("tardeos").select("id").eq("local_id", localId).limit(1000);
+  const ids = (tardeos ?? []).map((t: any) => t.id);
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data } = await supabase.from("promociones").select(columnas)
+      .eq("activa", true).is("local_id", null).in("tardeo_id", ids.slice(i, i + 200));
+    filas.push(...(data ?? []));
+  }
+  return filas;
+}
 
 /**
  * Qué lleva consumido este local este mes.
@@ -77,20 +137,22 @@ const plan = (p: string | null | undefined): Plan =>
 export async function consumoDeLocal(localId: string, planLocal: string | null | undefined): Promise<Consumo> {
   const p = plan(planLocal);
   const c = CUOTAS[p];
-  const desde = inicioDeMes();
+  const desde = inicioDeMesUTC();
 
   const [ev, pr] = await Promise.all([
     supabase.from("tardeos").select("id", { count: "exact", head: true })
-      .eq("local_id", localId).gte("created_at", `${desde}T00:00:00Z`),
-    supabase.from("promociones").select("id,activa,desde,hasta,limite_usos,usos")
-      .eq("activa", true),
+      .eq("local_id", localId).in("estado", ESTADOS_QUE_CUENTAN).gte("created_at", desde),
+    // Las promociones del local Y las colgadas de uno de sus tardeos
+    // (`tardeo_id`, sin `local_id`): así este número es el mismo que ve el admin
+    // en `consumoDeTodos`, y lo que se cobra cuadra con lo que ve el local.
+    promocionesDeLocal(localId),
   ]);
 
   const eventosMes = ev.count ?? 0;
   // Solo las de este local y que estén corriendo de verdad. La política de
   // lectura ya deja fuera las caducadas del resto de gente.
   const ahora = new Date();
-  const promosActivas = (pr.data ?? []).filter((x: any) =>
+  const promosActivas = pr.filter((x: any) =>
     (!x.desde || new Date(x.desde) <= ahora) &&
     (!x.hasta || new Date(x.hasta) >= ahora) &&
     (x.limite_usos == null || (x.usos ?? 0) < x.limite_usos)
@@ -119,15 +181,18 @@ export async function consumoDeLocal(localId: string, planLocal: string | null |
 export async function consumoDeTodos(
   planes: Record<string, string | null | undefined>
 ): Promise<Record<string, Consumo>> {
-  const desde = inicioDeMes();
-  const [ev, pr] = await Promise.all([
-    supabase.from("tardeos").select("local_id").gte("created_at", `${desde}T00:00:00Z`),
-    supabase.from("promociones").select("local_id,tardeo_id,activa,desde,hasta,limite_usos,usos").eq("activa", true),
-  ]);
-
+  const desde = inicioDeMesUTC();
+  // Los tardeos del mes se piden de 1.000 en 1.000: PostgREST corta en 1.000 y,
+  // sin paginar, un mes con más (una serie semanal de 52 fechas por local) daba
+  // un recuento truncado en silencio.
+  const pr = await supabase.from("promociones").select("local_id,tardeo_id,activa,desde,hasta,limite_usos,usos").eq("activa", true);
   const eventos: Record<string, number> = {};
-  for (const t of ev.data ?? []) {
-    if (t.local_id) eventos[t.local_id] = (eventos[t.local_id] ?? 0) + 1;
+  for (let desdeFila = 0; desdeFila < 100000; desdeFila += 1000) {
+    const { data } = await supabase.from("tardeos").select("local_id")
+      .in("estado", ESTADOS_QUE_CUENTAN).gte("created_at", desde)
+      .order("id").range(desdeFila, desdeFila + 999);
+    for (const t of data ?? []) if (t.local_id) eventos[t.local_id] = (eventos[t.local_id] ?? 0) + 1;
+    if ((data ?? []).length < 1000) break;
   }
 
   // Una promoción puede colgar de un local o de un tardeo; para contarla hay

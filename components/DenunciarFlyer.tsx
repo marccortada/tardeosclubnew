@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { claseCampo } from "@/components/ui/Campo";
+import { claseBoton } from "@/components/Boton";
 import { Flag, Loader2, Check, X } from "lucide-react";
 import { MOTIVOS, denunciarFlyer, type Motivo } from "@/lib/denuncias";
 
@@ -39,8 +41,8 @@ export default function DenunciarFlyer({
 
   if (hecho) {
     return (
-      <p className="mt-6 flex items-center justify-center gap-2 text-sm font-bold text-tinta/60">
-        <Check size={16} className="text-green-600" />
+      <p className="mt-8 flex items-center justify-center gap-2 text-[15px] text-tinta-suave">
+        <Check size={16} className="text-ok" />
         Gracias. Lo revisamos y, si hace falta, retiramos el flyer.
       </p>
     );
@@ -50,7 +52,7 @@ export default function DenunciarFlyer({
     return (
       <button
         onClick={() => setAbierto(true)}
-        className="mx-auto mt-6 flex items-center gap-1.5 text-xs font-bold text-tinta/40 underline underline-offset-2 transition hover:text-magenta"
+        className="mx-auto mt-8 flex min-h-[44px] items-center gap-1.5 px-2 text-[14px] font-semibold text-tinta-suave underline underline-offset-2 transition hover:text-tinta"
       >
         <Flag size={12} /> Avisar de un problema con este flyer
       </button>
@@ -58,16 +60,16 @@ export default function DenunciarFlyer({
   }
 
   return (
-    <div className="mt-6 rounded-2xl bg-white p-4 shadow-tarjeta ring-1 ring-black/5">
+    <div className="mt-8 rounded-2xl border border-linea bg-white p-4 shadow-tarjeta">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
-          <p className="font-display text-lg font-black">¿Qué pasa con este flyer?</p>
-          <p className="text-sm font-semibold text-tinta/55">
+          <p className="text-lg font-bold">¿Qué pasa con este flyer?</p>
+          <p className="text-[15px] text-tinta-suave">
             Lo mira una persona. No hace falta que tengas cuenta.
           </p>
         </div>
         <button onClick={() => setAbierto(false)} aria-label="Cerrar"
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-tinta/40 hover:bg-black/5">
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-tinta-suave hover:bg-marfil-100">
           <X size={16} />
         </button>
       </div>
@@ -77,11 +79,12 @@ export default function DenunciarFlyer({
           <button
             key={m.k}
             onClick={() => setMotivo(m.k)}
-            className={`rounded-xl px-3 py-2.5 text-left transition ${
-              motivo === m.k ? "bg-magenta-50 ring-2 ring-magenta" : "bg-black/[0.03] hover:bg-black/[0.06]"}`}
+            aria-pressed={motivo === m.k}
+            className={`min-h-[48px] rounded-xl border px-3 py-2.5 text-left transition ${
+              motivo === m.k ? "border-magenta bg-magenta-50" : "border-transparent bg-marfil-100 hover:bg-marfil-200"}`}
           >
-            <span className="block text-sm font-black">{m.label}</span>
-            <span className="block text-xs font-semibold text-tinta/50">{m.ayuda}</span>
+            <span className="block text-[15px] font-bold">{m.label}</span>
+            <span className="block text-[14px] text-tinta-suave">{m.ayuda}</span>
           </button>
         ))}
       </div>
@@ -92,15 +95,15 @@ export default function DenunciarFlyer({
         rows={2}
         maxLength={500}
         placeholder="Cuéntanos algo más (opcional)"
-        className="mt-3 w-full resize-y rounded-xl border-2 border-magenta-100 bg-white px-3 py-2.5 text-sm font-semibold outline-none transition focus:border-magenta"
+        className={`mt-3 ${claseCampo}`}
       />
 
-      {error && <p className="mt-2 text-sm font-bold text-magenta">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-[15px] font-semibold text-error">{error}</p>}
 
       <button
         onClick={enviar}
         disabled={!motivo || enviando}
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-magenta py-3 text-sm font-black text-white transition active:scale-[0.98] disabled:opacity-40"
+        className={claseBoton("primario", "pequeno", true, "mt-3")}
       >
         {enviando ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} />}
         Enviar aviso

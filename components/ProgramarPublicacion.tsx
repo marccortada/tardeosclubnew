@@ -21,12 +21,25 @@ export function paraInput(d: Date): string {
  * distintas: el borrador no tiene fecha de salida y no se le olvida a nadie
  * porque no se espera nada de él.
  */
+/**
+ * Lo que impide guardar un «programado»: sin día y hora, el tardeo quedaría
+ * programado para nunca y no saldría jamás. null si está bien.
+ */
+export function errorProgramacion(c: Cuando): string | null {
+  if (c.estado !== "programado") return null;
+  if (!c.publicarEn || Number.isNaN(new Date(c.publicarEn).getTime())) return "Elige el día y la hora a la que se publica.";
+  return null;
+}
+
 export default function ProgramarPublicacion({
   valor,
   onCambio,
+  error,
 }: {
   valor: Cuando;
   onCambio: (c: Cuando) => void;
+  /** Error que se enseña junto al campo de fecha (lo pone quien guarda). */
+  error?: string;
 }) {
   const OPCIONES = [
     { k: "publicado", icono: Send, label: "Publicar ya", pie: "Sale en cuanto le des" },
@@ -45,7 +58,7 @@ export default function ProgramarPublicacion({
 
   return (
     <div>
-      <p className="mb-1.5 flex items-center gap-1.5 text-sm font-black text-tinta/70">
+      <p className="mb-1.5 flex items-center gap-1.5 text-[15px] font-semibold text-tinta">
         <Clock size={15} className="text-magenta" /> Cuándo se publica
       </p>
       <div className="grid grid-cols-3 gap-2">
@@ -54,15 +67,15 @@ export default function ProgramarPublicacion({
             key={k}
             type="button"
             onClick={() => onCambio({ estado: k, publicarEn: k === "programado" ? (valor.publicarEn || porDefecto()) : "" })}
-            className={`flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-xl px-2 text-xs font-extrabold transition ${
-              valor.estado === k ? "bg-magenta text-white" : "bg-white text-tinta/70 ring-1 ring-magenta-100"
+            className={`flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-xl px-2 text-xs font-semibold transition ${
+              valor.estado === k ? "bg-magenta text-white" : "bg-white text-tinta-suave ring-1 ring-linea"
             }`}
           >
             <Icono size={17} /> {label}
           </button>
         ))}
       </div>
-      <p className="mt-1 text-xs font-semibold text-tinta/50">
+      <p className="mt-1 text-sm text-tinta-suave">
         {OPCIONES.find((o) => o.k === valor.estado)?.pie}
       </p>
 
@@ -75,9 +88,15 @@ export default function ProgramarPublicacion({
             // creería que ha programado algo.
             min={paraInput(new Date())}
             onChange={(e) => onCambio({ ...valor, publicarEn: e.target.value })}
-            className="w-full rounded-xl border-2 border-magenta-100 px-4 py-3 font-semibold outline-none focus:border-magenta"
+            aria-label="Día y hora de publicación"
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? "programar-error" : undefined}
+            className={`w-full rounded-xl border px-4 py-3 font-semibold outline-none focus:border-magenta ${error ? "border-error" : "border-linea-fuerte"}`}
           />
-          <p className="mt-1 text-xs font-semibold text-tinta/50">
+          {error && (
+            <p id="programar-error" role="alert" className="mt-1 text-[15px] font-semibold text-error">{error}</p>
+          )}
+          <p className="mt-1 text-sm text-tinta-suave">
             Hasta esa hora solo lo ves tú. Puedes cambiarlo o publicarlo antes cuando quieras.
           </p>
         </div>

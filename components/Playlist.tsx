@@ -16,10 +16,14 @@ export default function Playlist({ url, titulo = "Su música" }: { url?: string 
   const u = (url ?? "").trim();
   if (!u) return null;
   const incrustar = urlIncrustada(u);
+  // Si no se puede incrustar y el enlace tampoco es seguro, no se pinta nada:
+  // un botón que no lleva a ningún sitio es peor que no tenerlo.
+  const destino = incrustar ? null : urlSegura(u);
+  if (!incrustar && !destino) return null;
 
   return (
-    <section className="mt-7">
-      <h2 className="mb-3 flex items-center gap-2 font-display text-xl font-black md:text-2xl">
+    <section>
+      <h2 className="mb-4 flex items-center gap-2 font-display text-[24px] font-bold leading-tight md:text-[30px]">
         <Music2 size={22} className="text-magenta" /> {titulo}
       </h2>
       {incrustar ? (
@@ -28,16 +32,16 @@ export default function Playlist({ url, titulo = "Su música" }: { url?: string 
           title={titulo}
           loading="lazy"
           allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-          className={`w-full overflow-hidden rounded-2xl ${altoDelReproductor(u)}`}
+          className={`w-full overflow-hidden rounded-2xl border border-linea ${altoDelReproductor(u)}`}
         />
       ) : (
         <a
           /* La playlist la escribe el local en su editor: se valida el destino
              igual que las redes, por lo mismo. */
-          href={urlSegura(u) ?? "#"}
+          href={destino ?? undefined}
           target="_blank"
           rel="noopener noreferrer nofollow"
-          className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3.5 font-extrabold text-magenta shadow-tarjeta ring-1 ring-magenta-100"
+          className="inline-flex min-h-tacto items-center gap-2 rounded-xl border border-linea-fuerte bg-white px-5 py-3 text-base font-bold text-magenta-700 transition-colors hover:bg-marfil"
         >
           <Music2 size={18} /> Escuchar <ExternalLink size={14} />
         </a>

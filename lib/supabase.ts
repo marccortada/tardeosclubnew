@@ -22,8 +22,16 @@ export const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   {
     global: {
-      fetch: (input, init) =>
-        fetch(input, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) }),
+      // El tope de tiempo es para CONSULTAS. Una subida de foto o flyer desde
+      // el móvil tarda más de 2,5 s con 4G normal y se abortaba: a Storage no
+      // se le pone tope, y en el navegador las consultas tienen más margen
+      // que en el servidor (allí la página no puede quedarse colgada).
+      fetch: (input, init) => {
+        const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+        if (url.includes("/storage/v1/")) return fetch(input, init);
+        const ms = typeof window === "undefined" ? TIMEOUT_MS : Math.max(TIMEOUT_MS, 15_000);
+        return fetch(input, { ...init, signal: init?.signal ?? AbortSignal.timeout(ms) });
+      },
     },
   }
 );

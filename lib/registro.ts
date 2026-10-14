@@ -12,6 +12,8 @@
  * misma forma para que el día que se contrate uno, se enchufe en una línea.
  */
 
+import { guardarErrorServidor, huella } from "./erroresApp";
+
 export type Gravedad = "aviso" | "fallo";
 
 /**
@@ -53,9 +55,42 @@ export function registrar(area: string, que: string, e?: unknown, gravedad: Grav
     // así `pm2 logs tardeosclub --err` enseña solo lo que hay que mirar.
     if (gravedad === "fallo") console.error(linea);
     else console.warn(linea);
+
+    if (gravedad === "fallo") aLaBase(area, que, detalle, e);
   } catch {
     /* si falla el propio registro, no se hace nada: no puede tumbar la página */
   }
+}
+
+/**
+ * Los fallos del SERVIDOR también van a `errores_app` (lote 57), para que el
+ * admin los vea en /admin/errores sin entrar a los logs de pm2.
+ *
+ * Con freno, porque un fallo dentro de un bucle de 1.000 tardeos serían 1.000
+ * peticiones: la misma huella, una vez por minuto; y como mucho 30 por minuto
+ * en total. Sin `await`: quien llama no espera a que se guarde. Y
+ * `guardarErrorServidor` nunca llama a `registrar`, así que no hay bucle.
+ */
+const VISTOS = new Map<string, number>();
+let ventana = 0, enVentana = 0;
+
+function aLaBase(area: string, que: string, detalle: string, e: unknown) {
+  if (typeof window !== "undefined") return; // en el navegador lo hace CapturaErrores
+  if (process.env.NEXT_PHASE === "phase-production-build") return; // el build no es la web
+  const ahora = Date.now();
+  if (ahora - ventana > 60_000) { ventana = ahora; enVentana = 0; }
+  if (enVentana >= 30) return;
+  const mensaje = `[${area}] ${que}${detalle ? ` — ${detalle}` : ""}`;
+  const ruta = `servidor:${area}`;
+  const h = huella("servidor", mensaje, ruta);
+  if (ahora - (VISTOS.get(h) ?? 0) < 60_000) return;
+  VISTOS.set(h, ahora);
+  if (VISTOS.size > 500) VISTOS.clear();
+  enVentana++;
+  void guardarErrorServidor({
+    mensaje, ruta, origen: "servidor",
+    pila: e instanceof Error ? e.stack ?? null : null,
+  });
 }
 
 /** Lo mismo, para cosas que no son un fallo pero conviene ver. */

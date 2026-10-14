@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Download, Share, Plus, X, Smartphone } from "lucide-react";
+import { claseBoton } from "@/components/Boton";
 import { esApple, sePuedeOfrecer } from "@/lib/instalar";
 
 /**
@@ -112,23 +113,23 @@ export default function InstalarApp() {
     // el botón de instalar queda pegado a los de navegar y se pulsa el que no
     // es. `bottom-24` es justo el alto de esa barra.
     <div className="fixed inset-x-3 bottom-24 z-[1100] md:hidden">
-      <div className="rounded-2xl bg-white p-4 shadow-2xl ring-1 ring-black/10">
+      <div className="rounded-2xl border border-linea bg-white p-4 shadow-elevada">
         <div className="flex items-start gap-3">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-marca text-white">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta">
             <Smartphone size={22} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-display text-lg font-black leading-tight">
+            <p className="text-lg font-bold leading-tight">
               Tenlo siempre a mano
             </p>
-            <p className="mt-0.5 text-sm font-semibold text-tinta/65">
+            <p className="mt-0.5 text-[15px] text-tinta-suave">
               {esIos
                 ? "Añádelo a tu pantalla de inicio y se abre como una app."
                 : "Se instala en diez segundos y se abre como una app."}
             </p>
           </div>
           <button onClick={luego} aria-label="Ahora no"
-            className="-mr-1 -mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full text-tinta/40 hover:bg-black/5">
+            className="-mr-1 -mt-1 grid h-11 w-11 shrink-0 place-items-center rounded-full text-tinta-suave hover:bg-marfil-100">
             <X size={17} />
           </button>
         </div>
@@ -137,7 +138,7 @@ export default function InstalarApp() {
           /* En iOS no hay botón posible: solo se puede enseñar dónde está el
              de Safari. Con los iconos de verdad, porque «el cuadrado con la
              flecha» no lo identifica nadie leyéndolo. */
-          <ol className="mt-3 flex flex-col gap-1.5 rounded-xl bg-crema/70 p-3 text-sm font-semibold text-tinta/80">
+          <ol className="mt-3 flex flex-col gap-1.5 rounded-xl bg-marfil-100 p-3 text-[15px] text-tinta">
             <li className="flex items-center gap-2">
               <Share size={16} className="shrink-0 text-magenta" />
               Toca <b>Compartir</b>, abajo en Safari
@@ -149,12 +150,12 @@ export default function InstalarApp() {
           </ol>
         ) : (
           <button onClick={instalar}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-magenta py-3 text-base font-black text-white active:scale-[0.98]">
+            className={claseBoton("primario", "normal", true, "mt-3")}>
             <Download size={18} /> Instalar
           </button>
         )}
 
-        <button onClick={nunca} className="mt-2 w-full text-center text-xs font-bold text-tinta/40">
+        <button onClick={nunca} className="mt-1 min-h-[44px] w-full text-center text-[14px] font-semibold text-tinta-suave">
           No volver a mostrar
         </button>
       </div>

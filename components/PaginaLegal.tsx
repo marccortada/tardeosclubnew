@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Info } from "lucide-react";
 import Footer from "@/components/Footer";
-import { ULTIMA_ACTUALIZACION } from "@/lib/legal";
+import { RESPONSABLE, ULTIMA_ACTUALIZACION } from "@/lib/legal";
 
 /**
  * Marco común de las páginas legales.
- * Texto grande y contrastado: el público de TardeosClub es mayor (ANALISIS §0.2).
+ * Texto grande y contrastado: el público de TardeosClub es mayor.
  */
 export default function PaginaLegal({
   titulo,
@@ -16,37 +16,44 @@ export default function PaginaLegal({
   entradilla: string;
   children: React.ReactNode;
 }) {
+  // Mientras la entidad no esté constituida, algunos datos salen como
+  // "Pendiente". Se dice una vez, arriba y sin alarmas; no se inventa nada.
+  const faltanDatos = !RESPONSABLE.razonSocial || !RESPONSABLE.nif || !RESPONSABLE.domicilio;
+
   return (
     <>
-      <main className="pb-10">
-        <div className="bg-gradient-to-br from-magenta to-oro px-4 pb-10 pt-8 text-white md:px-8">
-          <div className="mx-auto max-w-3xl">
-            <Link
-              href="/"
-              className="inline-flex min-h-[44px] items-center gap-2 text-sm font-black text-white/90 transition hover:text-white"
-            >
-              <ArrowLeft size={18} /> Volver al inicio
-            </Link>
-            <h1 className="mt-3 font-display text-3xl font-black md:text-4xl">{titulo}</h1>
-            <p className="mt-2 text-base font-semibold text-white/90">{entradilla}</p>
-          </div>
-        </div>
+      <main className="px-4 pb-10 pt-4 md:px-8 md:pt-8">
+        <div className="mx-auto max-w-3xl">
+          <Link
+            href="/"
+            className="-ml-2 inline-flex min-h-tacto items-center gap-1.5 rounded-xl px-2 text-[15px] font-bold text-tinta transition hover:bg-marfil-100"
+          >
+            <ArrowLeft size={20} aria-hidden /> Inicio
+          </Link>
+          <h1 className="mt-2 text-[30px] font-bold leading-tight tracking-tight md:text-[40px]">{titulo}</h1>
+          <p className="mt-2 text-[17px] text-tinta-suave">{entradilla}</p>
 
-        <div className="px-4 md:px-8">
-          <div className="mx-auto max-w-3xl">
-            <article className="legal -mt-6 rounded-2xl bg-white p-6 text-[17px] leading-relaxed text-tinta shadow-tarjeta ring-1 ring-black/5 md:p-8">
-              {children}
-              <p className="mt-8 border-t border-black/5 pt-4 text-sm font-semibold text-tinta/50">
-                Última actualización: {ULTIMA_ACTUALIZACION}
-              </p>
-            </article>
+          {faltanDatos && (
+            <p className="mt-4 flex items-start gap-2 rounded-xl border border-linea bg-marfil-100 px-4 py-3 text-[15px] text-tinta-suave">
+              <Info size={18} className="mt-0.5 shrink-0" aria-hidden />
+              Algunos datos de la empresa titular aparecen como «Pendiente» porque la entidad está en
+              constitución. Se completarán aquí en cuanto estén. Para cualquier asunto, escríbenos a{" "}
+              <a href={`mailto:${RESPONSABLE.emailContacto}`} className="font-semibold text-tinta underline">{RESPONSABLE.emailContacto}</a>.
+            </p>
+          )}
 
-            <nav className="mt-6 flex flex-wrap justify-center gap-4 text-sm font-black text-tinta/60">
-              <Link href="/legal/aviso-legal" className="transition hover:text-magenta">Aviso legal</Link>
-              <Link href="/legal/privacidad" className="transition hover:text-magenta">Privacidad</Link>
-              <Link href="/legal/cookies" className="transition hover:text-magenta">Cookies</Link>
-            </nav>
-          </div>
+          <article className="legal mt-6 rounded-2xl border border-linea bg-white p-5 text-[17px] leading-relaxed text-tinta shadow-tarjeta md:p-8">
+            {children}
+            <p className="mt-8 border-t border-linea pt-4 text-[15px] text-tinta-suave">
+              Última actualización: {ULTIMA_ACTUALIZACION}
+            </p>
+          </article>
+
+          <nav aria-label="Textos legales" className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-1 text-[15px] font-semibold text-tinta-suave">
+            <Link href="/legal/aviso-legal" className="inline-flex min-h-[44px] items-center transition hover:text-tinta">Aviso legal</Link>
+            <Link href="/legal/privacidad" className="inline-flex min-h-[44px] items-center transition hover:text-tinta">Privacidad</Link>
+            <Link href="/legal/cookies" className="inline-flex min-h-[44px] items-center transition hover:text-tinta">Cookies</Link>
+          </nav>
         </div>
       </main>
       <Footer />

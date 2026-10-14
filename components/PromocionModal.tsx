@@ -1,15 +1,55 @@
 "use client";
 
 import { useState } from "react";
-import { Megaphone, ChevronRight, X, Check, Sparkles, Star } from "lucide-react";
+import { Megaphone, ChevronRight, Star, MessageCircle, Mail, Check } from "lucide-react";
+import Hoja from "@/components/ui/Hoja";
+import { whatsappTardeos, emailTardeos } from "@/components/ServiciosExternos";
 
-const BENEFICIOS = [
-  { emoji: "👀", titulo: "Comunidad de +50.000 visitas al mes", desc: "Tu tardeo lo ven miles de tardícolas activos." },
-  { emoji: "💬", titulo: "Grupo de WhatsApp de tardícolas", desc: "Compartimos tu tardeo en nuestra comunidad." },
-  { emoji: "⭐", titulo: "Destacado con el sello dorado", desc: "Aparece arriba, el primero de tu zona." },
-  { emoji: "📸", titulo: "Difusión en nuestras redes", desc: "Publicamos tu evento en Instagram." },
-  { emoji: "🤖", titulo: "Flyer con IA incluido", desc: "Creamos o mejoramos tu flyer con la marca." },
-];
+/**
+ * Pedir que destaquen un tardeo.
+ *
+ * Antes esta ventana prometía «+50.000 visitas al mes», grupo de WhatsApp,
+ * difusión en Instagram y flyer con IA incluido —nada de eso estaba medido ni
+ * contratado— y su botón «Quiero destacar mi tardeo» no hacía nada: no tenía
+ * ni onClick. Un local que lo pulsaba se quedaba esperando una llamada que
+ * nunca llegaba.
+ *
+ * Ahora solo dice lo que de verdad hace un destacado (lo pone el equipo desde
+ * Administración → Destacados) y el botón abre una conversación real con
+ * TardeosClub, con el mensaje ya escrito. No se cobra nada desde la web.
+ */
+export function ContactoDestacar({ titulo }: { titulo?: string }) {
+  const que = titulo ? `«${titulo}»` : "mis tardeos";
+  const mensaje = `Hola, quiero destacar ${que} en TardeosClub. ¿Qué opciones hay y cuánto cuesta?`;
+  return (
+    <div>
+      <ul className="flex flex-col gap-3">
+        {[
+          "Sale en el bloque «Destacados» de la portada, antes que el resto de tardeos.",
+          "Su tarjeta lleva la marca de destacado.",
+          "Lo activa el equipo de TardeosClub para las fechas que acordéis.",
+        ].map((t) => (
+          <li key={t} className="flex items-start gap-3 text-[15px]">
+            <Check size={18} className="mt-0.5 shrink-0 text-ok" aria-hidden /> {t}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-4 rounded-xl bg-marfil-100 p-3 text-[15px] text-tinta">
+        Te contamos opciones y precio antes de nada. <b>No se cobra nada desde la web.</b>
+      </p>
+      <div className="mt-4 flex flex-col gap-2">
+        <a href={whatsappTardeos(mensaje)} target="_blank" rel="noopener noreferrer"
+          className="inline-flex min-h-tacto items-center justify-center gap-2 rounded-xl bg-magenta px-5 text-[17px] font-bold text-white hover:bg-magenta-600">
+          <MessageCircle size={20} aria-hidden /> Quiero destacar {titulo ? "este tardeo" : "un tardeo"}
+        </a>
+        <a href={emailTardeos(`Quiero destacar ${que}`, mensaje)}
+          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-linea-fuerte bg-white px-5 text-[15px] font-semibold hover:bg-marfil-100">
+          <Mail size={18} aria-hidden /> Prefiero escribir un email
+        </a>
+      </div>
+    </div>
+  );
+}
 
 export default function PromocionModal({
   variante = "card",
@@ -26,84 +66,28 @@ export default function PromocionModal({
         <button
           type="button"
           onClick={() => setAbierto(true)}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-oro py-3.5 text-base font-extrabold text-tinta shadow-tarjeta transition hover:brightness-105 active:scale-[0.98]"
+          className="flex min-h-tacto w-full items-center justify-center gap-2 rounded-xl bg-oro px-5 text-[17px] font-bold text-tinta hover:bg-oro-400"
         >
-          <Star size={20} fill="currentColor" /> Destacar este tardeo
+          <Star size={20} fill="currentColor" aria-hidden /> Destacar este tardeo
         </button>
       ) : (
         <button
           type="button"
           onClick={() => setAbierto(true)}
-          className="flex w-full items-center gap-4 rounded-2xl bg-white p-5 text-left shadow-tarjeta ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.99]"
+          className="flex w-full items-center gap-4 rounded-2xl border border-linea bg-white p-5 text-left shadow-tarjeta transition hover:border-linea-fuerte"
         >
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta"><Megaphone size={24} /></span>
-          <div className="flex-1">
-            <p className="text-lg font-black leading-tight">Promociona tus tardeos</p>
-            <p className="text-sm font-semibold text-tinta/60">Llega a más gente · destacado + sello</p>
-          </div>
-          <ChevronRight size={20} className="text-tinta/30" />
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta"><Megaphone size={24} aria-hidden /></span>
+          <span className="flex-1">
+            <span className="block text-[17px] font-bold leading-tight">Promociona tus tardeos</span>
+            <span className="text-[15px] text-tinta-suave">Pide que salgan destacados en la portada</span>
+          </span>
+          <ChevronRight size={20} className="text-tinta-suave" aria-hidden />
         </button>
       )}
 
-      {abierto && (
-        <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-          onClick={() => setAbierto(false)}
-        >
-          <div
-            className="relative w-full max-w-md overflow-hidden rounded-t-3xl bg-[#f5f3f4] shadow-2xl sm:rounded-3xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Cabecera de marca */}
-            <div className="relative overflow-hidden bg-marca p-6 text-white">
-              <span className="bokeh" style={{ width: 120, height: 120, top: -30, right: 20, background: "#ffd36b", opacity: 0.4 }} />
-              <button
-                type="button"
-                onClick={() => setAbierto(false)}
-                className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white/20 text-white transition hover:bg-white/30"
-                aria-label="Cerrar"
-              >
-                <X size={18} />
-              </button>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-black">
-                <Sparkles size={14} className="text-oro-400" /> Promoción destacada
-              </span>
-              <h3 className="mt-3 font-display text-2xl font-black leading-tight">
-                {titulo ? `Destacar «${titulo}»` : "Haz que tu tardeo llene"}
-              </h3>
-              <p className="mt-1 font-semibold text-white/90">Esto es lo que consigues al destacarlo:</p>
-            </div>
-
-            {/* Beneficios */}
-            <div className="max-h-[45vh] overflow-y-auto p-5">
-              <ul className="flex flex-col gap-3">
-                {BENEFICIOS.map((b) => (
-                  <li key={b.titulo} className="flex items-start gap-3">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-lg shadow-tarjeta ring-1 ring-black/5">{b.emoji}</span>
-                    <div>
-                      <p className="font-black leading-tight">{b.titulo}</p>
-                      <p className="text-sm font-semibold text-tinta/60">{b.desc}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* CTA */}
-            <div className="border-t border-black/5 bg-white p-5">
-              <button
-                type="button"
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-magenta py-4 text-lg font-extrabold text-white shadow-lg transition hover:brightness-105 active:scale-[0.98]"
-              >
-                <Check size={22} /> Quiero destacar mi tardeo
-              </button>
-              <p className="mt-2 text-center text-xs font-semibold text-tinta/50">
-                Pronto podrás pagarlo aquí mismo. Mientras, te contactamos para activarlo.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      <Hoja abierta={abierto} onCerrar={() => setAbierto(false)} titulo={titulo ? `Destacar «${titulo}»` : "Destacar un tardeo"}>
+        <ContactoDestacar titulo={titulo} />
+      </Hoja>
     </>
   );
 }

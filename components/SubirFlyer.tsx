@@ -64,11 +64,15 @@ export default function SubirFlyer({
         encima ? "border-magenta bg-magenta-50" : "border-magenta-200 bg-magenta-50/40"
       }`}
     >
-      <p className="flex items-center gap-2 font-black text-tinta/80">
-        <Sparkles size={17} className="text-magenta" /> Sube el flyer
+      {/* La IA es lo que ahorra el trabajo: se dice arriba y con todas las
+          letras, no como una opción escondida tras subir la imagen. */}
+      <p className="flex items-center gap-2 text-[17px] font-bold text-tinta">
+        <span className="grid h-9 w-9 place-items-center rounded-lg bg-magenta text-white"><Sparkles size={18} aria-hidden /></span>
+        ¿Tienes el flyer? Lo leemos con IA
       </p>
-      <p className="mt-0.5 text-sm font-semibold text-tinta/55">
-        Arrástralo aquí, pégalo con Cmd+V o púlsalo para buscarlo. Después eliges si lo lee la IA.
+      <p className="mt-1.5 text-[15px] text-tinta-suave">
+        Súbelo y pulsa «Analizar con IA»: rellenamos título, fecha, horas, DJ y precio. Tú solo
+        revisas. Puedes arrastrarlo aquí o pegarlo con Ctrl/Cmd+V.
       </p>
 
       <input
@@ -83,9 +87,9 @@ export default function SubirFlyer({
         <button
           type="button"
           onClick={() => input.current?.click()}
-          className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 font-extrabold text-magenta ring-2 ring-magenta transition hover:bg-magenta-50"
+          className="mt-3 inline-flex min-h-tacto items-center gap-2 rounded-xl bg-magenta px-5 text-[17px] font-bold text-white transition hover:bg-magenta-600"
         >
-          <Upload size={18} /> Elegir flyer
+          <Upload size={18} aria-hidden /> Subir el flyer
         </button>
       ) : (
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -95,16 +99,16 @@ export default function SubirFlyer({
                 className="h-[110px] w-[88px] rounded-xl object-cover ring-1 ring-black/10" />
             )}
             <button type="button" onClick={quitar} aria-label="Quitar el flyer"
-              className="absolute -right-2 -top-2 grid h-7 w-7 place-items-center rounded-full bg-tinta text-white shadow">
+              className="absolute -right-2 -top-2 grid h-10 w-10 place-items-center rounded-full bg-tinta text-white shadow">
               <X size={14} />
             </button>
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-bold text-tinta/60">{archivo.name}</p>
+            <p className="truncate text-sm font-bold text-tinta-suave">{archivo.name}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button type="button" onClick={() => input.current?.click()}
-                className="rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-tinta/70 ring-1 ring-magenta-100">
+                className="min-h-[44px] rounded-xl bg-white px-4 text-[15px] font-semibold text-tinta ring-1 ring-linea-fuerte">
                 Cambiar
               </button>
               {/* Las dos salidas, a la vista. "Solo subir" no sube nada por su
@@ -115,16 +119,16 @@ export default function SubirFlyer({
                   <button
                     type="button"
                     onClick={onSoloSubir}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-oro px-4 py-2.5 text-sm font-extrabold text-tinta transition hover:brightness-105"
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-white px-4 text-[15px] font-semibold text-tinta ring-1 ring-linea-fuerte hover:bg-marfil-100"
                   >
-                    <Upload size={15} /> Solo subir
+                    <Upload size={16} aria-hidden /> Usarlo sin IA
                   </button>
                   <button
                     type="button"
                     onClick={onAnalizar}
                     disabled={analizando || !puedeAnalizar}
                     title={puedeAnalizar ? "" : "La lectura con IA no está disponible ahora mismo"}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-magenta px-4 py-2.5 text-sm font-extrabold text-white transition disabled:opacity-40"
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-magenta px-4 text-[15px] font-bold text-white transition hover:bg-magenta-600 disabled:opacity-40"
                   >
                     {analizando ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
                     {analizando ? "Leyendo el flyer…" : "Analizar con IA"}
@@ -132,7 +136,7 @@ export default function SubirFlyer({
                 </>
               )}
             </div>
-            <p className="mt-1.5 text-xs font-semibold text-tinta/45">
+            <p className="mt-1.5 text-sm text-tinta-suave">
               {decidido
                 ? "Este flyer se usará tal cual. Rellena los datos abajo."
                 : "Con la IA se rellenan título, fecha, hora y estilo leyendo la imagen. Puedes corregir lo que salga mal."}

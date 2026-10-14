@@ -22,7 +22,27 @@ export type Prueba = {
   detalle: string;
   /** Qué hay que hacer si sale mal. */
   arreglo?: string;
+  /**
+   * No se ha podido saber desde la web (sin el lote 51). No cuenta como fallo
+   * —no se puede afirmar que falte— pero se enseña para que no pase por bueno.
+   */
+  sinComprobar?: boolean;
 };
+
+type ErrorPg = { code?: string; message?: string } | null;
+
+/**
+ * Lo que dice el catálogo de Postgres sobre disparadores, restricciones y
+ * políticas (lote 51). `null` si esa función aún no está: entonces esas
+ * piezas quedan "sin comprobar", que no es lo mismo que "faltan".
+ */
+type Catalogo = { l41_disparador?: boolean; l43_estado_oculto?: boolean; l46_politica_push?: boolean } | null;
+
+const ARREGLO_51 = "Para comprobarlo desde aquí, pega supabase/51_salud_lotes.sql (solo lectura).";
+
+/** Llama a una función con argumentos que no escriben nada. Existe si el error no es "no existe". */
+const existeFuncion = (error: ErrorPg): ErrorPg =>
+  !error || !NO_EXISTE.has(error.code ?? "") ? null : error;
 
 /** Códigos que significan «eso todavía no existe en la base». */
 const NO_EXISTE = new Set(["42P01", "42703", "42883", "PGRST202", "PGRST204", "PGRST205"]);
@@ -52,13 +72,13 @@ export async function revisarSalud(): Promise<{ pruebas: Prueba[]; datos: Record
 
   const pruebas = await Promise.all([
     comprobar("Conexión con la base", "Revisa las credenciales del servidor.", async () => {
-      const { error, count } = await supabase.from("tardeos").select("id", { count: "exact", head: true });
+      const { error, count } = await supabase.from("tardeos").select("id", { count: "exact" }).limit(0);
       if (!error) datos.tardeos = count ?? 0;
       return { error, nota: `${count ?? 0} tardeos en total` };
     }),
 
     comprobar("Métricas por evento", "Pega supabase/34_metricas_eventos.sql", async () => {
-      const { error, count } = await supabase.from("eventos_metrica").select("id", { count: "exact", head: true });
+      const { error, count } = await supabase.from("eventos_metrica").select("id", { count: "exact" }).limit(0);
       if (!error) datos.metricas = count ?? 0;
       return { error, nota: `${count ?? 0} acciones registradas` };
     }),
@@ -93,7 +113,7 @@ export async function revisarSalud(): Promise<{ pruebas: Prueba[]; datos: Record
 
     comprobar("Denuncias de flyers", "Pega supabase/42_denuncias_flyer.sql", async () => {
       const { error, count } = await supabase
-        .from("denuncias_flyer").select("id", { count: "exact", head: true }).eq("estado", "pendiente");
+        .from("denuncias_flyer").select("id", { count: "exact" }).limit(0).eq("estado", "pendiente");
       if (!error) datos.denuncias = count ?? 0;
       return { error, nota: `${count ?? 0} pendientes` };
     }),
@@ -104,7 +124,7 @@ export async function revisarSalud(): Promise<{ pruebas: Prueba[]; datos: Record
       // columna que no existe, que es justo lo que hay que detectar.
       const { error, count } = await supabase
         .from("resenas")
-        .select("id,estado,motivo_rechazo,apelacion,apelada_en,moderada_por,moderada_en", { count: "exact", head: true })
+        .select("id,estado,motivo_rechazo,apelacion,apelada_en,moderada_por,moderada_en", { count: "exact" }).limit(0)
         .in("estado", ["pendiente", "apelada"]);
       if (!error) datos.resenasPendientes = count ?? 0;
       return { error, nota: `${count ?? 0} pendientes o apeladas` };
@@ -114,14 +134,74 @@ export async function revisarSalud(): Promise<{ pruebas: Prueba[]; datos: Record
       const { error } = await supabase.from("seguimiento_comercial").select("local_id").limit(1);
       return { error };
     }),
+
+    comprobar("Reordenar destacados de una vez (lote 45)", "Pega supabase/45_destacados_orden.sql", async () => {
+      // Tabla no permitida + lista vacía: la función rechaza antes de tocar
+      // nada (o por permisos). Solo interesa saber si existe.
+      const { error } = await supabase.rpc("reordenar_destacados", { p_tabla: "comprobacion", p_ids: [] });
+      return { error: existeFuncion(error) };
+    }),
+
+    comprobar("Recordatorios sin duplicados (lote 46)", "Pega supabase/46_seguridad.sql", async () => {
+      // Tiene RLS sin políticas: con permisos normales responde vacío, sin error.
+      const { error } = await supabase.from("recordatorios_enviados").select("tardeo_id").limit(0);
+      return { error };
+    }),
+
+    comprobar("PressKit de DJs (lote 47)", "Pega supabase/47_presskit_y_arreglos.sql", async () => {
+      const { error } = await supabase.from("djs").select("presskit_url").limit(0);
+      return { error };
+    }),
+
+    comprobar("Planes caídos (lote 47)", "Pega supabase/47_presskit_y_arreglos.sql", async () => {
+      const { error } = await supabase.rpc("locales_con_plan_caido");
+      return { error: existeFuncion(error) };
+    }),
+
+    comprobar("Aforo y asistencia (lote 48)", "Pega supabase/48_reservas_aforo_asistencia.sql", async () => {
+      const [t, i, r] = await Promise.all([
+        supabase.from("tardeos").select("aforo").limit(0),
+        supabase.from("inscripciones").select("asistencia,asistencia_en").limit(0),
+        supabase.rpc("plazas_de_tardeo", { p_tardeo: "00000000-0000-0000-0000-000000000000" }),
+      ]);
+      return { error: t.error ?? i.error ?? existeFuncion(r.error) };
+    }),
   ]);
+
+  // Lotes que solo crean disparadores, restricciones o políticas: no se ven
+  // leyendo. Se pregunta al catálogo (lote 51) y, si no está, se dice.
+  let catalogo: Catalogo = null;
+  try {
+    const { data, error } = await supabase.rpc("salud_lotes");
+    if (!error && data && typeof data === "object") catalogo = data as Catalogo;
+  } catch { /* se queda en null */ }
+
+  // Pista sin el lote 51: si ya hay fichas en 'oculto', la restricción del 43 lo admite.
+  const { count: ocultos } = await supabase
+    .from("locales").select("id", { count: "exact" }).limit(0).eq("estado", "oculto");
+
+  const pieza = (nombre: string, valor: boolean | undefined, arreglo: string, pista?: boolean): Prueba => {
+    if (pista) return { nombre, ok: true, detalle: "Correcto (hay fichas que ya lo usan)." };
+    if (catalogo === null || valor === undefined) {
+      return { nombre, ok: true, sinComprobar: true, detalle: "No se puede comprobar desde la web.", arreglo: ARREGLO_51 };
+    }
+    return valor ? { nombre, ok: true, detalle: "Correcto" } : { nombre, ok: false, detalle: "No está aplicado en la base.", arreglo };
+  };
+  pruebas.push(
+    pieza("Estados de local coherentes (lote 41)", catalogo?.l41_disparador,
+      "Pega supabase/41_estados_coherentes.sql y después supabase/43_ocultar_sin_impago.sql"),
+    pieza("Ocultar sin acusar de impago (lote 43)", catalogo?.l43_estado_oculto,
+      "Pega supabase/43_ocultar_sin_impago.sql. Sin él, «Ocultar» en Locales falla.", (ocultos ?? 0) > 0),
+    pieza("Altas de push solo de servicios reales (lote 46)", catalogo?.l46_politica_push,
+      "Pega supabase/46_seguridad.sql"),
+  );
 
   // Lo que no es un fallo técnico pero deja la web vacía, que para quien la
   // mira es lo mismo. Va aquí porque es donde alguien viene a preguntarse por
   // qué la web «no funciona».
   const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
   const { count: futuros } = await supabase
-    .from("tardeos").select("id", { count: "exact", head: true })
+    .from("tardeos").select("id", { count: "exact" }).limit(0)
     .eq("estado", "publicado").gte("fecha", hoy);
   datos.futuros = futuros ?? 0;
   pruebas.push({
@@ -134,14 +214,14 @@ export async function revisarSalud(): Promise<{ pruebas: Prueba[]; datos: Record
   });
 
   const { count: sinAprobar } = await supabase
-    .from("locales").select("id", { count: "exact", head: true }).neq("estado", "activo");
+    .from("locales").select("id", { count: "exact" }).limit(0).neq("estado", "activo");
   datos.sinAprobar = sinAprobar ?? 0;
   pruebas.push({
     nombre: "Locales sin aprobar",
     ok: (sinAprobar ?? 0) === 0,
     detalle: `${sinAprobar ?? 0} fichas fuera de la web`,
     arreglo: (sinAprobar ?? 0) > 0
-      ? "Sus tardeos salen sin nombre de local. Se aprueban en Colaboradores."
+      ? "Sus tardeos salen sin nombre de local. Se aprueban en Administración → Por revisar."
       : undefined,
   });
 

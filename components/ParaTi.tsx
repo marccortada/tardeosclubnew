@@ -44,21 +44,21 @@ export default function ParaTi({ tardeos }: { tardeos: Tardeo[] }) {
    */
   if (!tieneAdn(adn)) {
     return (
-      <section className="mx-auto max-w-6xl px-4 pt-10 md:px-8">
+      <section className="mx-auto max-w-6xl px-4 pt-10 md:px-8 md:pt-14">
         <Link
           href="/perfil/gustos"
-          className="group flex items-center gap-4 rounded-3xl bg-white p-5 shadow-tarjeta ring-1 ring-magenta-100 transition hover:-translate-y-0.5 hover:shadow-lg"
+          className="group flex items-center gap-4 rounded-2xl border border-linea bg-white p-5 shadow-tarjeta transition hover:shadow-elevada"
         >
-          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-marca text-white">
-            <Sparkles size={26} />
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta">
+            <Sparkles size={24} aria-hidden />
           </span>
-          <span className="flex-1">
-            <span className="block font-display text-xl font-black">Dinos qué te gusta</span>
-            <span className="text-sm font-semibold text-tinta/60">
+          <span className="min-w-0 flex-1">
+            <span className="block text-lg font-bold">Dinos qué te gusta</span>
+            <span className="block text-[15px] text-tinta-suave">
               Y te proponemos tardeos que encajan, en vez de una lista sin más.
             </span>
           </span>
-          <ArrowRight className="shrink-0 text-magenta transition group-hover:translate-x-1" />
+          <ArrowRight className="shrink-0 text-magenta transition group-hover:translate-x-1" aria-hidden />
         </Link>
       </section>
     );
@@ -82,7 +82,8 @@ export default function ParaTi({ tardeos }: { tardeos: Tardeo[] }) {
       */}
       {suyos.length > 0 && <ImpresionParaTi cuantos={suyos.length} />}
       <CarruselTardeos
-        titulo={<>Para ti <Sparkles size={22} className="text-oro" /></>}
+        titulo="Para ti"
+        subtitulo="Elegidos según tus gustos"
         tardeos={suyos.map((s) => s.tardeo)}
         encajes={new Map(suyos.map((s) => [s.tardeo.id, s.encaje]))}
         onClicTarjeta={(id) => medir("para_ti_clic", { tardeoId: id })}
