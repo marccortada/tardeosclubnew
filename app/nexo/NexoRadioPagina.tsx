@@ -240,10 +240,22 @@ export function Enviar() {
             </select>
           </label>
         )}
-        <input required maxLength={140} value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título · p. ej. Sunset Session" aria-label="Título" className={campo} />
-        <input required type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Enlace de la sesión" aria-label="Enlace de la sesión" className={campo} />
-        <textarea maxLength={1000} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Estilos, duración, dónde se grabó…" aria-label="Descripción" rows={3}
-          className="w-full rounded-xl border border-linea bg-superficie px-4 py-3 text-[16px]" />
+        {/* Etiqueta visible encima de cada campo: con el ejemplo como única
+            etiqueta, en cuanto se escribe ya no se sabe qué se estaba rellenando
+            (y en móvil el texto largo se cortaba). */}
+        <label className="flex flex-col gap-1 text-[15px] font-semibold">
+          Título
+          <input required maxLength={140} value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="p. ej. Sunset Session" className={campo} />
+        </label>
+        <label className="flex flex-col gap-1 text-[15px] font-semibold">
+          Enlace de la sesión
+          <input required type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="SoundCloud, Mixcloud, YouTube…" className={campo} />
+        </label>
+        <label className="flex flex-col gap-1 text-[15px] font-semibold">
+          Descripción (opcional)
+          <textarea maxLength={1000} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Estilos, duración, dónde se grabó…" rows={3}
+            className="w-full rounded-xl border border-linea bg-superficie px-4 py-3 text-[16px] font-normal" />
+        </label>
         <button type="submit" disabled={enviando} className="inline-flex min-h-tacto items-center justify-center gap-2 rounded-xl bg-magenta font-bold text-white disabled:opacity-50">
           {enviando ? <Loader2 size={20} className="animate-spin" aria-hidden /> : <Send size={20} aria-hidden />} Enviar sesión
         </button>

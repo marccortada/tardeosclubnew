@@ -173,8 +173,10 @@ Flujo:
    Sus pantallas de cuenta (`/perfil/ajustes`, `/perfil/notificaciones`) usan
    `MarcoCuenta` = cabecera de app con flecha a Perfil, sin barra lateral.
    `/perfil/gustos` → `/perfil/adn` y `/perfil/reservas` → `/proxima-parada`.
-3. Todos los portales usan `PanelShell`: barra lateral fija (no se mueve al hacer
-   scroll), botón "Volver a la web", sin pie de página, pestañas en móvil.
+3. Los paneles (admin, local, DJ) usan `PanelShell`: en escritorio barra lateral
+   fija; en móvil cabecera fija (☰ + nombre de la pantalla + botón «Web») y una
+   fila de secciones que se va al hacer scroll. Sin pie de página. El tardícola NO
+   tiene panel: su experiencia es la app (barra inferior + Perfil).
 4. **Invitaciones**: el admin genera un enlace `/reclamar?token=…` para una
    ficha sin dueño; quien lo abre con sesión se convierte en dueño
    (`reclamar_invitacion`, un solo uso). Los locales invitan DJs a sus tardeos
@@ -200,7 +202,11 @@ fichero. Con "código por email" NO entran (esos correos no existen: Supabase re
 `.env.cuentas-prueba.local`, en la raíz, solo en el ordenador.
 
 ⚠️ Existen en la base de **producción** (la del admin es admin de verdad). Borrarlas
-antes del lanzamiento con `--borrar`. `sesion-prueba.mjs` acepta `PUERTO=3001` si el
+antes del lanzamiento con `--borrar`. Datos de prueba que siguen en producción
+(todos de estas cuentas, no visibles al público): tardeo «[PRUEBA] Tardeo QA no
+venir» (borrador), «[PRUEBA] Set QA» y su envío a Nexo (DJ de prueba, oculto) y un
+mensaje en la Meet Zone de ese tardeo. Las pruebas que escriban en producción
+deben marcar todo con «[PRUEBA]» y dejarlo oculto/borrado al acabar. `sesion-prueba.mjs` acepta `PUERTO=3001` si el
 servidor local no está en el 3000.
 
 ---
@@ -212,10 +218,17 @@ servidor local no está en el 3000.
   `linea`/`linea-fuerte` (bordes). Estados `ok`, `aviso`, `error`.
 - Tipografía: **Manrope** para todo; **Dancing Script** (`font-script`) solo
   como acento puntual en la web pública.
-- Portada (`app/page.tsx`): hero con foto, franja oro, "¿Qué te apetece?",
-  próximos tardeos, muro de logos, `CarruselDjs` (3 visibles, laterales
-  pequeños y difuminados), pasos, CTA locales/DJs, FAQ, cierre. Animaciones
-  suaves con `<Revelar />` y clases `entrar`, `acercar`, `revelar`.
+- Portada pública (`app/page.tsx`, sin sesión), pensada para móvil: hero a
+  pantalla completa (titular + «Ver tardeos» / «Únete gratis» + Hoy · Este finde ·
+  Cerca de mí) → próximos tardeos → «¿Qué te apetece hoy?» (6 estilos) →
+  `CarruselDjs` (3 visibles, laterales pequeños y difuminados) → «Así de fácil»
+  (3 pasos) → locales y DJs → FAQ (5) → cierre con WhatsApp. Sin mapa, sin franja
+  dorada ni muro de logos (con pocos locales quedaba pobre). El contenido NUNCA
+  depende de que arranque una animación: sin JS, con «reducir movimiento» o con la
+  animación congelada se ve todo (`.con-revelar` en `<html>` lo pone `<Revelar />`).
+  Fotos con `propsFoto()` de `lib/fotos.ts` (tamaño según pantalla).
+- Con sesión, `/` es el Inicio de app (`components/tardicola/InicioApp.tsx`); el
+  mapa se carga con `next/dynamic` solo ahí.
 - No poner carruseles nuevos salvo el de DJs (el cliente no los quiere).
 - Fotos de stock: `lib/fotos.ts` (Unsplash, `unoptimized`).
 
@@ -285,9 +298,12 @@ veces sin romper nada). Se aplican en orden desde Supabase → SQL Editor.
   inscripciones, medición (`origen`, `es_equipo`, deduplicado, `cohortes_retorno()`),
   `favoritos` documentada.
 - `70` Índices duplicados que dejó el paquete. `71` `feed_djs` enseña todos los DJs.
+- `72` Borrar: sorteos en **borrador** (solo admin) y hilos/respuestas/anuncios de
+  Entre Beats (su autor o un admin).
 
 Paquetes para pegar de una vez: `PEGAR_45_a_62.sql`, `PEGAR_63_a_69.sql`,
-`PEGAR_70_71.sql` — **todos aplicados en producción el 15‑oct‑2026**.
+`PEGAR_70_71.sql`, `PEGAR_72.sql` — **todos aplicados en producción el 15‑oct‑2026**.
+El siguiente lote libre es el **73**.
 `supabase/limpieza/` = limpieza de duplicados de la migración (**no aplicada**:
 necesita "sí"; recuentos con `node --env-file=.env.local scripts/limpieza-recuentos.mjs`,
 solo lectura).
@@ -451,6 +467,14 @@ salvo `.env.example`.
 - "Desde X €" (falta columna de precio mínimo), banner/ciudad editables en
   `/dj/perfil`, botón "Canjear" promo en la ficha, `/unirse` con estado de
   validación, denunciar comentarios de sets y perfiles.
+- Prueba de punta a punta (15‑oct, 4 cuentas, móvil): todo lo bloqueante e
+  importante arreglado. Sin probar por falta de datos: enviar solicitud de mensaje
+  a un DJ real, comentar un set, participar en un sorteo publicado, press kit de
+  un DJ visible. Sin reproducir: un 400 en consola al publicar un set. Contadores
+  de admin que no cuadran del todo («Cola de trabajo» de la pestaña frente a
+  «Para hoy»; «Locales activos» 126 frente a 122 en Fichas).
+- Git: todo está en la rama `rediseno`; `main` sigue con la versión antigua
+  (4‑oct). Pasarlo a `main` cuando se decida y avisar al compañero.
 - Probar en móviles reales (Android Chrome + iPhone Safari): piloto de 2 semanas
   del dossier (pág. 19). El reproductor en segundo plano depende del navegador.
 
