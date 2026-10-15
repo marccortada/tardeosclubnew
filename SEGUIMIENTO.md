@@ -134,3 +134,16 @@ No se ha podido seguir porque:
 
 Para cerrarlo: entrar como DJ, publicar un set con la consola abierta y copiar la URL de
 la petición que da 400 (o mirar Supabase › Logs › API filtrando por status 400).
+
+---
+
+## 15‑oct‑2026 · Despliegue a crm.gnerai.com
+
+- Desplegado el commit `5fade89` (contadores de admin) con `bash scripts/desplegar.sh`:
+  todas las comprobaciones `ok` y «▸ Listo.».
+- Antes hizo falta `npm install`: faltaba `@dnd-kit` en `node_modules` de este Mac y el
+  build no habría compilado.
+- SSH: el script usa `ssh root@46.101.185.148` sin clave explícita; en este Mac hay que
+  cargar antes la clave con `ssh-add ~/.ssh/id_ed25519_little_forest`.
+- GitHub por SSH con la misma clave:
+  `GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_little_forest" git push git@github.com:marccortada/tardeosclubnew.git rediseno`
