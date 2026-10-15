@@ -69,12 +69,22 @@ export default function SetsDj() {
 
   return (
     <SeccionPanel titulo="Publicar set" descripcion="Tus sesiones de SoundCloud, YouTube, Mixcloud o un enlace de audio. Se escuchan en la app; no se descargan." ancho="estrecho">
+      {/* Etiquetas visibles encima de cada campo: con el placeholder como
+          etiqueta, en el móvil el texto se cortaba y al escribir desaparecía. */}
       <form onSubmit={publicar} className="flex flex-col gap-3 rounded-2xl border border-linea bg-superficie p-4">
-        <input required maxLength={140} value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título · p. ej. Sunset Session" aria-label="Título del set" className={campo} />
-        <input required type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Enlace (SoundCloud, YouTube, Mixcloud…)" aria-label="Enlace del set" className={campo} />
+        <Etiqueta texto="Título" pie="P. ej. Sunset Session">
+          <input required maxLength={140} value={titulo} onChange={(e) => setTitulo(e.target.value)} className={campo} />
+        </Etiqueta>
+        <Etiqueta texto="Enlace del set" pie="SoundCloud, YouTube, Mixcloud o audio directo">
+          <input required type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" className={campo} />
+        </Etiqueta>
         {plat && <p className="text-[14px] text-tinta-suave">Detectado: {NOMBRE_PLATAFORMA[plat]}{plat === "otra" ? " — se abrirá fuera de la app" : ""}</p>}
-        <input type="url" value={portada} onChange={(e) => setPortada(e.target.value)} placeholder="Portada (enlace a imagen, opcional)" aria-label="Portada" className={campo} />
-        <input value={estilos} onChange={(e) => setEstilos(e.target.value)} placeholder="Estilos, separados por comas: House, Disco" aria-label="Estilos" className={campo} />
+        <Etiqueta texto="Portada (opcional)" pie="Enlace a una imagen">
+          <input type="url" inputMode="url" value={portada} onChange={(e) => setPortada(e.target.value)} placeholder="https://" className={campo} />
+        </Etiqueta>
+        <Etiqueta texto="Estilos" pie="Separados por comas: House, Disco">
+          <input value={estilos} onChange={(e) => setEstilos(e.target.value)} className={campo} />
+        </Etiqueta>
         <button type="submit" disabled={guardando} className="inline-flex min-h-tacto items-center justify-center gap-2 rounded-xl bg-magenta font-bold text-white disabled:opacity-50">
           {guardando ? <Loader2 size={20} className="animate-spin" aria-hidden /> : <Plus size={20} aria-hidden />} Publicar set
         </button>
@@ -125,7 +135,20 @@ export default function SetsDj() {
 
       <HojaComentarios setId={comentando?.id ?? null} titulo={comentando?.titulo ?? ""} abierta={!!comentando}
         onCerrar={() => { setComentando(null); void cargar(); }} soyDj nombreDj={dj.nombre_artistico} />
+      {/* Hueco para el mini‑reproductor fijo (72 px cuando suena algo): sin él
+          tapaba la segunda fila de botones del último set en el móvil. */}
+      <div aria-hidden className="h-[var(--alto-mini,0px)]" />
     </SeccionPanel>
+  );
+}
+
+function Etiqueta({ texto, pie, children }: { texto: string; pie?: string; children: React.ReactNode }) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-[15px] font-bold text-tinta">{texto}</span>
+      {children}
+      {pie && <span className="text-[14px] text-tinta-suave">{pie}</span>}
+    </label>
   );
 }
 

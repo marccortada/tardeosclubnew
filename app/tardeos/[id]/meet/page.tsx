@@ -174,7 +174,7 @@ export default function MeetZone() {
       <div className="border-b border-linea bg-marfil-100 px-4 py-2">
         <p className="truncate text-[16px] font-bold">{e.titulo}</p>
         <p className="text-[13px] text-tinta-suave">
-          {e.participantes ?? 0} participantes · Hasta 72 h después del evento
+          {(e.participantes ?? 0) === 1 ? "1 participante" : `${e.participantes ?? 0} participantes`} · Hasta 72 h después del evento
           {e.cierra_en && <> (cierra {fechaCorta(e.cierra_en)} {horaCorta(e.cierra_en)})</>}
         </p>
       </div>

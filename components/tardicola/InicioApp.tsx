@@ -16,12 +16,26 @@ import { encajeDe } from "@/lib/recomendar";
 // peso muerto en el primer pantallazo del móvil.
 const MapaClient = dynamic(() => import("@/components/MapaClient"), { ssr: false });
 import { FAMILIAS } from "@/lib/musica";
-import { mismaZona } from "@/lib/zonas";
+import { mismaZona, zonaGrande } from "@/lib/zonas";
 import type { Tardeo } from "@/lib/types";
 
 // Destinos oficiales "a comprobar" (dossier pág. 3): se cambian aquí.
 const URL_INSTAGRAM = "https://www.instagram.com/tardeosclub/";
 const URL_COMUNIDAD = "https://chat.whatsapp.com/KMAxRPoj36w6cOSGGwnZhi?mode=ems_wa_c";
+
+/**
+ * Centro aproximado de cada zona, para que el mapa del Inicio enseñe la zona
+ * elegida aunque tenga 0-1 planes (con 2 o más ya se encuadra a sus planes).
+ * La clave va normalizada; primero el nombre tal cual (Girona ≠ Costa Brava)
+ * y si no, su zona grande.
+ */
+const CENTROS: Record<string, [number, number]> = {
+  "barcelona": [41.39, 2.17], "maresme": [41.58, 2.55], "costa brava": [41.85, 3.08],
+  "girona": [41.98, 2.82], "costa daurada": [41.1, 1.15], "tarragona": [41.12, 1.25],
+  "terres de l'ebre": [40.75, 0.65], "ponent": [41.62, 0.62],
+};
+const clave = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+const centroDe = (zona: string) => (zona ? CENTROS[clave(zona)] ?? CENTROS[clave(zonaGrande(zona))] : undefined);
 
 /**
  * Con sesión, `/` es el Inicio de la app; sin sesión, la landing de siempre
@@ -53,7 +67,9 @@ function InicioApp({ tardeos }: { tardeos: Tardeo[] }) {
     ...[...new Set(adn.musica.map((m) => m.split(":")[0]))].map((id) => FAMILIAS.find((f) => f.id === id)?.nombre).filter(Boolean) as string[],
     ...adn.tiposEvento, ...adn.zonas,
   ].slice(0, 5) : [];
-  const mapaHref = `/eventos?vista=mapa${zona ? `&zona=${encodeURIComponent(zona)}` : ""}`;
+  // Sin `&zona=`: Eventos ya toma la zona de la cabecera, y pasarla como filtro
+  // de URL hacía que Eventos ignorara el ADN (lo trataba como filtros elegidos).
+  const mapaHref = "/eventos?vista=mapa";
 
   return (
     <main className="bg-fondo">
@@ -67,7 +83,7 @@ function InicioApp({ tardeos }: { tardeos: Tardeo[] }) {
         {/* 1. Mapa pequeño: tocarlo abre Eventos en mapa con la misma zona. */}
         <section aria-label="Mapa">
           <Link href={mapaHref} aria-label="Abrir el mapa de Eventos" className="group relative block h-44 overflow-hidden rounded-3xl border border-linea">
-            <div className="pointer-events-none absolute inset-0"><MapaClient tardeos={deZona} conZoom={false} /></div>
+            <div className="pointer-events-none absolute inset-0"><MapaClient tardeos={deZona} conZoom={false} centro={centroDe(zona)} /></div>
             <span className="absolute bottom-3 left-1/2 z-[500] inline-flex -translate-x-1/2 items-center gap-2 rounded-full bg-superficie px-4 py-2 text-[15px] font-semibold text-tinta shadow-elevada">
               <MapaIcono size={16} className="text-magenta" aria-hidden /> Abrir mapa
             </span>
@@ -88,7 +104,7 @@ function InicioApp({ tardeos }: { tardeos: Tardeo[] }) {
           {destacados.length ? (
             <div className="grid gap-4 sm:grid-cols-2">{destacados.map((t) => <TarjetaPlan key={t.id} t={t} patrocinado afin={adn ? encajeDe(t, adn).motivos.length > 0 : false} />)}</div>
           ) : (
-            <Vacio>No hay destacados {zona ? `en ${zona}` : ""} ahora mismo. <Link href="/eventos" className="font-semibold text-magenta-700">Ver todos los planes</Link></Vacio>
+            <Vacio>No hay destacados {zona ? `en ${zona}` : ""} ahora mismo. <Link href="/eventos" className="font-semibold text-magenta-700 dark:text-magenta-400">Ver todos los planes</Link></Vacio>
           )}
         </section>
 
@@ -101,11 +117,11 @@ function InicioApp({ tardeos }: { tardeos: Tardeo[] }) {
             </div>
           )}
           {!tieneAdn(adn) ? (
-            <Vacio>Cuéntanos qué te mueve y te enseñamos planes afines. <Link href="/perfil/adn" className="font-semibold text-magenta-700">Rellenar mi ADN</Link></Vacio>
+            <Vacio>Cuéntanos qué te mueve y te enseñamos planes afines. <Link href="/perfil/adn" className="font-semibold text-magenta-700 dark:text-magenta-400">Rellenar mi ADN</Link></Vacio>
           ) : afines.length ? (
             <div className="grid gap-4 sm:grid-cols-2">{afines.map((t) => <TarjetaPlan key={t.id} t={t} afin />)}</div>
           ) : (
-            <Vacio>Ahora no hay planes afines {zona ? `en ${zona}` : ""}. <Link href="/eventos" className="font-semibold text-magenta-700">Ver todos</Link></Vacio>
+            <Vacio>Ahora no hay planes afines {zona ? `en ${zona}` : ""}. <Link href="/eventos" className="font-semibold text-magenta-700 dark:text-magenta-400">Ver todos</Link></Vacio>
           )}
         </section>
 
@@ -142,7 +158,7 @@ function Titulo({ children, href, enlace, icono }: { children: ReactNode; href?:
   return (
     <div className="mb-3 flex items-center justify-between">
       <h2 className="text-[22px] font-bold text-tinta">{children}</h2>
-      {href && <Link href={href} className="inline-flex min-h-[44px] items-center gap-1 text-[15px] font-semibold text-magenta-700">{icono}{enlace}</Link>}
+      {href && <Link href={href} className="inline-flex min-h-[44px] items-center gap-1 text-[15px] font-semibold text-magenta-700 dark:text-magenta-400">{icono}{enlace}</Link>}
     </div>
   );
 }

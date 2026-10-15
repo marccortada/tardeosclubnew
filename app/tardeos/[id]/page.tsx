@@ -19,6 +19,7 @@ import { jsonLdEvento, urlAbsoluta } from "@/lib/seo";
 import { getPromosDeTardeo } from "@/lib/promociones";
 import { sinMarcas } from "@/lib/texto";
 import { hoyEnEspana } from "@/lib/fechas";
+import { instantesTardeo } from "@/lib/avisos";
 import type { Tardeo } from "@/lib/types";
 import { ArrowLeft, CalendarDays, MapPin, Navigation, Tag, Ban, History, Star, ArrowRight } from "lucide-react";
 
@@ -38,6 +39,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     openGraph: { title: tardeo.titulo, description: desc, images: [{ url: img }], url: urlAbsoluta(`/tardeos/${id}`), type: "website" },
     twitter: { card: "summary_large_image", title: tardeo.titulo, description: desc, images: [img] },
   };
+}
+
+/** ¿Ha terminado ya? Misma regla de fin que `public.tardeo_fin` (lote 67). */
+function yaTermino(t: Tardeo): boolean {
+  return instantesTardeo({ fecha: t.fecha, hora_inicio: t.horaInicio || null, hora_fin: t.horaFin || null }).fin.getTime() <= Date.now();
 }
 
 /** "Sábado 24 octubre · 17:00–22:00" */
@@ -73,6 +79,9 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
   const cancelado = tardeo.estado === "cancelado";
   const pasado = tardeo.fecha < hoyEnEspana();
   const activo = !pasado && !cancelado;
+  // Se valora cuando ha terminado de verdad (misma regla de fin que la base,
+  // lote 67), no al empezar el día. Cancelado: no se pinta (nada que valorar).
+  const terminado = yaTermino(tardeo);
 
   const [promos, delLocal] = await Promise.all([
     activo ? getPromosDeTardeo(id) : Promise.resolve([]),
@@ -83,6 +92,11 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
   const textoCompartir = `¡Mira este tardeo! ${tardeo.titulo} — ${formatFecha(tardeo.fecha)} en ${tardeo.local.nombre}`;
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(tardeo.local.direccion || `${tardeo.lat},${tardeo.lng}`)}`;
   const descripcion = tardeo.descripcion ? sinMarcas(tardeo.descripcion) : "";
+  // Un DJ con la ficha oculta llega sin datos (la RLS de `djs` no deja leerla):
+  // salía un círculo vacío sin nombre y con key indefinida. No hay nombre que
+  // enseñar, así que se omite. (?desde= debe ser la ruta: /djs/[id] solo
+  // acepta /tardeos/<id> para el botón de volver.)
+  const lineUp = tardeo.djs.filter((d) => d.id && d.nombre.trim());
 
   return (
     <main className="bg-fondo">
@@ -168,12 +182,12 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
             </section>
           )}
 
-          {tardeo.djs.length > 0 && (
+          {lineUp.length > 0 && (
             <section>
               <h2 className="text-[22px] font-bold text-tinta">Line‑up</h2>
               <div className="mt-3 flex gap-5 overflow-x-auto pb-1">
-                {tardeo.djs.map((dj) => (
-                  <Link key={dj.id} href={`/djs/${dj.id}?desde=${tardeo.id}`} className="flex w-[84px] shrink-0 flex-col items-center gap-1.5 text-center">
+                {lineUp.map((dj) => (
+                  <Link key={dj.id} href={`/djs/${dj.id}?desde=${encodeURIComponent(`/tardeos/${tardeo.id}`)}`} className="flex w-[84px] shrink-0 flex-col items-center gap-1.5 text-center">
                     {dj.avatar ? (
                       <Image src={dj.avatar} alt="" width={72} height={72} className="h-[72px] w-[72px] rounded-full object-cover" />
                     ) : (
@@ -189,7 +203,10 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
           <AccionTardeo tardeo={tardeo} activo={activo} />
 
           <DestacarTardeo localId={tardeo.local.id} tardeoId={tardeo.id} titulo={tardeo.titulo} />
-          <Resenas tipo="local" objetivoId={tardeo.local.id} nombre={tardeo.local.nombre} />
+          {tardeo.local.id && !cancelado && (
+            <Resenas tipo="local" objetivoId={tardeo.local.id} nombre={tardeo.local.nombre}
+              tardeo={{ titulo: tardeo.titulo, terminado }} />
+          )}
           <DenunciarFlyer tardeoId={tardeo.id} flyerUrl={flyer} />
 
           {otros.length > 0 && (

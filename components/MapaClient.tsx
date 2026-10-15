@@ -58,8 +58,15 @@ function porPoblaciones(tardeos: Tardeo[]): Tardeo[][] {
 export default function MapaClient({
   tardeos: tardeosProp,
   conZoom = true,
+  centro,
 }: {
   tardeos?: Tardeo[];
+  /**
+   * Centro de la zona elegida (Inicio). Con 0-1 tardeos, en vez de la costa
+   * entera se encuadra la zona: si no, al elegir «Maresme» se seguía viendo
+   * de Amposta a Portbou.
+   */
+  centro?: [number, number];
   /**
    * Los botones de + y −. Se apagan en la vista previa de la portada, que va
    * dentro de un contenedor `pointer-events-none`: allí no se pueden pulsar,
@@ -97,7 +104,9 @@ export default function MapaClient({
   const encuadrar = useCallback(() => {
     const map = mapRef.current as any;
     const limites = encuadreRef.current;
-    if (!map || !limites?.isValid()) return;
+    // `_loaded`/`_container`: tras remove() Leaflet los borra; mover un mapa
+    // desmontado es lo que lanzaba «reading '_leaflet_pos'».
+    if (!map || !map._loaded || !map._container || !limites?.isValid()) return;
     const tam = map.getSize();
     if (tam.x < 50 || tam.y < 50) return;
     // Relleno asimétrico: el pin mide 60 px y sale hacia arriba desde su
@@ -108,10 +117,13 @@ export default function MapaClient({
     const abajo = Math.min(28, Math.round(tam.y * 0.08));
     const lados = Math.min(24, Math.round(tam.x * 0.06));
     // maxZoom para que un único tardeo no te deje mirando una acera.
+    // Sin animación: el encuadre inicial no necesita vuelo, y una animación
+    // a medias al salir de la pantalla dejaba a Leaflet tocando nodos ya quitados.
     map.fitBounds(limites, {
       paddingTopLeft: [lados, arriba],
       paddingBottomRight: [lados, abajo],
       maxZoom: ZOOM_MAXIMO,
+      animate: false,
     });
 
     // fitBounds deja el contenido pegado a los bordes y, en contenedores bajos
@@ -123,10 +135,10 @@ export default function MapaClient({
     // alejarse hasta Toulouse y Mallorca: suelo de 8, centrado en la costa
     // (o en el único tardeo, para que su chincheta se vea seguro).
     if (costaRef.current) {
-      if (map.getZoom() < ZOOM_MINIMO) map.setView(unicoRef.current ?? [41.6, 2.2], ZOOM_MINIMO);
+      if (map.getZoom() < ZOOM_MINIMO) map.setView(unicoRef.current ?? [41.6, 2.2], ZOOM_MINIMO, { animate: false });
     } else {
       const z = map.getZoom();
-      map.setZoom(Math.min(Math.max(z + 1, ZOOM_MINIMO), ZOOM_MAXIMO));
+      map.setZoom(Math.min(Math.max(z + 1, ZOOM_MINIMO), ZOOM_MAXIMO), { animate: false });
     }
     encuadradoRef.current = true;
   }, []);
@@ -172,7 +184,7 @@ export default function MapaClient({
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
           (pos) => !cancel && marcarYo(pos.coords.latitude, pos.coords.longitude),
-          () => marcarYo(41.3874, 2.1686)
+          () => !cancel && marcarYo(41.3874, 2.1686)
         );
       } else {
         marcarYo(41.3874, 2.1686);
@@ -190,8 +202,20 @@ export default function MapaClient({
       cancel = true;
       observerRef.current?.disconnect();
       observerRef.current = null;
-      mapRef.current?.remove();
+      const map = mapRef.current;
       mapRef.current = null;
+      if (map) {
+        // Orden importante: parar animaciones (zoom/pan en curso) y quitar
+        // oyentes ANTES de remove(); si no, un paso de animación posterior lee
+        // la posición de un panel ya borrado (`_leaflet_pos` de undefined).
+        try {
+          map.stop();
+          map.off();
+          capasRef.current.forEach((c) => map.removeLayer(c));
+          map.remove();
+        } catch { /* el mapa ya estaba a medio desmontar: nada que limpiar */ }
+      }
+      capasRef.current = [];
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -278,9 +302,14 @@ export default function MapaClient({
     });
 
     // Cambian los datos (carga inicial o filtro) -> toca reencuadrar.
-    costaRef.current = conCoords.length < 2;
+    costaRef.current = conCoords.length < 2 && !centro;
     unicoRef.current = conCoords.length === 1 ? [conCoords[0].lat, conCoords[0].lng] : null;
-    if (costaRef.current) {
+    if (conCoords.length < 2 && centro) {
+      // Unos 25 km alrededor del centro de la zona (y su tardeo, si lo hay).
+      const zona = L.latLngBounds([[centro[0] - 0.2, centro[1] - 0.28], [centro[0] + 0.2, centro[1] + 0.28]]);
+      if (conCoords[0]) zona.extend([conCoords[0].lat, conCoords[0].lng]);
+      encuadreRef.current = zona;
+    } else if (costaRef.current) {
       const costa = L.latLngBounds(COSTA);
       // Si el único tardeo cae fuera (Lleida, Andorra…), se amplía para que se vea.
       if (conCoords[0]) costa.extend([conCoords[0].lat, conCoords[0].lng]);
@@ -290,7 +319,7 @@ export default function MapaClient({
     }
     encuadradoRef.current = false;
     encuadrar();
-  }, [datos, listo, encuadrar]);
+  }, [datos, listo, encuadrar, centro]);
 
   return (
     <>

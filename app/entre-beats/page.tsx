@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Lock, Loader2, MessageSquare, MoreVertical } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Trash2, Lock, Loader2, MessageSquare, MoreVertical } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import { useRoles } from "@/lib/permisos";
@@ -103,13 +103,44 @@ function MenuDenuncia({ tipo, id }: { tipo: TipoObjeto; id: string }) {
   );
 }
 
+
+/**
+ * Borrar lo propio (o cualquier cosa, si eres admin). Antes no había forma de
+ * quitar un hilo publicado por error. La base (lote 72) solo deja borrar al
+ * autor o a un admin: si falta el lote, se explica en vez de fallar callado.
+ */
+function BotonBorrar({ tabla, id, autor, yo, que, onBorrado }: {
+  tabla: "eb_hilos" | "eb_respuestas" | "eb_anuncios"; id: string; autor: string; yo: string; que: string; onBorrado: () => void;
+}) {
+  const { esAdmin } = useRoles();
+  const [borrando, setBorrando] = useState(false);
+  if (autor !== yo && !esAdmin) return null;
+  async function borrar() {
+    if (!window.confirm(`¿Borrar ${que}? No se puede deshacer.`)) return;
+    setBorrando(true);
+    const { error, count } = await supabase.from(tabla).delete({ count: "exact" }).eq("id", id);
+    setBorrando(false);
+    if (error || count === 0) {
+      window.alert(error ? textoError(error) : "No se pudo borrar (falta aplicar el lote 72 en la base).");
+      return;
+    }
+    onBorrado();
+  }
+  return (
+    <button type="button" aria-label={`Borrar ${que}`} onClick={borrar} disabled={borrando}
+      className="grid min-h-[44px] min-w-[36px] place-items-center text-tinta-suave hover:text-error disabled:opacity-50">
+      {borrando ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Trash2 size={18} aria-hidden />}
+    </button>
+  );
+}
+
 // ---- Hilos -------------------------------------------------------------------
 function Hilos({ q, yo }: { q: string; yo: string }) {
   const [gente, setGente] = useState<Record<string, Autor>>({});
   const [crear, setCrear] = useState(false);
   const [abierto, setAbierto] = useState<Hilo | null>(null);
   const ts = consultaBusqueda(q);
-  const { filas, total, pagina, setPagina, porPagina, cargando, error, recargar } = usePaginado<Hilo>((desde, hasta) => {
+  const { filas, total, pagina, setPagina, porPagina, cargando, error, recargar, cambiar } = usePaginado<Hilo>((desde, hasta) => {
     let c = supabase.from("eb_hilos").select("id,autor,titulo,cuerpo,tema,zona,retenido,created_at,eb_respuestas(count)", { count: "exact" });
     if (ts) c = c.textSearch("busqueda", ts, { config: "spanish" });
     return c.order("created_at", { ascending: false }).order("id").range(desde, hasta);
@@ -139,18 +170,24 @@ function Hilos({ q, yo }: { q: string; yo: string }) {
                 <p className="text-[12px] font-bold uppercase tracking-wide text-tinta-suave">Comunidad profesional{h.tema ? ` · ${h.tema}` : ""}</p>
                 <h2 className="mt-1 text-lg font-bold">{h.titulo}</h2>
                 <p className="text-[14px] text-tinta-suave">
-                  {gente[h.autor]?.nombre ?? "…"} · {h.eb_respuestas?.[0]?.count ?? 0} respuestas{h.retenido && " · Retenido para revisión"}
+                  {gente[h.autor]?.nombre ?? "…"} · {textoRespuestas(h.eb_respuestas?.[0]?.count ?? 0)}{h.retenido && " · Retenido para revisión"}
                 </p>
                 <p className="mt-2 line-clamp-2 text-[15px] text-tinta-suave">{h.cuerpo}</p>
               </button>
               {h.autor !== yo && <MenuDenuncia tipo="eb_hilo" id={h.id} />}
+              <BotonBorrar tabla="eb_hilos" id={h.id} autor={h.autor} yo={yo} que="este hilo y sus respuestas" onBorrado={recargar} />
             </div>
           </article>
         ))}
       <Paginacion pagina={pagina} total={total} porPagina={porPagina} onCambiar={setPagina} cargando={cargando} />
       <Boton variante="contorno" ancho onClick={() => setCrear(true)}>Crear hilo</Boton>
       <CrearHilo abierta={crear} onCerrar={() => setCrear(false)} onCreado={() => { setCrear(false); recargar(); }} />
-      {abierto && <DetalleHilo hilo={abierto} yo={yo} gente={gente} onCerrar={() => { setAbierto(null); recargar(); }} />}
+      {abierto && (
+        <DetalleHilo hilo={abierto} yo={yo} gente={gente} onCerrar={() => { setAbierto(null); recargar(); }}
+          // El contador de la lista se pone al día al momento: antes seguía en
+          // «0 respuestas» tras responder hasta recargar la página.
+          onTotal={(n) => cambiar((f) => f.id === abierto.id, { eb_respuestas: [{ count: n }] })} />
+      )}
     </div>
   );
 }
@@ -186,8 +223,18 @@ function CrearHilo({ abierta, onCerrar, onCreado }: { abierta: boolean; onCerrar
   );
 }
 
-function DetalleHilo({ hilo, yo, gente, onCerrar }: { hilo: Hilo; yo: string; gente: Record<string, Autor>; onCerrar: () => void }) {
+function textoRespuestas(n: number) {
+  return `${n} ${n === 1 ? "respuesta" : "respuestas"}`;
+}
+
+function DetalleHilo({ hilo, yo, gente, onCerrar, onTotal }: {
+  hilo: Hilo; yo: string; gente: Record<string, Autor>; onCerrar: () => void; onTotal: (n: number) => void;
+}) {
   const [respuestas, setRespuestas] = useState<Respuesta[] | null>(null);
+  // En una ref: el padre pasa una función nueva en cada render y, como
+  // dependencia de `cargar`, provocaría un bucle de recargas.
+  const totalRef = useRef(onTotal);
+  useEffect(() => { totalRef.current = onTotal; }, [onTotal]);
   const [nombres, setNombres] = useState<Record<string, Autor>>(gente);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -199,6 +246,7 @@ function DetalleHilo({ hilo, yo, gente, onCerrar }: { hilo: Hilo; yo: string; ge
     if (error) { setError(textoError(error)); setRespuestas([]); return; }
     const r = (data as Respuesta[]) ?? [];
     setRespuestas(r);
+    totalRef.current(r.length);
     const a = await autores([hilo.autor, ...r.map((x) => x.autor)]);
     setNombres((p) => ({ ...p, ...a }));
   }, [hilo.id, hilo.autor]);
@@ -237,6 +285,7 @@ function DetalleHilo({ hilo, yo, gente, onCerrar }: { hilo: Hilo; yo: string; ge
                 <p className="whitespace-pre-wrap text-[15px]">{r.cuerpo}</p>
               </div>
               {r.autor !== yo && <MenuDenuncia tipo="eb_respuesta" id={r.id} />}
+              <BotonBorrar tabla="eb_respuestas" id={r.id} autor={r.autor} yo={yo} que="esta respuesta" onBorrado={cargar} />
             </div>
           ))}
         <Fallo e={error} />
@@ -291,6 +340,7 @@ function Anuncios({ q, yo }: { q: string; yo: string }) {
                 <p className="mt-2 whitespace-pre-wrap text-[15px]">{a.cuerpo}</p>
               </div>
               {a.autor !== yo && <MenuDenuncia tipo="eb_anuncio" id={a.id} />}
+              <BotonBorrar tabla="eb_anuncios" id={a.id} autor={a.autor} yo={yo} que="este anuncio" onBorrado={recargar} />
             </div>
             {a.autor === yo ? (
               <Boton variante="contorno" ancho className="mt-3" onClick={() => cambiarEstado(a)}>{a.estado === "abierto" ? "Cerrar anuncio" : "Reabrir anuncio"}</Boton>

@@ -2,17 +2,38 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Download, Users, ChevronUp, Info, ClipboardCheck } from "lucide-react";
+import { Download, ChevronUp, Info, ClipboardCheck } from "lucide-react";
 import { SeccionPanel } from "@/components/panel/PanelShell";
 import Paginacion, { Filtros, Buscador, EstadoLista } from "@/components/panel/Paginacion";
 import Boton from "@/components/Boton";
 import { useFicha } from "../_panel/PanelLocal";
+import { supabase } from "@/lib/supabase";
 import { getInscritosLocal, hoyISO, type InscritoLocal } from "@/lib/tardeos";
 import { formatFecha } from "@/lib/formato";
 import { plegar } from "@/lib/texto";
 import PasarLista, { cargarLista } from "../_panel/PasarLista";
 
-type Grupo = { id: string; titulo: string; fecha: string; filas: InscritoLocal[] };
+type Grupo = { id: string; titulo: string; fecha: string; filas: InscritoLocal[]; espera: number };
+/** Una persona en lista de espera (lote 64): solo hace falta contarla por tardeo. */
+type FilaEspera = { tardeo_id: string; tardeos: { titulo: string; fecha: string } | null };
+
+/**
+ * Cuántos hay en lista de espera en los tardeos del local. `inscritos_de_local`
+ * solo trae confirmados, así que se lee `inscripciones` directamente: la RLS
+ * deja al dueño del tardeo (y al admin) ver sus filas. Los nombres y el puesto
+ * salen al abrir la lista (PasarLista). Si falla, se queda en cero: los
+ * confirmados se siguen viendo igual.
+ */
+async function leerEspera(localId: string): Promise<FilaEspera[]> {
+  try {
+    const { data, error } = await supabase.from("inscripciones")
+      .select("tardeo_id,tardeos!inner(titulo,fecha,local_id)")
+      .eq("estado", "espera").eq("tardeos.local_id", localId).limit(2000);
+    return error ? [] : ((data ?? []) as unknown as FilaEspera[]);
+  } catch {
+    return [];
+  }
+}
 type Periodo = "proximos" | "pasados";
 
 const POR_PAGINA = 25;
@@ -58,7 +79,8 @@ async function descargarCsv(nombre: string, grupos: Grupo[]) {
 const slug = (s: string) => plegar(s).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "tardeo";
 
 /**
- * Quién se ha apuntado a los tardeos gratis del local (botón «Apuntarme»).
+ * Quién ha dicho «Asistiré» a los tardeos gratis del local, y quién está en
+ * lista de espera cuando se llenan las plazas.
  *
  * Antes era un bloque al final del panel, con todos los nombres de todos los
  * tardeos de siempre mezclados. Aquí va por tardeo, separado en próximos y
@@ -68,6 +90,7 @@ const slug = (s: string) => plegar(s).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$
 export default function Apuntados() {
   const { ficha, ajena, enlace } = useFicha();
   const [filas, setFilas] = useState<InscritoLocal[] | null>(null);
+  const [espera, setEspera] = useState<FilaEspera[]>([]);
   const [periodo, setPeriodo] = useState<Periodo>("proximos");
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(1);
@@ -79,9 +102,10 @@ export default function Apuntados() {
   useEffect(() => {
     let vivo = true;
     setFilas(null); setErrorCarga(null);
-    getInscritosLocal(ficha.id).then((r) => {
+    Promise.all([getInscritosLocal(ficha.id), leerEspera(ficha.id)]).then(([r, e]) => {
       if (!vivo) return;
       setFilas(r.filas);
+      setEspera(e);
       setErrorCarga(r.error);
     });
     return () => { vivo = false; };
@@ -96,11 +120,16 @@ export default function Apuntados() {
   const grupos = useMemo(() => {
     const m = new Map<string, Grupo>();
     for (const f of filas ?? []) {
-      if (!m.has(f.tardeo_id)) m.set(f.tardeo_id, { id: f.tardeo_id, titulo: f.tardeo_titulo, fecha: f.fecha, filas: [] });
+      if (!m.has(f.tardeo_id)) m.set(f.tardeo_id, { id: f.tardeo_id, titulo: f.tardeo_titulo, fecha: f.fecha, filas: [], espera: 0 });
       m.get(f.tardeo_id)!.filas.push(f);
     }
+    // Un tardeo puede tener solo gente en espera (p. ej. aforo a cero): también sale.
+    for (const e of espera) {
+      if (!m.has(e.tardeo_id)) m.set(e.tardeo_id, { id: e.tardeo_id, titulo: e.tardeos?.titulo ?? "Tardeo", fecha: e.tardeos?.fecha ?? "", filas: [], espera: 0 });
+      m.get(e.tardeo_id)!.espera++;
+    }
     return [...m.values()];
-  }, [filas]);
+  }, [filas, espera]);
 
   useEffect(() => {
     if (!pedido || !filas) return;
@@ -117,6 +146,7 @@ export default function Apuntados() {
     .filter((g) => !busca.trim() || plegar(g.titulo).includes(plegar(busca.trim())));
   const pag = lista.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
   const totalPersonas = lista.reduce((s, g) => s + g.filas.length, 0);
+  const totalEspera = lista.reduce((s, g) => s + g.espera, 0);
   const pedidoSinNadie = pedido && filas && !errorCarga && !grupos.some((g) => g.id === pedido);
 
   useEffect(() => { setPagina(1); }, [periodo, busca]);
@@ -138,7 +168,7 @@ export default function Apuntados() {
   return (
     <SeccionPanel
       titulo="Apuntados"
-      descripcion="Quién se ha apuntado a tus tardeos gratis con el botón «Apuntarme»."
+      descripcion="Quién ha pulsado «Asistiré» en tus tardeos gratis. Si se llenan las plazas, los siguientes quedan en lista de espera y suben solos cuando alguien se borra."
       acciones={
         <Boton tamano="pequeno" variante="contorno" disabled={lista.length === 0} cargando={exportando === "todo"}
           onClick={() => exportar("todo", `apuntados-${periodo}-${hoy}.csv`, lista)}>
@@ -158,7 +188,7 @@ export default function Apuntados() {
 
       {pedidoSinNadie && (
         <p className="mb-4 rounded-xl border border-linea bg-white p-4 text-[15px] text-tinta-suave">
-          Ese tardeo todavía no tiene a nadie apuntado.
+          Ese tardeo todavía no tiene a nadie con «Asistiré».
         </p>
       )}
 
@@ -176,7 +206,8 @@ export default function Apuntados() {
 
       {filas && lista.length > 0 && (
         <p className="mt-4 text-[15px] text-tinta-suave">
-          <b className="text-tinta">{totalPersonas}</b> {totalPersonas === 1 ? "persona apuntada" : "personas apuntadas"} en{" "}
+          <b className="text-tinta">{totalPersonas}</b> {totalPersonas === 1 ? "confirmado" : "confirmados"}
+          {totalEspera > 0 && <> · <b className="text-tinta">{totalEspera}</b> en espera</>} en{" "}
           <b className="text-tinta">{lista.length}</b> {lista.length === 1 ? "tardeo" : "tardeos"}.
         </p>
       )}
@@ -186,7 +217,7 @@ export default function Apuntados() {
           cargando={filas === null}
           error={errorCarga}
           vacio={busca ? "Ningún tardeo con ese nombre." : periodo === "proximos"
-            ? "Nadie apuntado todavía a tus próximos tardeos. Los gratis tienen botón «Apuntarme»: compártelos para que se vaya llenando."
+            ? "Nadie ha dicho «Asistiré» todavía a tus próximos tardeos. Compártelos para que se vayan llenando."
             : "Ningún tardeo pasado con apuntados."}
           filas={lista.length}
         />
@@ -207,13 +238,15 @@ export default function Apuntados() {
                   className={`rounded-2xl border bg-white p-4 shadow-tarjeta ${pedido === g.id ? "border-magenta" : "border-linea"}`}>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-tinta-suave">{formatFecha(g.fecha)}</p>
+                      <p className="text-sm font-semibold text-tinta-suave">{g.fecha ? formatFecha(g.fecha) : ""}</p>
                       <h2 className="text-[17px] font-bold leading-tight">{g.titulo}</h2>
+                      {/* El número es lo que sirve para preparar barra y personal. */}
+                      <p className="mt-1 text-[16px] font-bold text-magenta-700">
+                        {g.filas.length} {g.filas.length === 1 ? "confirmado" : "confirmados"}
+                        {g.espera > 0 && <span className="text-aviso"> · {g.espera} en espera</span>}
+                      </p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-magenta-50 px-3 text-[16px] font-bold text-magenta-700">
-                        <Users size={18} aria-hidden /> {g.filas.length}
-                      </span>
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
                       <button type="button" disabled={exportando === g.id} onClick={() => exportar(g.id, `apuntados-${slug(g.titulo)}-${g.fecha}.csv`, [g])}
                         aria-label={`Exportar CSV de ${g.titulo}`}
                         className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-linea-fuerte px-3 text-[15px] font-semibold hover:bg-marfil-100 disabled:opacity-60">
@@ -237,13 +270,18 @@ export default function Apuntados() {
                         <li key={i} className="rounded-full bg-marfil-100 px-3 py-1 text-[15px] font-medium">{n.nombre}</li>
                       ))}
                       {g.filas.length > VISIBLES && <li className="px-2 py-1 text-[15px] text-tinta-suave">y {g.filas.length - VISIBLES} más</li>}
+                      {g.espera > 0 && (
+                        <li className="rounded-full bg-aviso-fondo px-3 py-1 text-[15px] font-semibold text-aviso">
+                          {g.espera} en lista de espera
+                        </li>
+                      )}
                     </ul>
                   )}
                   <button type="button" onClick={() => alternar(g.id)} aria-expanded={abierto}
                     className="mt-2 inline-flex min-h-[44px] items-center gap-1.5 text-[15px] font-bold text-magenta-700">
                     {abierto
                       ? <><ChevronUp size={16} aria-hidden /> Cerrar la lista</>
-                      : <><ClipboardCheck size={16} aria-hidden /> Pasar lista (quién vino)</>}
+                      : <><ClipboardCheck size={16} aria-hidden /> {g.espera > 0 ? "Pasar lista y ver la espera" : "Pasar lista (quién vino)"}</>}
                   </button>
                 </li>
               );

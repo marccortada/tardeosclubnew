@@ -12,6 +12,32 @@ import { asistire, retirarAsistencia, getMiAsistencia, getQuienesVan, type MiAsi
 import { medir } from "@/lib/metricas";
 
 /**
+ * Lo que quería hacer quien pulsó Asistiré/Guardar sin sesión. Se guarda en
+ * sessionStorage (solo esta pestaña) con el id del tardeo y caducidad corta:
+ * al volver a la ficha ya con cuenta se hace una sola vez, y si vuelve mucho
+ * más tarde no se apunta a nada que ya no recuerde.
+ */
+type Accion = "asistire" | "guardar";
+const CLAVE_INTENCION = "tc_intencion_tardeo";
+const VIDA_INTENCION_MS = 15 * 60 * 1000;
+
+function guardarIntencion(id: string, accion: Accion) {
+  try { sessionStorage.setItem(CLAVE_INTENCION, JSON.stringify({ id, accion, hasta: Date.now() + VIDA_INTENCION_MS })); } catch { /* sin almacenamiento: se pulsa a mano */ }
+}
+/** La lee y la borra (una sola vez). Solo si es de este tardeo y no ha caducado. */
+function tomarIntencion(id: string): Accion | null {
+  try {
+    const raw = sessionStorage.getItem(CLAVE_INTENCION);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as { id?: string; accion?: string; hasta?: number };
+    if (v.id !== id) return null; // es de otro tardeo: se deja para su ficha
+    sessionStorage.removeItem(CLAVE_INTENCION);
+    if (!v.hasta || v.hasta < Date.now()) return null;
+    return v.accion === "asistire" || v.accion === "guardar" ? v.accion : null;
+  } catch { return null; }
+}
+
+/**
  * Quiénes van + Meet Zone + Asistiré / Guardar / Comprar (dossier pág. 5).
  *
  * Asistiré vale para TODOS los eventos: confirma al momento si hay plaza o
@@ -26,25 +52,51 @@ export default function AccionTardeo({ tardeo, activo = true }: { tardeo: Tardeo
   const [fav, setFav] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState("");
+  const [hecho, setHecho] = useState("");
   const [van, setVan] = useState<QuienesVan | null>(null);
   const [verLista, setVerLista] = useState(false);
 
   useEffect(() => {
     if (!user) { setFav(false); setMia({ estado: null, puesto: null }); return; }
-    esFavorito(user.id, tardeo.id).then(setFav);
-    getMiAsistencia(user.id, tardeo.id).then(setMia);
-  }, [user, tardeo.id]);
+    // Se toma aquí (y se borra) para que StrictMode, que repite el efecto, no la haga dos veces.
+    const pendiente = activo ? tomarIntencion(tardeo.id) : null;
+    Promise.all([esFavorito(user.id, tardeo.id), getMiAsistencia(user.id, tardeo.id)]).then(async ([f, m]) => {
+      setFav(f); setMia(m);
+      if (pendiente === "guardar") {
+        if (f) { setHecho("Ya lo tenías guardado en Próxima Parada."); return; }
+        const { error } = await setFavorito(user.id, tardeo.id, true);
+        if (error) { setAviso("No se pudo guardar. Inténtalo otra vez."); return; }
+        setFav(true); setHecho("Guardado en tu Próxima Parada.");
+        medir("favorito", { tardeoId: tardeo.id });
+      } else if (pendiente === "asistire") {
+        if (m.estado === "apuntado" || m.estado === "espera") { setHecho("Ya tenías tu Asistiré en este plan."); return; }
+        setOcupado(true);
+        const { r, error } = await asistire(user.id, tardeo.id);
+        setOcupado(false);
+        if (error || !r) { setAviso("No se pudo guardar tu Asistiré. Pulsa Asistiré otra vez."); return; }
+        setMia(r);
+        setHecho(r.estado === "espera"
+          ? `El plan está lleno: estás en la lista de espera${r.puesto ? ` (puesto ${r.puesto})` : ""}.`
+          : "¡Hecho! Asistiré confirmado.");
+        medir("inscripcion", { tardeoId: tardeo.id, detalle: r.estado ?? undefined });
+        getQuienesVan(tardeo.id).then(setVan);
+      }
+    });
+  }, [user, tardeo.id, activo]);
   useEffect(() => { getQuienesVan(tardeo.id).then(setVan); }, [tardeo.id]);
 
-  // Tras pedir cuenta se vuelve a esta ficha (la intención no se pierde).
-  const pedirLogin = () => router.push(`/perfil?volver=${encodeURIComponent(`/tardeos/${tardeo.id}`)}`);
+  // Tras pedir cuenta se vuelve a esta ficha y la acción pendiente se hace sola.
+  const pedirLogin = (accion: Accion) => {
+    guardarIntencion(tardeo.id, accion);
+    router.push(`/perfil?volver=${encodeURIComponent(`/tardeos/${tardeo.id}`)}`);
+  };
   const confirmado = mia.estado === "apuntado";
   const enEspera = mia.estado === "espera";
 
   const pulsarAsistire = async () => {
-    if (!user) return pedirLogin();
+    if (!user) return pedirLogin("asistire");
     if (confirmado || enEspera) return;
-    setOcupado(true); setAviso("");
+    setOcupado(true); setAviso(""); setHecho("");
     const { r, error } = await asistire(user.id, tardeo.id);
     if (error) setAviso(error === "Lista llena. La lista de espera llega con el lote 64." ? error : "No se pudo guardar tu Asistiré. Inténtalo otra vez.");
     else if (r) {
@@ -57,7 +109,7 @@ export default function AccionTardeo({ tardeo, activo = true }: { tardeo: Tardeo
 
   const retirar = async () => {
     if (!user) return;
-    setOcupado(true); setAviso("");
+    setOcupado(true); setAviso(""); setHecho("");
     const { error } = await retirarAsistencia(user.id, tardeo.id);
     if (error) setAviso("No se pudo retirar. Inténtalo otra vez.");
     else { setMia({ estado: "cancelado", puesto: null }); getQuienesVan(tardeo.id).then(setVan); }
@@ -65,9 +117,9 @@ export default function AccionTardeo({ tardeo, activo = true }: { tardeo: Tardeo
   };
 
   const toggleFav = async () => {
-    if (!user) return pedirLogin();
+    if (!user) return pedirLogin("guardar");
     const n = !fav;
-    setFav(n); setAviso("");
+    setFav(n); setAviso(""); setHecho("");
     const { error } = await setFavorito(user.id, tardeo.id, n);
     if (error) { setFav(!n); setAviso("No se pudo guardar. Inténtalo otra vez."); return; }
     if (n) medir("favorito", { tardeoId: tardeo.id });
@@ -87,7 +139,7 @@ export default function AccionTardeo({ tardeo, activo = true }: { tardeo: Tardeo
           <div className="flex items-center justify-between">
             <h2 id="quienes" className="text-[22px] font-bold text-tinta">Quiénes van</h2>
             {van.total > 0 && (
-              <button type="button" onClick={() => setVerLista((v) => !v)} className="min-h-[44px] px-1 text-[15px] font-semibold text-magenta-700">
+              <button type="button" onClick={() => setVerLista((v) => !v)} className="min-h-[44px] px-1 text-[15px] font-semibold text-magenta-700 dark:text-magenta-400">
                 {verLista ? "Ocultar" : "Ver lista"}
               </button>
             )}
@@ -131,6 +183,7 @@ export default function AccionTardeo({ tardeo, activo = true }: { tardeo: Tardeo
       </section>
 
       {aviso && <p role="alert" className="rounded-xl bg-error-fondo px-3 py-2 text-[15px] font-semibold text-error">{aviso}</p>}
+      {hecho && <p role="status" className="rounded-xl bg-ok-fondo px-3 py-2 text-[15px] font-semibold text-ok">{hecho}</p>}
 
       {activo && (
         <>

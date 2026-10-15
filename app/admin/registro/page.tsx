@@ -5,6 +5,7 @@ import { SeccionPanel } from "@/components/panel/PanelShell";
 import Paginacion, { usePaginado, useDiferido, Buscador, Filtros, EstadoLista } from "@/components/panel/Paginacion";
 import Boton from "@/components/Boton";
 import Aviso from "@/components/admin/Aviso";
+import Hoja from "@/components/ui/Hoja";
 import { Etiqueta } from "@/components/ui/Chip";
 import { claseCampo } from "@/components/ui/Campo";
 import { supabase } from "@/lib/supabase";
@@ -39,6 +40,7 @@ type Filtro = { estado: Estado; asist: "todas" | Asist; periodo: Periodo; dia: s
 const hoyMadrid = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
 const fechaCorta = (f: string) =>
   new Date(f + "T12:00:00").toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+const NOMBRE_ESTADO: Record<EstadoIns, string> = { apuntado: "Apuntado", espera: "En espera", cancelado: "Cancelado" };
 const limpiar = (s: string) => s.replace(/[,()*%\\"']/g, " ").replace(/\s+/g, " ").trim();
 const esColumnaQueFalta = (e: unknown) => {
   const c = (e as { code?: string } | null)?.code;
@@ -105,6 +107,8 @@ export default function Registro() {
   const [exportando, setExportando] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
+  /** Cambio de estado pendiente de confirmar: el desplegable ya no mueve a la primera. */
+  const [porMover, setPorMover] = useState<{ f: Bruta; a: EstadoIns } | null>(null);
   // Filtro de zona (lote 69), por la zona del tardeo de cada inscripción.
   const zona = useFiltroZona();
 
@@ -163,8 +167,14 @@ export default function Registro() {
       setError(c === "PGRST202" || c === "42883" ? "Falta el lote 69 para mover inscripciones." : "No se pudo mover: " + e.message);
       return;
     }
-    p.cambiar((x) => x.id === f.id, { estado: estadoNuevo });
-    setOk("Inscripción movida. Queda en la auditoría.");
+    // Se recarga la página entera, no solo la fila: si se ha liberado una
+    // plaza, la base (lote 64) sube sola al primero de la espera, y esa fila
+    // también cambia. Sin recargar se seguía viendo «En espera» y al pulsar
+    // «Promover» respondía que ya no había nadie.
+    setOk(f.estado === "apuntado" && estadoNuevo !== "apuntado"
+      ? "Inscripción movida. Si había lista de espera, el primero ha subido solo. Queda en la auditoría."
+      : "Inscripción movida. Queda en la auditoría.");
+    p.recargar();
     contar();
   };
 
@@ -173,7 +183,11 @@ export default function Registro() {
     const { data, error: e } = await supabase.rpc("admin_promover_espera", { p_tardeo: f.tardeo_id });
     setObrando(null);
     if (e) { setError("No se pudo promover: " + e.message); return; }
-    setOk(data ? "Promovido el primero de la lista de espera." : "No había nadie en espera.");
+    // La función devuelve el id de la inscripción que ha subido, o null si
+    // ya no quedaba nadie (p. ej. porque el sistema lo había subido solo al
+    // liberarse una plaza y esta lista estaba sin recargar).
+    if (data) setOk("Hecho: el primero de la lista de espera ya está confirmado.");
+    else setOk("Ya no quedaba nadie en espera en ese tardeo: el sistema sube solo al primero cuando se libera una plaza. Lista actualizada.");
     p.recargar();
     contar();
   };
@@ -346,7 +360,8 @@ export default function Registro() {
                     {/* Mover entre confirmado / espera / cancelado (lote 69, con rastro y
                         respetando el aforo). El admin de zona solo puede en su zona. */}
                     {soloLectura(f) && <p className="mb-1"><Etiqueta>Solo lectura</Etiqueta></p>}
-                    <select value={f.estado} disabled={obrando === f.id || soloLectura(f)} onChange={(e) => mover(f, e.target.value as EstadoIns)}
+                    <select value={f.estado} disabled={obrando === f.id || soloLectura(f)}
+                      onChange={(e) => { const a = e.target.value as EstadoIns; if (a !== f.estado) setPorMover({ f, a }); }}
                       aria-label="Estado de la inscripción"
                       className={`min-h-[44px] rounded-lg border px-2 text-sm font-semibold ${f.estado === "apuntado" ? "border-ok text-ok" : "border-linea-fuerte"}`}>
                       <option value="apuntado">Apuntado</option>
@@ -388,6 +403,27 @@ export default function Registro() {
       )}
 
       <Paginacion pagina={p.pagina} total={p.total} porPagina={p.porPagina} onCambiar={p.setPagina} cargando={p.cargando} />
+
+      {/* Mover a alguien cambia su plaza (y puede avisarle o subir a otro de la
+          espera): se confirma antes, para que un toque sin querer no lo haga. */}
+      <Hoja abierta={!!porMover} onCerrar={() => setPorMover(null)} titulo="¿Cambiar el estado?"
+        pie={
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Boton variante="contorno" onClick={() => setPorMover(null)}>No, dejarlo</Boton>
+            <Boton onClick={() => { const m = porMover; setPorMover(null); if (m) mover(m.f, m.a); }}>
+              Sí, pasar a «{porMover ? NOMBRE_ESTADO[porMover.a] : ""}»
+            </Boton>
+          </div>
+        }>
+        {porMover && (
+          <p className="text-[16px]">
+            <b>{porMover.f.profiles?.display_name || "Tardícola"}</b> en «{porMover.f.tardeos?.titulo || "tardeo"}»
+            pasa de <b>{NOMBRE_ESTADO[porMover.f.estado]}</b> a <b>{NOMBRE_ESTADO[porMover.a]}</b>.
+            {porMover.f.estado === "apuntado" && porMover.a !== "apuntado" && " Su plaza queda libre y, si hay lista de espera, sube solo el primero."}
+            {" "}Queda en la auditoría.
+          </p>
+        )}
+      </Hoja>
     </SeccionPanel>
   );
 }

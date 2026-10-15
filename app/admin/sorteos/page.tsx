@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Dices, ExternalLink, Pencil, Plus, Send, UserCheck } from "lucide-react";
+import { Trash2, Dices, ExternalLink, Pencil, Plus, Send, UserCheck, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { SeccionPanel } from "@/components/panel/PanelShell";
-import Paginacion, { usePaginado, EstadoLista, Filtros } from "@/components/panel/Paginacion";
+import Paginacion, { usePaginado, useDiferido, EstadoLista, Filtros } from "@/components/panel/Paginacion";
 import Boton from "@/components/Boton";
 import Hoja from "@/components/ui/Hoja";
 import Campo, { claseCampo } from "@/components/ui/Campo";
 import Aviso from "@/components/admin/Aviso";
 import { Etiqueta } from "@/components/ui/Chip";
 import { COLS_SORTEO, etiquetaSorteo, type Sorteo } from "@/lib/sorteos";
+import { hoyISO } from "@/lib/tardeos";
 
 type Filtro = "todos" | "borrador" | "abierto" | "cerrado" | "resuelto";
 type Resolucion = { ganador_id: string | null; ganador_alias: string | null; ganador_email: string | null; metodo: string | null; semilla: string | null; elegido_en: string | null; participantes: number };
@@ -36,6 +37,12 @@ export default function AdminSorteos() {
   const [form, setForm] = useState<(typeof VACIO & { id?: string }) | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [sel, setSel] = useState<Sorteo | null>(null);
+  /**
+   * Error del formulario. Va DENTRO de la hoja: el aviso general de la página
+   * queda detrás del fondo oscuro y no se veía al pulsar «Guardar».
+   */
+  const [errorForm, setErrorForm] = useState("");
+  const abrirForm = (f: typeof form) => { setErrorForm(""); setForm(f); };
 
   const p = usePaginado<Sorteo>((d, h) => {
     let q = supabase.from("sorteos").select(COLS_SORTEO, { count: "exact" });
@@ -45,8 +52,10 @@ export default function AdminSorteos() {
 
   const guardar = async () => {
     if (!form) return;
-    if (!form.titulo.trim() || !form.premio.trim() || !form.cierra) { setAviso({ tono: "error", texto: "Faltan título, premio o fecha de cierre." }); return; }
-    setGuardando(true); setAviso(null);
+    const faltan = [!form.titulo.trim() && "título", !form.premio.trim() && "premio", !form.cierra && "fecha de cierre"].filter(Boolean);
+    if (faltan.length) { setErrorForm(`Falta: ${faltan.join(", ")}.`); return; }
+    if (form.abre && new Date(form.cierra) <= new Date(form.abre)) { setErrorForm("La fecha de cierre tiene que ser después de la de apertura."); return; }
+    setGuardando(true); setAviso(null); setErrorForm("");
     const fila = {
       titulo: form.titulo.trim(), descripcion: form.descripcion.trim() || null, premio: form.premio.trim(), bases: form.bases.trim() || null,
       imagen_url: form.imagen_url.trim() || null, tardeo_id: form.tardeo_id.trim() || null, zona_madre: form.zona_madre || null,
@@ -57,14 +66,27 @@ export default function AdminSorteos() {
       ? await supabase.from("sorteos").update(fila).eq("id", form.id).select("id")
       : await supabase.from("sorteos").insert({ ...fila, responsable: u.user?.id, created_by: u.user?.id }).select("id");
     setGuardando(false);
-    if (r.error || !r.data?.length) { setAviso({ tono: "error", texto: `No se pudo guardar: ${r.error?.message ?? "sin permiso"}` }); return; }
+    if (r.error || !r.data?.length) { setErrorForm(`No se pudo guardar: ${r.error?.message ?? "sin permiso"}`); return; }
     await supabase.rpc("auditar", { p_accion: form.id ? "editar" : "crear", p_entidad: "sorteo", p_entidad_id: r.data[0].id, p_zona: fila.zona_madre, p_detalle: { estado: fila.estado } });
     setForm(null); setAviso({ tono: "ok", texto: "Sorteo guardado." }); p.recargar();
   };
 
+  // Solo borradores: uno publicado tiene participaciones y quizá ganador, y
+  // eso debe quedar para la auditoría. La base (lote 72) aplica la misma regla.
+  const borrar = async (s: Sorteo) => {
+    if (s.estado !== "borrador" || !window.confirm(`¿Borrar el borrador «${s.titulo}»? No se puede deshacer.`)) return;
+    const r = await supabase.from("sorteos").delete({ count: "exact" }).eq("id", s.id).eq("estado", "borrador");
+    if (r.error || r.count === 0) {
+      setAviso({ tono: "error", texto: r.error ? `No se pudo borrar: ${r.error.message}` : "No se pudo borrar (falta aplicar el lote 72 en la base)." });
+      return;
+    }
+    await supabase.rpc("auditar", { p_accion: "borrar", p_entidad: "sorteo", p_entidad_id: s.id, p_zona: s.zona_madre, p_detalle: { titulo: s.titulo } });
+    setAviso({ tono: "ok", texto: "Borrador borrado." }); p.recargar();
+  };
+
   return (
     <SeccionPanel titulo="Sorteos" descripcion="Crear, revisar participantes, elegir y publicar ganador. Cada paso queda en la auditoría."
-      acciones={<Boton tamano="pequeno" onClick={() => setForm({ ...VACIO })}><Plus size={18} aria-hidden /> Nuevo sorteo</Boton>} ancho="ancho">
+      acciones={<Boton tamano="pequeno" onClick={() => abrirForm({ ...VACIO })}><Plus size={18} aria-hidden /> Nuevo sorteo</Boton>} ancho="ancho">
       <div className="mb-4">
         <Filtros<Filtro> valor={filtro} onCambiar={setFiltro} opciones={[
           { clave: "todos", label: "Todos" }, { clave: "borrador", label: "Borradores" }, { clave: "abierto", label: "Abiertos" },
@@ -87,10 +109,13 @@ export default function AdminSorteos() {
             <div className="flex flex-wrap gap-1.5">
               <Boton variante="contorno" tamano="pequeno" onClick={() => setSel(s)}><UserCheck size={16} aria-hidden /> Participantes</Boton>
               {s.estado !== "resuelto" && (
-                <Boton variante="contorno" tamano="pequeno" onClick={() => setForm({
+                <Boton variante="contorno" tamano="pequeno" onClick={() => abrirForm({
                   id: s.id, titulo: s.titulo, descripcion: s.descripcion ?? "", premio: s.premio, bases: s.bases ?? "", imagen_url: s.imagen_url ?? "",
                   tardeo_id: s.tardeo_id ?? "", zona_madre: s.zona_madre ?? "", abre: aLocal(s.abre), cierra: aLocal(s.cierra), estado: s.estado,
                 })}><Pencil size={16} aria-hidden /> Editar</Boton>
+              )}
+              {s.estado === "borrador" && (
+                <Boton variante="contorno" tamano="pequeno" onClick={() => borrar(s)}><Trash2 size={16} aria-hidden /> Borrar</Boton>
               )}
               {s.estado !== "borrador" && <Link href={`/sorteos/${s.id}`} target="_blank" aria-label="Ver en la app" className="grid min-h-[44px] min-w-[44px] place-items-center rounded-xl border border-linea-fuerte"><ExternalLink size={16} aria-hidden /></Link>}
             </div>
@@ -102,15 +127,16 @@ export default function AdminSorteos() {
       <Hoja abierta={!!form} onCerrar={() => !guardando && setForm(null)} titulo={form?.id ? "Editar sorteo" : "Nuevo sorteo"}>
         {form && (
           <div className="flex flex-col gap-3">
-            <Campo etiqueta="Título" htmlFor="s-t"><input id="s-t" className={claseCampo} value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} /></Campo>
-            <Campo etiqueta="Premio" htmlFor="s-p"><input id="s-p" className={claseCampo} placeholder="2 entradas para Sunset en la terraza" value={form.premio} onChange={(e) => setForm({ ...form, premio: e.target.value })} /></Campo>
+            <p className="text-sm text-tinta-suave">Los campos con * son obligatorios.</p>
+            <Campo etiqueta="Título *" htmlFor="s-t"><input id="s-t" required aria-required className={claseCampo} value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} /></Campo>
+            <Campo etiqueta="Premio *" htmlFor="s-p"><input id="s-p" required aria-required className={claseCampo} placeholder="2 entradas para Sunset en la terraza" value={form.premio} onChange={(e) => setForm({ ...form, premio: e.target.value })} /></Campo>
             <Campo etiqueta="Descripción" htmlFor="s-d"><textarea id="s-d" rows={2} className={claseCampo} value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} /></Campo>
             <Campo etiqueta="Bases" htmlFor="s-b" ayuda="Condiciones, cómo se elige y cómo se contacta al ganador."><textarea id="s-b" rows={5} className={claseCampo} value={form.bases} onChange={(e) => setForm({ ...form, bases: e.target.value })} /></Campo>
             <Campo etiqueta="Imagen (URL)" htmlFor="s-i"><input id="s-i" className={claseCampo} value={form.imagen_url} onChange={(e) => setForm({ ...form, imagen_url: e.target.value })} /></Campo>
-            <Campo etiqueta="Tardeo relacionado (id, opcional)" htmlFor="s-td"><input id="s-td" className={claseCampo} value={form.tardeo_id} onChange={(e) => setForm({ ...form, tardeo_id: e.target.value })} /></Campo>
+            <SelectorTardeo valor={form.tardeo_id} onCambio={(id) => setForm({ ...form, tardeo_id: id })} />
             <div className="grid grid-cols-2 gap-2">
               <Campo etiqueta="Abre" htmlFor="s-a"><input id="s-a" type="datetime-local" className={claseCampo} value={form.abre} onChange={(e) => setForm({ ...form, abre: e.target.value })} /></Campo>
-              <Campo etiqueta="Cierra" htmlFor="s-c"><input id="s-c" type="datetime-local" className={claseCampo} value={form.cierra} onChange={(e) => setForm({ ...form, cierra: e.target.value })} /></Campo>
+              <Campo etiqueta="Cierra *" htmlFor="s-c"><input id="s-c" type="datetime-local" required aria-required className={claseCampo} value={form.cierra} onChange={(e) => setForm({ ...form, cierra: e.target.value })} /></Campo>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <Campo etiqueta="Zona" htmlFor="s-z">
@@ -125,6 +151,7 @@ export default function AdminSorteos() {
                 </select>
               </Campo>
             </div>
+            {errorForm && <p role="alert" className="rounded-xl bg-error-fondo p-3 text-[15px] font-semibold text-error">{errorForm}</p>}
             <Boton ancho cargando={guardando} onClick={guardar}>Guardar</Boton>
           </div>
         )}
@@ -134,6 +161,89 @@ export default function AdminSorteos() {
         {sel && <Participantes s={sel} onCambio={(m) => { setAviso(m); p.recargar(); }} />}
       </Hoja>
     </SeccionPanel>
+  );
+}
+
+type TardeoOpcion = { id: string; titulo: string; fecha: string; locales: { nombre: string | null } | null };
+const fechaTardeo = (f: string) => new Date(f + "T12:00:00").toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" });
+
+/**
+ * Elegir el tardeo del sorteo buscándolo por nombre entre los próximos, en vez
+ * de pegar un id (nadie se lo sabe). Pocos resultados y del servidor.
+ */
+function SelectorTardeo({ valor, onCambio }: { valor: string; onCambio: (id: string) => void }) {
+  const [texto, setTexto] = useState("");
+  const busca = useDiferido(texto);
+  const [opciones, setOpciones] = useState<TardeoOpcion[]>([]);
+  const [elegido, setElegido] = useState<TardeoOpcion | null>(null);
+  // Qué búsqueda respondió la última: si no es la actual, se está buscando.
+  const [hecha, setHecha] = useState<string | null>(null);
+  const cargando = hecha !== busca;
+
+  // Al editar un sorteo que ya tiene tardeo, se enseña su nombre (aunque ya haya pasado).
+  useEffect(() => {
+    if (!valor || elegido?.id === valor) return;
+    supabase.from("tardeos").select("id,titulo,fecha,locales(nombre)").eq("id", valor).maybeSingle()
+      .then(({ data }) => setElegido((data as unknown as TardeoOpcion) ?? { id: valor, titulo: "Tardeo elegido", fecha: "", locales: null }));
+  }, [valor]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (valor) return;
+    let vivo = true;
+    const t = busca.trim().replace(/[%_,()*]/g, " ").replace(/\s+/g, " ");
+    let q = supabase.from("tardeos").select("id,titulo,fecha,locales(nombre)")
+      .gte("fecha", hoyISO()).neq("estado", "cancelado");
+    if (t) q = q.ilike("titulo", `%${t}%`);
+    q.order("fecha").order("id").limit(8).then(({ data }) => {
+      if (!vivo) return;
+      setOpciones((data ?? []) as unknown as TardeoOpcion[]);
+      setHecha(busca);
+    });
+    return () => { vivo = false; };
+  }, [busca, valor]);
+
+  if (valor) {
+    // Solo vale el elegido si es el del valor actual (al quitar y elegir otro).
+    const t = elegido?.id === valor ? elegido : null;
+    return (
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[15px] font-semibold text-tinta">Tardeo relacionado (opcional)</span>
+        <div className="flex items-center gap-2 rounded-xl border border-linea-fuerte bg-marfil-100 p-3">
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-semibold">{t?.titulo ?? "Cargando…"}</span>
+            {t?.fecha && (
+              <span className="block truncate text-sm text-tinta-suave">
+                {fechaTardeo(t.fecha)}{t.locales?.nombre ? ` · ${t.locales.nombre}` : ""}
+              </span>
+            )}
+          </span>
+          <button type="button" onClick={() => { onCambio(""); setTexto(""); }} aria-label="Quitar el tardeo"
+            className="grid min-h-[44px] min-w-[44px] shrink-0 place-items-center rounded-lg border border-linea-fuerte bg-white hover:bg-marfil">
+            <X size={18} aria-hidden />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Campo etiqueta="Tardeo relacionado (opcional)" htmlFor="s-td" ayuda="Busca entre los próximos tardeos por su nombre.">
+      <input id="s-td" type="search" className={claseCampo} placeholder="Escribe parte del nombre…"
+        value={texto} onChange={(e) => setTexto(e.target.value)} autoComplete="off" />
+      <ul className="flex max-h-56 flex-col divide-y divide-linea overflow-y-auto rounded-xl border border-linea" aria-label="Próximos tardeos">
+        {cargando && opciones.length === 0 && <li className="p-3 text-[15px] text-tinta-suave">Buscando…</li>}
+        {!cargando && opciones.length === 0 && <li className="p-3 text-[15px] text-tinta-suave">Ningún tardeo próximo con ese nombre.</li>}
+        {opciones.map((t) => (
+          <li key={t.id}>
+            <button type="button" onClick={() => { setElegido(t); onCambio(t.id); }}
+              className="flex min-h-[48px] w-full flex-col items-start px-3 py-2 text-left hover:bg-marfil-100">
+              <span className="w-full truncate text-[15px] font-semibold">{t.titulo}</span>
+              <span className="w-full truncate text-sm text-tinta-suave">{fechaTardeo(t.fecha)}{t.locales?.nombre ? ` · ${t.locales.nombre}` : ""}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </Campo>
   );
 }
 

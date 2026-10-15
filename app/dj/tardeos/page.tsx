@@ -111,7 +111,9 @@ export default function MisTardeosDj() {
 
   return (
     <SeccionPanel titulo="Mis tardeos" descripcion="Los tardeos en los que pinchas y las invitaciones de los locales.">
-      <div className="mb-4">
+      {/* Cuatro pestañas no caben en un móvil y la última («Vincularme /
+          proponer») quedaba fuera sin pista: aquí se parten en dos líneas. */}
+      <div className="mb-4 [&>[role=tablist]]:mx-0 [&>[role=tablist]]:flex-wrap [&>[role=tablist]]:overflow-visible [&>[role=tablist]]:px-0">
         <Filtros<Filtro>
           valor={filtro}
           onCambiar={(f) => { setFiltro(f); setAviso(null); }}

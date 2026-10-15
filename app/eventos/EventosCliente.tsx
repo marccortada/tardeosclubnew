@@ -30,8 +30,18 @@ function filtrosDeAdn(adn: AdnTardicola | null, zonaCabecera: string): Filtros {
   const musica = [...new Set(adn.musica.map((m) => m.split(":")[0]))].filter((id) => FAMILIAS.some((f) => f.id === id));
   const entrada: Entrada = adn.precioMax === "gratis" ? "gratis"
     : ["hasta10", "de10a20", "hasta20"].includes(adn.precioMax) ? "hasta20" : "";
-  return { zona: zonaCabecera || adn.zonas[0] || "", musica, tipo: adn.tiposEvento, entrada };
+  // Los tipos del ADN pueden venir con otra grafía (ADN antiguo): se pasan a la
+  // del catálogo para que la hoja de Filtros los enseñe marcados.
+  const tipo = [...new Set(adn.tiposEvento.map((x) => TIPOS_EVENTO.find((t) => mismoValor(t, x)) ?? x))];
+  return { zona: zonaCabecera || adn.zonas[0] || "", musica, tipo, entrada };
 }
+
+const iguales = (a: Filtros, b: Filtros) =>
+  mismaZona(a.zona, b.zona) && a.entrada === b.entrada
+  && [...a.musica].sort().join() === [...b.musica].sort().join()
+  && [...a.tipo].sort().join() === [...b.tipo].sort().join();
+
+const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
 
 function enCuando(t: Tardeo, c: Cuando, hoy: string): boolean {
   if (!c) return true;
@@ -52,19 +62,28 @@ function pasaFiltros(t: Tardeo, f: Filtros): boolean {
   return true;
 }
 
-/** El estado vive en la URL: volver de una ficha deja todo como estaba. */
-function aUrl(v: Vista, c: Cuando, q: string, f: Filtros, dia: string) {
+/**
+ * El estado vive en la URL: volver de una ficha deja todo como estaba.
+ * Los filtros solo se escriben si la persona los eligió (`explicitos`); si
+ * salen del ADN no se escriben, para que al recargar se vuelva a partir del ADN
+ * (y, si lo cambia en Mi ADN, Eventos lo note).
+ */
+function aUrl(v: Vista, c: Cuando, q: string, f: Filtros, dia: string, explicitos: boolean) {
   const p = new URLSearchParams();
   if (v !== "lista") p.set("vista", v);
   if (c) p.set("cuando", c);
   if (q) p.set("q", q);
-  if (f.zona) p.set("zona", f.zona);
-  if (f.musica.length) p.set("musica", f.musica.join(","));
-  if (f.tipo.length) p.set("tipo", f.tipo.join(","));
-  if (f.entrada) p.set("entrada", f.entrada);
+  if (explicitos) {
+    if (f.zona) p.set("zona", f.zona);
+    if (f.musica.length) p.set("musica", f.musica.join(","));
+    if (f.tipo.length) p.set("tipo", f.tipo.join(","));
+    if (f.entrada) p.set("entrada", f.entrada);
+    // «Sin filtros» elegido a propósito: hay que distinguirlo de «sin elegir».
+    if (!f.zona && !f.musica.length && !f.tipo.length && !f.entrada) p.set("f", "1");
+  }
   if (dia) p.set("dia", dia);
-  p.set("f", "1"); // filtros ya elegidos: no volver a prellenar con el ADN
-  return `/eventos?${p.toString()}`;
+  const qs = p.toString();
+  return qs ? `/eventos?${qs}` : "/eventos";
 }
 
 export default function EventosCliente({ todos }: { todos: Tardeo[] }) {
@@ -81,11 +100,18 @@ export default function EventosCliente({ todos }: { todos: Tardeo[] }) {
   const [mes, setMes] = useState(hoy.slice(0, 7));
   const [hoja, setHoja] = useState(false);
   const [borrador, setBorrador] = useState<Filtros>(VACIOS);
-  const listo = useRef(false);
-  const deUrl = useRef(false);
+  // `leido` es estado (no ref) para que el efecto 3 no escriba la URL con los
+  // valores iniciales antes de que se apliquen los de la URL.
+  const [leido, setLeido] = useState(false);
+  const yaLeida = useRef(false);
+  /** true = filtros elegidos por la persona (URL u hoja); false = salen del ADN. */
+  const explicitos = useRef(false);
 
   // 1) Leer la URL al montar (sin useSearchParams: la lista sale ya en el HTML).
+  //    Una sola vez: StrictMode re-ejecuta el efecto y no debe releer una URL ya reescrita.
   useEffect(() => {
+    if (yaLeida.current) return;
+    yaLeida.current = true;
     const p = new URLSearchParams(window.location.search);
     const v = p.get("vista");
     if (v === "mapa" || v === "mes" || v === "lista") setVista(v);
@@ -95,8 +121,8 @@ export default function EventosCliente({ todos }: { todos: Tardeo[] }) {
     setQ(p.get("q") ?? "");
     const d = p.get("dia");
     if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) { setDia(d); setMes(d.slice(0, 7)); }
-    deUrl.current = p.get("f") === "1" || ["zona", "musica", "tipo", "entrada"].some((k) => p.has(k));
-    if (deUrl.current) {
+    explicitos.current = p.get("f") === "1" || ["zona", "musica", "tipo", "entrada"].some((k) => p.has(k));
+    if (explicitos.current) {
       setF({
         zona: p.get("zona") ?? "",
         musica: (p.get("musica") ?? "").split(",").filter(Boolean),
@@ -105,28 +131,38 @@ export default function EventosCliente({ todos }: { todos: Tardeo[] }) {
       });
     }
     getZonas().then(setZonas);
-    listo.current = true;
+    setLeido(true);
   }, []);
 
-  // 2) ADN: prellena los filtros solo si la URL no traía los suyos.
+  // 2) ADN: es el filtro por defecto, salvo que la URL traiga filtros elegidos.
   useEffect(() => {
     if (!user) { setAdn(null); return; }
+    let vivo = true;
     getAdn(user.id).then((a) => {
+      if (!vivo) return;
       setAdn(a);
-      if (!deUrl.current) setF(filtrosDeAdn(a, leerZonaSegura()));
+      if (!explicitos.current) setF(filtrosDeAdn(a, leerZonaSegura()));
     });
+    return () => { vivo = false; };
   }, [user]);
 
-  // Sin sesión, la zona de la cabecera es el filtro por defecto.
+  // La zona de la cabecera manda sobre la del ADN mientras no haya filtros elegidos.
   useEffect(() => {
-    if (!deUrl.current && !user && zonaCabecera) setF((p) => ({ ...p, zona: zonaCabecera }));
-  }, [zonaCabecera, user]);
+    if (!explicitos.current && zonaCabecera) setF((p) => ({ ...p, zona: zonaCabecera }));
+  }, [zonaCabecera]);
 
   // 3) Guardar el estado en la URL (replace: no llena el historial).
   useEffect(() => {
-    if (!listo.current) return;
-    window.history.replaceState(window.history.state, "", aUrl(vista, cuando, q, f, vista === "mes" ? dia : ""));
-  }, [vista, cuando, q, f, dia]);
+    if (!leido) return;
+    window.history.replaceState(window.history.state, "", aUrl(vista, cuando, q, f, vista === "mes" ? dia : "", explicitos.current));
+  }, [leido, vista, cuando, q, f, dia]);
+
+  /** Aplica filtros elegidos; si coinciden con el ADN vuelven a ser «del ADN». */
+  const aplicar = (nuevos: Filtros) => {
+    const porDefecto = adn ? filtrosDeAdn(adn, leerZonaSegura()) : { ...VACIOS, zona: leerZonaSegura() };
+    explicitos.current = !iguales(nuevos, porDefecto);
+    setF(nuevos);
+  };
 
   // 4) Posición: se guarda al bajar y se recupera al volver de una ficha.
   useEffect(() => {
@@ -154,10 +190,13 @@ export default function EventosCliente({ todos }: { todos: Tardeo[] }) {
   const afin = (t: Tardeo) => adn ? encajeDe(t, adn).motivos.length > 0 : false;
 
   const abrirFiltros = () => { setBorrador(f); setHoja(true); };
+  // El select de zona solo marca si el valor coincide con una opción: se busca
+  // la del catálogo equivalente (el ADN o la URL pueden traer otra grafía).
+  const zonaOpcion = zonas.find((z) => borrador.zona && mismaZona(z.nombre, borrador.zona))?.nombre ?? borrador.zona;
   const chip = (activo: boolean) =>
     `min-h-[44px] flex-1 whitespace-nowrap rounded-full px-3 text-[15px] font-semibold transition ${activo ? "bg-magenta-50 text-magenta-700" : "bg-marfil-100 text-tinta"}`;
   const seg = (activo: boolean) =>
-    `inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl text-[15px] font-semibold transition ${activo ? "bg-magenta text-white shadow-tarjeta" : "text-tinta"}`;
+    `inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl text-[15px] font-semibold ${activo ? "bg-magenta text-white shadow-tarjeta" : "text-tinta"}`;
 
   return (
     <main className="bg-fondo">
@@ -186,8 +225,8 @@ export default function EventosCliente({ todos }: { todos: Tardeo[] }) {
         </div>
 
         <div className="mt-3 flex items-center justify-between text-[15px] text-tinta-suave">
-          <span>{vista === "mes" ? `${base.length} planes en total` : `${lista.length} ${lista.length === 1 ? "plan" : "planes"}`}</span>
-          <Link href="/directorio" className="inline-flex min-h-[44px] items-center gap-1.5 font-semibold text-magenta-700">
+          <span>{vista === "mes" ? `${plural(base.length, "plan", "planes")} en total` : plural(lista.length, "plan", "planes")}</span>
+          <Link href="/directorio" className="inline-flex min-h-[44px] items-center gap-1.5 font-semibold text-magenta-700 dark:text-magenta-400">
             <BookOpen size={17} aria-hidden /> Directorio
           </Link>
         </div>
@@ -198,7 +237,7 @@ export default function EventosCliente({ todos }: { todos: Tardeo[] }) {
           </div>
         )}
 
-        {vista === "lista" && <ListaPlanes lista={lista} afin={afin} vacio={() => { setF(VACIOS); setCuando(""); setQ(""); }} />}
+        {vista === "lista" && <ListaPlanes lista={lista} afin={afin} vacio={() => { explicitos.current = true; setF(VACIOS); setCuando(""); setQ(""); }} />}
 
         {vista === "mes" && (
           <Calendario base={base} mes={mes} setMes={setMes} dia={dia} setDia={setDia} hoy={hoy} afin={afin} />
@@ -208,13 +247,13 @@ export default function EventosCliente({ todos }: { todos: Tardeo[] }) {
       <Hoja abierta={hoja} onCerrar={() => setHoja(false)} titulo="Filtros"
         pie={
           <div className="flex flex-col gap-2">
-            <button type="button" onClick={() => { setF(borrador); setHoja(false); }}
+            <button type="button" onClick={() => { aplicar(borrador); setHoja(false); }}
               className="min-h-[52px] w-full rounded-2xl bg-magenta text-[17px] font-bold text-white">
-              Ver {contarBorrador} {contarBorrador === 1 ? "plan" : "planes"}
+              Ver {plural(contarBorrador, "plan", "planes")}
             </button>
             {adn && (
               <button type="button" onClick={() => setBorrador(filtrosDeAdn(adn, leerZonaSegura()))}
-                className="min-h-[44px] w-full text-[16px] font-semibold text-magenta-700">Restaurar mi ADN</button>
+                className="min-h-[44px] w-full text-[16px] font-semibold text-magenta-700 dark:text-magenta-400">Restaurar mi ADN</button>
             )}
           </div>
         }>
@@ -228,10 +267,11 @@ export default function EventosCliente({ todos }: { todos: Tardeo[] }) {
           <Pildora on={vista === "mes"} onClick={() => { setVista("mes"); setCuando(""); }}>Elegir fecha</Pildora>
         </Grupo>
         <Grupo titulo="Zona">
-          <select value={borrador.zona} onChange={(e) => setBorrador({ ...borrador, zona: e.target.value })}
+          <select value={zonaOpcion} onChange={(e) => setBorrador({ ...borrador, zona: e.target.value })}
             className="min-h-[48px] w-full rounded-2xl border border-linea bg-superficie px-4 text-[16px] text-tinta">
             <option value="">Todas las zonas</option>
             {zonas.map((z) => <option key={z.slug} value={z.nombre}>{z.nombre}</option>)}
+            {zonaOpcion && !zonas.some((z) => z.nombre === zonaOpcion) && <option value={zonaOpcion}>{zonaOpcion}</option>}
           </select>
         </Grupo>
         <Grupo titulo="Música">
@@ -305,7 +345,9 @@ function Calendario({ base, mes, setMes, dia, setDia, hoy, afin }: {
   const nDias = new Date(Date.UTC(a, m, 0)).getUTCDate();
   const hueco = (primero.getUTCDay() + 6) % 7; // lunes primero
   const conPlan = new Set(base.map((t) => t.fecha));
-  const nombre = primero.toLocaleDateString("es-ES", { month: "long", year: "numeric", timeZone: "UTC" });
+  const nombreLargo = primero.toLocaleDateString("es-ES", { month: "long", year: "numeric", timeZone: "UTC" });
+  // Solo la primera letra: la clase `capitalize` ponía «Octubre De 2026».
+  const nombre = nombreLargo.charAt(0).toUpperCase() + nombreLargo.slice(1);
   const mover = (d: number) => {
     const n = new Date(Date.UTC(a, m - 1 + d, 1));
     setMes(n.toISOString().slice(0, 7));
@@ -320,7 +362,7 @@ function Calendario({ base, mes, setMes, dia, setDia, hoy, afin }: {
         <div className="mb-2 flex items-center justify-between">
           <button type="button" aria-label="Mes anterior" onClick={() => mover(-1)} disabled={mes <= hoy.slice(0, 7)}
             className="grid h-11 w-11 place-items-center rounded-full text-tinta disabled:opacity-30"><ChevronLeft size={20} aria-hidden /></button>
-          <p className="text-[17px] font-bold capitalize text-tinta">{nombre}</p>
+          <p className="text-[17px] font-bold text-tinta">{nombre}</p>
           <button type="button" aria-label="Mes siguiente" onClick={() => mover(1)}
             className="grid h-11 w-11 place-items-center rounded-full text-tinta"><ChevronRight size={20} aria-hidden /></button>
         </div>

@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTardeosPublicadosDeDj } from "@/lib/tardeos";
 import { getDjPublico } from "@/lib/djs";
@@ -8,6 +7,7 @@ import { urlAbsoluta, jsonLdDj } from "@/lib/seo";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import RegistrarVista from "@/components/RegistrarVista";
 import PerfilDj from "./PerfilDj";
+import FichaOcultaPropia from "./FichaOcultaPropia";
 import ContenidoPublicoDj from "@/components/ContenidoPublicoDj";
 import Resenas from "@/components/Resenas";
 import ReclamarFicha from "@/components/ReclamarFicha";
@@ -18,7 +18,8 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const dj = await getDjPublico(id);
-  if (!dj) return { title: "DJ no encontrado · TardeosClub" };
+  // Sin ficha pública (no existe u oculta): que no se indexe esta URL.
+  if (!dj) return { title: "DJ no encontrado · TardeosClub", robots: { index: false } };
   const estilos = estilosDe(dj.estilos);
   const desc = `${dj.nombre_artistico}${estilos.length ? ` · ${estilos.join(", ")}` : ""}. Escucha sus sets y mira dónde pincha en TardeosClub.`;
   return {
@@ -41,10 +42,12 @@ export default async function PaginaDj({
   const { id } = await params;
   const { desde, pestana } = await searchParams;
   const dj = await getDjPublico(id);
-  if (!dj) notFound();
-  const [tardeos, sets] = await Promise.all([getTardeosPublicadosDeDj(id), getSetsDeDj(id)]);
   // Solo rutas de evento propias: nada de redirecciones abiertas.
   const volver = typeof desde === "string" && /^\/tardeos\/[\w-]+$/.test(desde) ? desde : null;
+  // El servidor lee sin sesión: una ficha oculta no le llega ni a su dueño.
+  // El navegador la vuelve a pedir con sesión y, si no es suya, pinta el 404.
+  if (!dj) return <FichaOcultaPropia id={id} volver={volver} />;
+  const [tardeos, sets] = await Promise.all([getTardeosPublicadosDeDj(id), getSetsDeDj(id)]);
   const redes = dj.redes && typeof dj.redes === "object" ? (dj.redes as Record<string, string>) : {};
 
   return (

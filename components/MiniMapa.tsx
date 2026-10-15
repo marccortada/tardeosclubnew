@@ -16,6 +16,7 @@ export default function MiniMapa({
 
   useEffect(() => {
     let cancel = false;
+    let espera: ReturnType<typeof setTimeout> | undefined;
     (async () => {
       const L = (await import("leaflet")).default;
       if (cancel || !ref.current || mapRef.current) return;
@@ -46,13 +47,17 @@ export default function MiniMapa({
         iconAnchor: [22, 50],
       });
       L.marker([lat, lng], { icon }).addTo(map);
-      setTimeout(() => map.invalidateSize(), 200);
+      // Solo si sigue montado: tras remove() invalidateSize lanzaba error.
+      espera = setTimeout(() => { if (mapRef.current === map) map.invalidateSize({ animate: false }); }, 200);
     })();
 
     return () => {
       cancel = true;
-      mapRef.current?.remove();
+      clearTimeout(espera);
+      const map = mapRef.current;
       mapRef.current = null;
+      // Parar animaciones y oyentes antes de remove(): evita «reading '_leaflet_pos'».
+      if (map) { try { map.stop(); map.off(); map.remove(); } catch { /* ya desmontado */ } }
     };
   }, [lat, lng]);
 

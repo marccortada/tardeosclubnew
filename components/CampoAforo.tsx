@@ -3,7 +3,8 @@
 import Campo, { claseCampo } from "@/components/ui/Campo";
 
 /**
- * Plazas de un tardeo gratis (el botón "Apuntarme"). Vacío = sin límite.
+ * Plazas de un tardeo gratis (el botón «Asistiré»). Vacío = sin límite.
+ * Lleno el aforo, quien pulsa «Asistiré» entra en lista de espera (lote 64).
  * Solo tiene sentido con apuntarse dentro de TardeosClub, por eso el formulario
  * lo enseña únicamente cuando la entrada es gratis.
  */
@@ -11,7 +12,7 @@ export default function CampoAforo({ valor, onCambio }: { valor: string; onCambi
   return (
     <Campo
       etiqueta="Plazas disponibles (opcional)"
-      ayuda="Cuando se llenen, el botón «Apuntarme» pasa a «Completo». Déjalo vacío si no hay límite."
+      ayuda="La gente reserva con «Asistiré». Cuando se llenen, los siguientes entran en lista de espera y suben solos si alguien se borra. Vacío = sin límite."
       htmlFor="aforo"
     >
       <input

@@ -116,8 +116,11 @@ export default function AdminInicio() {
       }
       ancho="ancho"
     >
-      <div className="grid gap-8 lg:grid-cols-2">
-        <section aria-labelledby="hoy">
+      {/* grid-cols-1 (= minmax(0,1fr)) y min-w-0: sin ellos un título largo de
+          «Próximos tardeos» ensanchaba la columna y a 375 px las tarjetas de
+          «Para hoy» se salían de la pantalla (436 px). */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <section aria-labelledby="hoy" className="min-w-0">
           <h2 id="hoy" className="mb-3 text-lg font-bold">Para hoy</h2>
           {!leido ? (
             <div className="flex flex-col gap-3" aria-busy>
@@ -128,14 +131,14 @@ export default function AdminInicio() {
               <CheckCircle2 size={22} className="shrink-0" aria-hidden /> Nada pendiente. Buen trabajo.
             </p>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex min-w-0 flex-col gap-3 [&>a]:min-w-0">
               {filas.map((f) => <FilaAviso key={f.clave} href={f.href} icono={f.icono} titulo={f.titulo} valor={f.valor} />)}
             </div>
           )}
         </section>
 
-        <section aria-labelledby="proximos">
-          <div className="mb-3 flex items-center justify-between gap-2">
+        <section aria-labelledby="proximos" className="min-w-0">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 id="proximos" className="text-lg font-bold">Próximos tardeos</h2>
             <Link href="/admin/tardeos" className="inline-flex min-h-[44px] items-center gap-1 text-[15px] font-semibold text-magenta-700 hover:underline">
               Ver todos <ChevronRight size={16} aria-hidden />
@@ -167,9 +170,9 @@ export default function AdminInicio() {
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[15px] font-semibold">{t.titulo}</span>
-                        <span className="flex items-center gap-1 text-sm text-tinta-suave">
+                        <span className="flex min-w-0 flex-wrap items-center gap-1 text-sm text-tinta-suave">
                           <span className="capitalize">{p.semana}</span>{t.hora_inicio ? ` · ${t.hora_inicio.slice(0, 5)}` : ""}
-                          {lugar && <><MapPin size={14} className="ml-1 shrink-0" aria-hidden /><span className="truncate">{lugar}</span></>}
+                          {lugar && <span className="flex min-w-0 items-center gap-1"><MapPin size={14} className="ml-1 shrink-0" aria-hidden /><span className="truncate">{lugar}</span></span>}
                         </span>
                       </span>
                     </Link>
@@ -182,7 +185,7 @@ export default function AdminInicio() {
       </div>
 
       {/* Cuatro cifras de la web ahora mismo; el detalle, en Estadísticas. */}
-      <section aria-label="La web ahora" className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section aria-label="La web ahora" className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4 [&>a]:min-w-0">
         <Kpi icon={CalendarCheck} label="Tardeos próximos" valor={kpis?.proximos} href="/admin/tardeos" />
         <Kpi icon={Store} label="Locales activos" valor={kpis?.locales} href="/admin/locales" />
         <Kpi icon={Disc3} label="DJs" valor={kpis?.djs} href="/admin/djs" />

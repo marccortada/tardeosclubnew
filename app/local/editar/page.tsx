@@ -175,7 +175,9 @@ export default function EditarLocal() {
       descripcion="Lo que ve la gente en tu ficha. Guarda al terminar."
       ancho="estrecho"
     >
-      <nav aria-label="Secciones" className="no-scrollbar -mx-4 mb-4 flex gap-1.5 overflow-x-auto px-4 md:mx-0 md:px-0">
+      {/* En dos líneas si no caben: deslizando de lado, las últimas quedaban
+          fuera de la pantalla sin ninguna pista de que existían. */}
+      <nav aria-label="Secciones" className="mb-4 flex flex-wrap gap-1.5">
         {indice.map(([id, t]) => (
           <a key={id} href={`#${id}`}
             className="inline-flex min-h-[40px] shrink-0 items-center rounded-full border border-linea-fuerte bg-white px-3.5 text-[14px] font-semibold hover:border-tinta/50">

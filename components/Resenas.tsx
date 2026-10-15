@@ -6,19 +6,26 @@ import { claseBoton } from "@/components/Boton";
 import Link from "next/link";
 import { useAuth } from "@/lib/useAuth";
 import { getResenasAprobadas, crearResena, miResena, apelarResena, etiquetaMotivo, Resena } from "@/lib/resenas";
-import { Star, Loader2, Check, Ban } from "lucide-react";
+import { Star, Loader2, Check, Ban, Clock } from "lucide-react";
 
 export default function Resenas({
   tipo,
   objetivoId,
   nombre,
   className = "mt-8",
+  tardeo,
 }: {
   tipo: "local" | "dj";
   objetivoId: string;
   nombre: string;
   /** Margen superior. Las fichas nuevas espacian con `gap` y pasan "". */
   className?: string;
+  /**
+   * Desde la ficha de un tardeo: su título (por si el local viene sin nombre)
+   * y si ya terminó. Antes de que acabe no se puede valorar: aún no lo ha
+   * vivido nadie.
+   */
+  tardeo?: { titulo: string; terminado: boolean };
 }) {
   const { user } = useAuth();
   const [resenas, setResenas] = useState<Resena[]>([]);
@@ -38,6 +45,10 @@ export default function Resenas({
     // eso a quien se la rechazaban no se le decía nunca, ni podía saber por qué.
     if (user) miResena(user.id, tipo, objetivoId).then(setMia);
   }, [tipo, objetivoId, user]);
+
+  // Nunca "¿Qué tal ?": si falta el nombre, el del tardeo o un texto sin nombre.
+  const quien = nombre?.trim() || tardeo?.titulo?.trim() || "";
+  const esperarAlFinal = !!tardeo && !tardeo.terminado;
 
   const media = resenas.length ? resenas.reduce((a, r) => a + r.puntuacion, 0) / resenas.length : 0;
 
@@ -64,9 +75,13 @@ export default function Resenas({
       </div>
 
       {/* Formulario de valoración */}
-      {!user ? (
+      {esperarAlFinal && !mia ? (
+        <p className="flex items-center gap-2 rounded-2xl border border-linea bg-white p-4 text-[15px] font-semibold text-tinta-suave">
+          <Clock size={18} className="shrink-0 text-magenta" aria-hidden /> Podrás valorarlo cuando termine.
+        </p>
+      ) : !user ? (
         <Link href="/perfil" className={claseBoton("contorno", "normal", true)}>
-          Entra para valorar {nombre}
+          {quien ? `Entra para valorar ${quien}` : "Entra para valorar"}
         </Link>
       ) : mia?.estado === "rechazada" ? (
         /*
@@ -118,7 +133,7 @@ export default function Resenas({
         </div>
       ) : (
         <div className="rounded-2xl border border-linea bg-white p-4">
-          <p className="mb-2 text-[15px] font-semibold text-tinta-suave">¿Qué tal {nombre}?</p>
+          <p className="mb-2 text-[15px] font-semibold text-tinta-suave">{quien ? `¿Qué tal ${quien}?` : "¿Qué tal la experiencia?"}</p>
           <div className={`flex gap-1 ${puntos > 0 ? "mb-3" : ""}`}>
             {[1, 2, 3, 4, 5].map((n) => (
               <button key={n} onClick={() => setPuntos(n)} aria-label={`${n} estrellas`} aria-pressed={n === puntos} className="grid h-12 w-12 place-items-center rounded-xl hover:bg-marfil-100">

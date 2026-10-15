@@ -482,6 +482,10 @@ export default function CrearTardeo() {
 
   // ---------- Publicado ----------
   if (estado === "publicado") {
+    // Un tardeo de una ficha sin aprobar no sale en la web aunque esté
+    // «publicado». Antes se decía a la vez «ya está visible» y «se verá cuando
+    // aprobemos»: ahora un solo mensaje, el que es verdad.
+    const sinAprobar = cuando.estado !== "borrador" && !!local?.estado && local.estado !== "activo";
     return (
       <SeccionPanel titulo="Crear tardeo" ancho="estrecho">
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-linea bg-white p-6 text-center shadow-tarjeta md:p-10">
@@ -493,7 +497,9 @@ export default function CrearTardeo() {
               programación arreglada eso sería mentira en dos de los tres
               caminos, además de contar mal las series. */}
           <h2 className="text-2xl font-bold">
-            {creados > 1
+            {sinAprobar
+              ? (creados > 1 ? `${creados} tardeos listos` : "Tardeo listo")
+              : creados > 1
               ? `${creados} tardeos ${cuando.estado === "borrador" ? "guardados" : cuando.estado === "programado" ? "programados" : "publicados"}`
               : cuando.estado === "borrador"
                 ? "Tardeo guardado"
@@ -502,7 +508,9 @@ export default function CrearTardeo() {
                   : "Tardeo publicado"}
           </h2>
           <p className="text-[16px] text-tinta-suave">
-            {cuando.estado === "borrador"
+            {sinAprobar
+              ? <>«{form.titulo}» {creados > 1 ? "están guardados" : "está guardado"}, pero aún no {creados > 1 ? "se ven" : "se ve"} en la web: {creados > 1 ? "saldrán" : "saldrá"} en cuanto aprobemos tu ficha. Lo revisamos a mano; mientras, solo lo ves tú en tu panel.</>
+              : cuando.estado === "borrador"
               ? <>«{form.titulo}» queda guardado sin publicar. Puedes seguir cuando quieras.</>
               : cuando.estado === "programado"
                 ? <>«{form.titulo}» {creados > 1 ? "saldrán solos" : "saldrá solo"} a la hora que has puesto.</>
@@ -512,13 +520,11 @@ export default function CrearTardeo() {
             <p className="-mt-2 text-[15px] text-tinta-suave">En {local.nombre}.</p>
           )}
 
-          {/* Un tardeo de una ficha sin aprobar no sale en la web aunque esté
-              «publicado». Sin decirlo, el local lo busca, no lo ve y cree que
-              ha fallado. */}
-          {cuando.estado !== "borrador" && local && local.estado && local.estado !== "activo" && (
-            <p className="flex w-full items-start gap-2 rounded-xl border border-aviso/25 bg-aviso-fondo p-4 text-left text-[15px] text-tinta">
-              <Clock size={18} className="mt-0.5 shrink-0 text-aviso" aria-hidden />
-              <span><b>Se verá en cuanto aprobemos tu ficha.</b> Lo revisamos a mano; mientras, solo lo ves tú en tu panel.</span>
+          {/* Sin aprobar: además del texto, una marca visible para que el
+              local no lo busque en la web y crea que ha fallado. */}
+          {sinAprobar && (
+            <p className="flex w-full items-center gap-2 rounded-xl border border-aviso/25 bg-aviso-fondo p-4 text-left text-[15px] font-semibold text-tinta">
+              <Clock size={18} className="shrink-0 text-aviso" aria-hidden /> Pendiente de aprobar tu ficha
             </p>
           )}
 

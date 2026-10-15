@@ -135,7 +135,11 @@ function TablaPlanes({ apagado, plazas, actual }: { apagado: boolean; plazas: nu
             <p className="mt-1 text-[15px] font-semibold">{precioTexto(p)}</p>
             <ul className="mt-3 flex flex-col gap-1.5 text-[15px] text-tinta-suave">
               {/* Sin repetir: el Fundador dice «Como Premium» en tres apartados. */}
-              {[...new Set([x.eventos, x.promos, x.estadisticas, x.coins])].map((t) => <li key={t}>{t}</li>)}
+              {/* La frase de Coins del Fundador («10 por ciclo + 10 Coins extra una
+                  vez») no se entendía: aquí se dice entera. Solo presentación. */}
+              {[...new Set([x.eventos, x.promos, x.estadisticas,
+                p === "fundador" ? "10 Coins promocionales cada ciclo y, de regalo al empezar, 10 más (una sola vez)" : x.coins,
+              ])].map((t) => <li key={t}>{t}</li>)}
               {p === "fundador" && <li>Primeros 50 locales{plazas != null ? ` (quedan ${plazas})` : ""}. Sello Fundador mientras siga activo.</li>}
             </ul>
             {/* Apagado ya lo dice arriba «Próximamente»: una etiqueta por plan sobraba. */}

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, X, Loader2, Info } from "lucide-react";
+import { Check, X, Loader2, Info, Hourglass } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import { getInscritosTardeo, marcarAsistencia, type Inscrito } from "@/lib/tardeos";
 
 type Asist = Inscrito["asistencia"];
@@ -14,10 +15,59 @@ type Asist = Inscrito["asistencia"];
 export const faltaLote48 = (e: string | null) =>
   !!e && /lote 48|asistencia|42703|does not exist|no existe/i.test(e);
 
-/** Carga los inscritos de un tardeo para pasar lista o exportar. */
+/** Alguien en la lista de espera (lote 64), con su puesto en la cola. */
+export type EnEspera = { inscripcion_id: string; nombre: string; puesto: number; desde: string };
+
+/**
+ * Carga los inscritos de un tardeo para pasar lista o exportar.
+ *
+ * `filas` son solo los confirmados (a quien se pasa lista y lo que va al CSV).
+ * `espera` es la lista de espera: `inscritos_de_tardeo` (lote 48) devuelve
+ * todos los estados, también 'espera', pero no `espera_desde`, que es lo que
+ * manda en el orden de la cola. Esa fecha se lee aparte de `inscripciones`
+ * (la RLS deja al dueño del tardeo leer sus filas). Si esa lectura falla, se
+ * ordena por fecha de alta, que casi siempre coincide.
+ */
 export async function cargarLista(tardeoId: string) {
   const r = await getInscritosTardeo(tardeoId);
-  return { filas: r.filas.filter((f) => f.estado === "apuntado"), error: r.error, sinLote: faltaLote48(r.error) };
+  // El tipo de lib/tardeos aún no conoce 'espera' (lote 64): se compara como texto.
+  const esperando = r.filas.filter((f) => (f.estado as string) === "espera");
+  let espera: EnEspera[] = [];
+  if (esperando.length > 0) {
+    const { data } = await supabase.from("inscripciones").select("id,espera_desde")
+      .eq("tardeo_id", tardeoId).eq("estado", "espera");
+    const desde = new Map(((data ?? []) as { id: string; espera_desde: string | null }[]).map((x) => [x.id, x.espera_desde]));
+    espera = esperando
+      .map((f) => ({ inscripcion_id: f.inscripcion_id, nombre: f.nombre, desde: desde.get(f.inscripcion_id) || f.apuntado_en, puesto: 0 }))
+      .sort((a, b) => a.desde.localeCompare(b.desde) || a.inscripcion_id.localeCompare(b.inscripcion_id))
+      .map((x, i) => ({ ...x, puesto: i + 1 }));
+  }
+  return { filas: r.filas.filter((f) => f.estado === "apuntado"), espera, error: r.error, sinLote: faltaLote48(r.error) };
+}
+
+/** Bloque «En lista de espera»: solo lectura, en el orden en que subirán. */
+export function ListaEspera({ espera }: { espera: EnEspera[] }) {
+  if (espera.length === 0) return null;
+  return (
+    <section aria-label="En lista de espera" className="mt-4">
+      <p className="mb-1 flex items-center gap-1.5 text-[15px] font-semibold">
+        <Hourglass size={16} className="text-aviso" aria-hidden /> En lista de espera ({espera.length})
+      </p>
+      <p className="mb-2 text-sm text-tinta-suave">Si alguien se borra, sube solo el primero de la lista y le avisamos.</p>
+      <ol className="flex flex-col divide-y divide-linea rounded-xl border border-linea">
+        {espera.map((e) => (
+          <li key={e.inscripcion_id} className="flex min-h-[44px] items-center gap-3 px-3 py-2">
+            <span className="grid h-8 min-w-[32px] shrink-0 place-items-center rounded-full bg-aviso-fondo text-[14px] font-bold text-aviso"
+              aria-label={`Puesto ${e.puesto}`}>{e.puesto}</span>
+            <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{e.nombre}</span>
+            <span className="shrink-0 text-sm text-tinta-suave">
+              {new Date(e.desde).toLocaleString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
 }
 
 const OPCIONES: { v: Asist; label: string; icono?: typeof Check }[] = [
@@ -45,6 +95,7 @@ export default function PasarLista({
   onCambio?: (filas: Inscrito[]) => void;
 }) {
   const [filas, setFilas] = useState<Inscrito[] | null>(null);
+  const [espera, setEspera] = useState<EnEspera[]>([]);
   const [sinLote, setSinLote] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState<string | null>(null);
@@ -57,6 +108,7 @@ export default function PasarLista({
       setSinLote(r.sinLote);
       setError(r.sinLote ? null : r.error);
       setFilas(r.filas);
+      setEspera(r.espera);
       onCambio?.(r.filas);
     });
     return () => { vivo = false; };
@@ -93,15 +145,22 @@ export default function PasarLista({
   }
 
   if (error) return <p role="alert" className="rounded-xl bg-error-fondo p-3 text-[15px] font-semibold text-error">No se pudo cargar la lista: {error}</p>;
-  if (filas.length === 0) return <p className="text-[15px] text-tinta-suave">Todavía no se ha apuntado nadie.</p>;
+  if (filas.length === 0 && espera.length === 0) return <p className="text-[15px] text-tinta-suave">Todavía no ha dicho «Asistiré» nadie.</p>;
 
   const vinieron = filas.filter((f) => f.asistencia === "asistio").length;
 
   return (
     <div>
-      <p className="mb-2 text-[15px] font-semibold" aria-live="polite">
-        {vinieron} de {filas.length} vinieron
+      <p className="mb-1 text-[15px] text-tinta-suave">
+        <b className="text-tinta">{filas.length}</b> {filas.length === 1 ? "confirmado" : "confirmados"}
+        {espera.length > 0 && <> · <b className="text-tinta">{espera.length}</b> en espera</>}
       </p>
+      {filas.length > 0 && (
+        <p className="mb-2 text-[15px] font-semibold" aria-live="polite">
+          {vinieron} de {filas.length} vinieron
+        </p>
+      )}
+      {filas.length > 0 && (
       <ul className="flex flex-col divide-y divide-linea rounded-xl border border-linea">
         {filas.map((f) => (
           <li key={f.inscripcion_id} className="flex flex-col gap-2 p-2.5 sm:flex-row sm:flex-wrap sm:items-center">
@@ -127,6 +186,8 @@ export default function PasarLista({
           </li>
         ))}
       </ul>
+      )}
+      <ListaEspera espera={espera} />
     </div>
   );
 }

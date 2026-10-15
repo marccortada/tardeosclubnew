@@ -8,7 +8,6 @@ import { LayoutDashboard, UserRound, CalendarDays, Disc3, Loader2, ShieldCheck, 
 import PanelShell, { type GrupoPanel } from "@/components/panel/PanelShell";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
-import { falloPorColumna } from "@/lib/tardeos";
 import { esRutaPanel } from "@/lib/rutasPanel";
 import { claseBoton } from "@/components/Boton";
 
@@ -62,30 +61,22 @@ export function useDj(): Ctx {
 const COLUMNAS = "id,profile_id,nombre_artistico,bio,estilos,redes,verificado,reputacion_score,oculto,avatar_url,playlist_url,zonas";
 
 /**
- * Lee una ficha por su id o por la cuenta del dueño. Si el lote 47 no está
- * pegado, `presskit_url` no existe y la consulta entera fallaría: el DJ vería
- * "Crea tu perfil" teniendo ya uno. Se reintenta sin esa columna.
+ * Lee una ficha por su id o por la cuenta del dueño.
+ *
+ * `presskit_url` NO se pide por la tabla: desde el lote 65 (aplicado) esa
+ * columna no tiene `grant select` y la consulta daba 403 en consola en cada
+ * pantalla del panel antes de reintentar. La URL se pide a presskit_de(), que
+ * al dueño (y a profesionales) sí se la da.
  */
 async function leerFicha(campo: "id" | "profile_id", valor: string) {
-  const pedir = (cols: string) =>
-    supabase.from("djs").select(cols).eq(campo, valor)
-      .order("created_at", { ascending: true }).limit(1).maybeSingle();
-  let { data, error } = await pedir(`${COLUMNAS},presskit_url`);
-  let sinColumna = false;
-  // Desde el lote 65 `presskit_url` no se lee por la tabla (press kit solo
-  // para profesionales): la base responde 42501. Se lee sin ella y la URL se
-  // pide a presskit_de(), que al dueño sí se la da.
-  const sinPermiso = error?.code === "42501";
-  if (error && (sinPermiso || falloPorColumna(error, "presskit_url"))) {
-    sinColumna = !sinPermiso;
-    ({ data, error } = await pedir(COLUMNAS));
-    if (!error && data && sinPermiso) {
-      const f = data as unknown as FichaDj;
-      const pk = await supabase.rpc("presskit_de", { p_dj: f.id });
-      f.presskit_url = typeof pk.data === "string" ? pk.data : null;
-    }
+  const { data, error } = await supabase.from("djs").select(COLUMNAS).eq(campo, valor)
+    .order("created_at", { ascending: true }).limit(1).maybeSingle();
+  const ficha = (data as unknown as FichaDj | null) ?? null;
+  if (!error && ficha) {
+    const pk = await supabase.rpc("presskit_de", { p_dj: ficha.id });
+    ficha.presskit_url = typeof pk.data === "string" ? pk.data : null;
   }
-  return { ficha: (data as unknown as FichaDj | null) ?? null, error, sinColumna };
+  return { ficha, error, sinColumna: false };
 }
 
 /** Consulta base de los tardeos en los que pincha un DJ (vía tardeo_djs). */

@@ -119,7 +119,7 @@ export default function SolicitudesDj({ djId }: { djId: string }) {
           </ul>
         )}
         {buscado.trim().length >= 2 && eventos.length === 0 && (
-          <p className="mt-2 text-[15px] text-tinta-suave">No lo encontramos. Si no existe, propónlo abajo.</p>
+          <p className="mt-2 text-[15px] text-tinta-suave">No lo encontramos. Si no existe, proponlo abajo.</p>
         )}
       </section>
 

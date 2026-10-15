@@ -226,6 +226,26 @@ export async function revisarSalud(): Promise<{ pruebas: Prueba[]; datos: Record
       ]);
       return { error: r.error ?? l.error ?? m.error ?? existeFuncion(g.error) ?? existeFuncion(c.error) };
     }),
+    // El 70 solo borra índices duplicados (no se ve desde la web) y va en el
+    // mismo paquete que el 71, así que se da por puesto si el 71 lo está. El
+    // 71 cambia feed_djs para que salgan también los DJs sin set ni evento:
+    // si alguna fila llega sin los dos, está aplicado; si el feed trae menos
+    // DJs de los que hay (sin llegar al tope pedido), falta.
+    comprobar("Feed de DJs completo e índices (lotes 70 y 71)", "Pega supabase/PEGAR_70_71.sql", async () => {
+      const TOPE = 50;
+      const [f, d] = await Promise.all([
+        supabase.rpc("feed_djs", { p_limite: TOPE }),
+        // Los mismos que puede enseñar el feed: los ocultos no salen nunca.
+        supabase.from("djs").select("id", { count: "exact" }).limit(0).eq("oculto", false),
+      ]);
+      if (f.error) return { error: f.error };
+      const filas = (f.data ?? []) as { set_id: string | null; evento_id: string | null }[];
+      if (filas.some((x) => !x.set_id && !x.evento_id)) return { error: null, nota: "Correcto: salen también los DJs sin set" };
+      if (filas.length < TOPE && (d.count ?? 0) > filas.length) {
+        return { error: { message: `El feed solo enseña ${filas.length} de ${d.count} DJs (los que tienen set o evento).` } };
+      }
+      return { error: null, nota: "Correcto" };
+    }),
   ]);
 
   // Lotes que solo crean disparadores, restricciones o políticas: no se ven

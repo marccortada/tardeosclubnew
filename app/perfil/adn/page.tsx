@@ -87,7 +87,7 @@ export default function MiAdn() {
         </p>
         {estado === "ok" && (
           <p role="status" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-ok-fondo px-3 py-2 font-semibold text-ok">
-            Guardado. Eventos ya parte de tu ADN.
+            Guardado. Eventos partirá de tu ADN.
             {/* Tras rellenarlo (a menudo justo después de crear la cuenta), el
                 siguiente paso natural es ver los planes, no quedarse aquí. */}
             <Link href="/" className="inline-flex min-h-[44px] items-center font-bold text-magenta-700">Ver mis planes →</Link>

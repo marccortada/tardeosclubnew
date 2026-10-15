@@ -286,6 +286,12 @@ export default function PanelLocal({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={valor}>
+      {/* Pestañas en móvil: en /local no caben y las últimas quedaban fuera de
+          la pantalla sin pista. Sin tocar los componentes comunes: la fila de
+          secciones de arriba (nav con borde) se difumina por la derecha para
+          que se note que sigue, y las pestañas de cada sección (SubSecciones,
+          Filtros) se parten en dos líneas. `contents` no añade caja. */}
+      <div className="contents [&_div.no-scrollbar]:flex-wrap [&_nav.no-scrollbar.border-b]:[-webkit-mask-image:linear-gradient(to_right,#000_calc(100%_-_40px),transparent)] [&_nav.no-scrollbar.border-b]:[mask-image:linear-gradient(to_right,#000_calc(100%_-_40px),transparent)]">
       <PanelShell
         rol={!ficha ? "Administración" : tipo === "promotor" ? "Mis eventos" : "Mi local"}
         nombre={ficha?.nombre ?? "Sin local elegido"}
@@ -304,6 +310,7 @@ export default function PanelLocal({ children }: { children: ReactNode }) {
           </SeccionPanel>
         )}
       </PanelShell>
+      </div>
     </Ctx.Provider>
   );
 }

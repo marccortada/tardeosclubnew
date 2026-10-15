@@ -4,15 +4,19 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Check, Clock, Ban, Loader2 } from "lucide-react";
 import CabeceraApp from "@/components/CabeceraApp";
+import Hoja from "@/components/ui/Hoja";
 import TarjetaPlan from "@/components/tardicola/TarjetaPlan";
 import { useAuth } from "@/lib/useAuth";
 import { getProximaParada, setFavorito, type PlanGuardado } from "@/lib/tardeos";
-import { retirarAsistencia, asistire } from "@/lib/tardicola";
+import { retirarAsistencia } from "@/lib/tardicola";
 import { hoyEnEspana } from "@/lib/fechas";
 
 /**
  * Próxima Parada (dossier pág. 9): guardados y Asistiré, Próximos / Pasados,
- * con su estado y quitar con Deshacer. Abre la misma ficha.
+ * con su estado. Dos acciones que NO se mezclan:
+ *  - «Quitar» deja de guardar (con Deshacer: no se pierde nada).
+ *  - «Ya no voy» retira el Asistiré, con confirmación: la plaza se pierde y al
+ *    volver la base decide otra vez (si está lleno, a la lista de espera).
  */
 export default function ProximaParada() {
   const { user, loading } = useAuth();
@@ -20,6 +24,8 @@ export default function ProximaParada() {
   const [error, setError] = useState("");
   const [pestana, setPestana] = useState<"proximos" | "pasados">("proximos");
   const [deshacer, setDeshacer] = useState<PlanGuardado | null>(null);
+  const [noVoy, setNoVoy] = useState<PlanGuardado | null>(null);
+  const [retirando, setRetirando] = useState(false);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("pestana") === "pasados") setPestana("pasados");
@@ -47,14 +53,18 @@ export default function ProximaParada() {
   const visibles = (planes ?? []).filter((p) => (pestana === "proximos" ? p.tardeo.fecha >= hoy : p.tardeo.fecha < hoy));
   if (pestana === "pasados") visibles.reverse();
 
-  /** Quitar = dejar de guardar y retirar el Asistiré. Se puede deshacer. */
+  const ordenar = (l: PlanGuardado[]) => [...l].sort((a, b) => a.tardeo.fecha.localeCompare(b.tardeo.fecha));
+  /** Cambia un plan de la lista; si ya no está guardado ni con Asistiré, sale. */
+  const cambiar = (id: string, nuevo: PlanGuardado | null) =>
+    setPlanes((l) => ordenar([...(l ?? []).filter((x) => x.tardeo.id !== id), ...(nuevo && (nuevo.guardado || nuevo.estado) ? [nuevo] : [])]));
+
+  /** Quitar = solo dejar de guardar. El Asistiré, si lo hay, no se toca. Se puede deshacer. */
   const quitar = async (p: PlanGuardado) => {
-    setPlanes((l) => (l ?? []).filter((x) => x.tardeo.id !== p.tardeo.id));
+    cambiar(p.tardeo.id, { ...p, guardado: false });
     setDeshacer(p);
-    const r1 = p.guardado ? await setFavorito(user.id, p.tardeo.id, false) : { error: null };
-    const r2 = p.estado ? await retirarAsistencia(user.id, p.tardeo.id) : { error: null };
-    if (r1.error || r2.error) {
-      setPlanes((l) => [...(l ?? []), p].sort((a, b) => a.tardeo.fecha.localeCompare(b.tardeo.fecha)));
+    const r = await setFavorito(user.id, p.tardeo.id, false);
+    if (r.error) {
+      cambiar(p.tardeo.id, p);
       setDeshacer(null);
       setError("No se pudo quitar. Inténtalo otra vez.");
     }
@@ -63,11 +73,24 @@ export default function ProximaParada() {
     const p = deshacer;
     if (!p) return;
     setDeshacer(null);
-    if (p.guardado) await setFavorito(user.id, p.tardeo.id, true);
-    // Al volver a pulsar Asistiré la base decide de nuevo (puede tocar espera).
-    let estado = p.estado;
-    if (p.estado) estado = (await asistire(user.id, p.tardeo.id)).r?.estado === "espera" ? "espera" : "apuntado";
-    setPlanes((l) => [...(l ?? []), { ...p, estado }].sort((a, b) => a.tardeo.fecha.localeCompare(b.tardeo.fecha)));
+    const r = await setFavorito(user.id, p.tardeo.id, true);
+    if (r.error) { setError("No se pudo deshacer. Vuelve a guardarlo desde la ficha."); return; }
+    setPlanes((l) => {
+      const actual = (l ?? []).find((x) => x.tardeo.id === p.tardeo.id);
+      return ordenar([...(l ?? []).filter((x) => x.tardeo.id !== p.tardeo.id), { ...(actual ?? p), guardado: true }]);
+    });
+  };
+
+  /** Ya no voy = retirar el Asistiré (tras confirmar). Si estaba guardado, sigue guardado. */
+  const confirmarNoVoy = async () => {
+    const p = noVoy;
+    if (!p) return;
+    setRetirando(true);
+    const r = await retirarAsistencia(user.id, p.tardeo.id);
+    setRetirando(false);
+    setNoVoy(null);
+    if (r.error) { setError("No se pudo retirar tu Asistiré. Inténtalo otra vez."); return; }
+    cambiar(p.tardeo.id, { ...p, estado: null });
   };
 
   return (
@@ -99,7 +122,14 @@ export default function ProximaParada() {
               <TarjetaPlan t={p.tardeo} />
               <div className="mt-1.5 flex items-center justify-between gap-2 px-1">
                 <Estado p={p} />
-                <button type="button" onClick={() => quitar(p)} className="min-h-[44px] px-2 text-[15px] font-semibold text-tinta-suave underline underline-offset-2">Quitar</button>
+                {/* Con Asistiré (y aún por llegar): «Ya no voy». Solo guardado: «Quitar». */}
+                {p.estado && pestana === "proximos" && p.tardeo.estado !== "cancelado" ? (
+                  <button type="button" onClick={() => setNoVoy(p)}
+                    className="min-h-[44px] px-2 text-[15px] font-semibold text-tinta-suave underline underline-offset-2">Ya no voy</button>
+                ) : p.guardado ? (
+                  <button type="button" onClick={() => quitar(p)} aria-label={`Quitar ${p.tardeo.titulo} de guardados`}
+                    className="min-h-[44px] px-2 text-[15px] font-semibold text-tinta-suave underline underline-offset-2">Quitar</button>
+                ) : null}
               </div>
             </li>
           ))}
@@ -108,10 +138,36 @@ export default function ProximaParada() {
 
       {deshacer && (
         <div role="status" className="fixed inset-x-3 bottom-[calc(76px+env(safe-area-inset-bottom))] z-[1001] mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl bg-tinta px-4 py-3 text-fondo shadow-elevada md:bottom-6">
-          <span className="truncate text-[15px]">Quitado: {deshacer.tardeo.titulo}</span>
+          <span className="truncate text-[15px]">Quitado de guardados: {deshacer.tardeo.titulo}</span>
           <button type="button" onClick={deshacerQuitar} className="min-h-[44px] shrink-0 font-bold text-oro">Deshacer</button>
         </div>
       )}
+
+      <Hoja abierta={!!noVoy} onCerrar={() => !retirando && setNoVoy(null)} titulo="¿Ya no vas?"
+        pie={
+          <div className="flex flex-col gap-2">
+            <button type="button" onClick={confirmarNoVoy} disabled={retirando}
+              className="min-h-[52px] w-full rounded-2xl bg-error text-[17px] font-bold text-white disabled:opacity-60">
+              {retirando ? "Retirando…" : "Sí, ya no voy"}
+            </button>
+            <button type="button" onClick={() => setNoVoy(null)} disabled={retirando}
+              className="min-h-[48px] w-full text-[16px] font-semibold text-magenta-700 dark:text-magenta-400">
+              {noVoy?.estado === "espera" ? "Seguir en la lista de espera" : "Mantener mi plaza"}
+            </button>
+          </div>
+        }>
+        {noVoy && (
+          <div className="space-y-2 text-[16px] text-tinta">
+            <p className="font-semibold">{noVoy.tardeo.titulo}</p>
+            {noVoy.estado === "espera" ? (
+              <p>Saldrás de la lista de espera y perderás tu turno.</p>
+            ) : (
+              <p>Perderás tu plaza. Si luego cambias de idea y ya está lleno, irías a la lista de espera.</p>
+            )}
+            {noVoy.guardado && <p className="text-tinta-suave">Seguirá en tus guardados.</p>}
+          </div>
+        )}
+      </Hoja>
     </main>
   );
 }

@@ -96,7 +96,7 @@ export default function PerfilTardicola({ uid }: { uid: string }) {
           <button type="button" onClick={() => fichero.current?.click()} aria-label="Cambiar foto"
             className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full bg-marfil-100">
             {p?.avatar_url ? <Image src={p.avatar_url} alt="" fill sizes="96px" className="object-cover" />
-              : <span className="grid h-full w-full place-items-center text-[32px] font-bold text-magenta-700">{nombre.charAt(0)}</span>}
+              : <span className="grid h-full w-full place-items-center text-[32px] font-bold text-magenta-700 dark:text-magenta-400">{nombre.charAt(0)}</span>}
             <span className="absolute inset-x-0 bottom-0 grid h-7 place-items-center bg-black/45 text-white">
               {subiendo ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Camera size={15} aria-hidden />}
             </span>
@@ -106,7 +106,7 @@ export default function PerfilTardicola({ uid }: { uid: string }) {
             <h1 className="truncate text-[28px] font-bold text-tinta">{nombre}</h1>
             {p?.bio && <p className="text-[15px] text-tinta-suave">{p.bio}</p>}
             <button type="button" onClick={() => { setBorr({ alias: p?.alias ?? "", bio: p?.bio ?? "" }); setEditando((v) => !v); }}
-              className="min-h-[44px] text-[15px] font-semibold text-magenta-700">Editar perfil</button>
+              className="min-h-[44px] text-[15px] font-semibold text-magenta-700 dark:text-magenta-400">Editar perfil</button>
           </div>
         </div>
 
@@ -142,7 +142,7 @@ export default function PerfilTardicola({ uid }: { uid: string }) {
           {/* Los paneles, lo primero: quien es DJ, local o admin entra sobre
               todo a trabajar (vídeo: el perfil del DJ empieza por sus cosas).
               Al final de la lista, tras «Ajustes», no los encontraba nadie. */}
-          {(roles.esLocal || roles.esPromotor) && <Fila href="/local" icono={<Store size={20} />}>Mi panel de {roles.esPromotor ? "eventos" : "local"}</Fila>}
+          {(roles.esLocal || roles.esPromotor) && <Fila href="/local" icono={<Store size={20} />}>{`Mi panel de ${roles.esPromotor ? "eventos" : "local"}`}</Fila>}
           {roles.esDj && <Fila href="/dj" icono={<Disc3 size={20} />}>Mi panel de DJ</Fila>}
           {roles.esAdmin && <Fila href="/admin" icono={<Shield size={20} />}>Administración</Fila>}
           <Fila href="/perfil/djs" icono={<Headphones size={20} />}>Mis DJs</Fila>
@@ -152,10 +152,12 @@ export default function PerfilTardicola({ uid }: { uid: string }) {
           <Fila href="/proxima-parada?pestana=pasados" icono={<CalendarDays size={20} />}>Historial de planes</Fila>
           <Fila href="/sorteos" icono={<Gift size={20} />}>Sorteos</Fila>
           <li>
-            <button type="button" role="switch" aria-checked={tema === "oscuro"} onClick={cambiarTema}
+            {/* Etiqueta fija: el estado lo dice el interruptor (on/off), no el texto.
+                Antes ponía «Modo claro» estando apagado y no se sabía qué hacía. */}
+            <button type="button" role="switch" aria-checked={tema === "oscuro"} aria-label="Modo oscuro" onClick={cambiarTema}
               className="flex min-h-[56px] w-full items-center gap-3 text-left text-[16px] font-medium text-tinta">
               <Moon size={20} className="text-tinta-suave" aria-hidden />
-              <span className="flex-1">{tema === "oscuro" ? "Modo oscuro" : "Modo claro"}</span>
+              <span className="flex-1">Modo oscuro</span>
               <span className={`relative h-7 w-12 rounded-full transition ${tema === "oscuro" ? "bg-magenta" : "bg-marfil-200"}`}>
                 <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${tema === "oscuro" ? "left-6" : "left-1"}`} />
               </span>
@@ -178,10 +180,12 @@ export default function PerfilTardicola({ uid }: { uid: string }) {
   );
 }
 
-function Fila({ href, icono, children }: { href: string; icono: ReactNode; children: ReactNode }) {
+/** Fila del menú. El texto es también su nombre accesible (aria-label explícito:
+ *  el lector no debe depender de cómo se pinte el icono o la flecha). */
+function Fila({ href, icono, children }: { href: string; icono: ReactNode; children: string }) {
   return (
     <li>
-      <Link href={href} className="flex min-h-[56px] items-center gap-3 text-[16px] font-medium text-tinta">
+      <Link href={href} aria-label={children} className="flex min-h-[56px] items-center gap-3 text-[16px] font-medium text-tinta">
         <span className="text-tinta-suave" aria-hidden>{icono}</span>
         <span className="flex-1">{children}</span>
         <ChevronRight size={18} className="text-tinta-suave" aria-hidden />
