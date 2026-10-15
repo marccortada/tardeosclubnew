@@ -85,8 +85,11 @@ comprobar() {
   fi
 }
 comprobar "/" 200
-comprobar "/tardeos" 200
-comprobar "/mapa" 200
+comprobar "/eventos" 200
+comprobar "/djs" 200
+comprobar "/nexo" 200
+# Desde la versión 2.0 /tardeos y /mapa redirigen a /eventos.
+comprobar "/tardeos" 307
 # La imagen propia es la que se perdía. Va aquí para que un despliegue que la
 # rompa no se dé por bueno.
 comprobar "/_next/image?url=%2Fbranding%2Flogo-transp.png&w=256&q=75" 200
