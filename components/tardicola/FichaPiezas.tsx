@@ -31,7 +31,7 @@ export function LeerMas({ texto }: { texto: string }) {
     <p className="whitespace-pre-line text-[16px] leading-relaxed text-tinta">
       {abierto || !largo ? texto : `${texto.slice(0, 170).trimEnd()}… `}
       {largo && (
-        <button type="button" onClick={() => setAbierto((v) => !v)} className="font-semibold text-magenta-700">
+        <button type="button" onClick={() => setAbierto((v) => !v)} className="-my-2 inline-flex min-h-[44px] items-center font-semibold text-magenta-700">
           {abierto ? " Leer menos" : "Leer más"}
         </button>
       )}

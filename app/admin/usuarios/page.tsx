@@ -198,8 +198,12 @@ export default function AdminUsuarios() {
     >
       <p className="mb-4 flex items-start gap-2 rounded-xl bg-marfil-100 p-3 text-[15px] text-tinta-suave">
         <Info size={18} className="mt-0.5 shrink-0" aria-hidden />
-        Los roles de admin se cambian por SQL. Para dar una ficha a alguien usa
-        «Asignar dueño» en Locales o DJs, o un <Link href="/admin/enlaces" className="font-semibold text-magenta-700 underline">enlace de invitación</Link>.
+        {/* En un solo hijo: suelto dentro del flex, el enlace hacía de
+            columna y en móvil el texto quedaba en una tira estrecha. */}
+        <span className="min-w-0">
+          Para dar una ficha a alguien usa «Asignar dueño» en Locales o DJs, o un{" "}
+          <Link href="/admin/enlaces" className="font-semibold text-magenta-700 underline">enlace de invitación</Link>.
+        </span>
       </p>
 
       <div aria-live="polite">{aviso && <Aviso tono={aviso.tono}>{aviso.texto}</Aviso>}</div>

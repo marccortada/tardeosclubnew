@@ -9,8 +9,8 @@ export default function ContenidoPagina() {
   const { dj } = useDj();
   return (
     <SeccionPanel
-      titulo="Sesiones y fotos"
-      descripcion="Flyers y fotos de cabina para tu ficha. Tus sesiones y mixes van ahora en «Publicar set» (/dj/sets)."
+      titulo="Fotos y flyers"
+      descripcion="Flyers y fotos de cabina para tu ficha. Tus sesiones van en «Publicar set»."
       ancho="estrecho"
     >
       <ContenidoDj djId={dj.id} />

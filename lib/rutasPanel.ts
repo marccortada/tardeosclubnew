@@ -6,13 +6,13 @@
  * OJO: /dj/<slug> es la ficha pública antigua de un DJ (redirige), no el panel.
  * Por eso del DJ solo cuentan /dj y sus secciones conocidas.
  */
-const SECCIONES_DJ = ["perfil", "contenido", "presskit", "tardeos", "resenas", "ayuda"];
+// "sets" y "nexo" (v2) faltaban: el panel salía con la cabecera de la web encima.
+const SECCIONES_DJ = ["perfil", "contenido", "presskit", "tardeos", "resenas", "ayuda", "sets", "nexo", "mensajes"];
 
-/** Secciones de "Mi cuenta" que solo existen con sesión. */
-const CUENTA = ["/perfil/gustos", "/perfil/reservas", "/perfil/notificaciones", "/perfil/ajustes"];
-
+// Las secciones de la cuenta (/perfil/ajustes, /perfil/notificaciones…) ya no
+// son panel: en v2 se pintan como pantallas de la app (MarcoCuenta), con la
+// cabecera pública en escritorio.
 export function esRutaPanel(pathname: string): boolean {
-  if (CUENTA.some((r) => pathname === r || pathname.startsWith(r + "/"))) return true;
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return true;
   if (pathname === "/local" || pathname.startsWith("/local/")) return true;
   if (pathname === "/dj") return true;

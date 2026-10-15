@@ -236,7 +236,7 @@ export default function MeetZone() {
         <div ref={finRef} />
       </div>
 
-      <div className="sticky bottom-16 z-[600] border-t border-linea bg-superficie px-3 py-2 md:bottom-0">
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom)+var(--alto-mini,0px))] z-[600] border-t border-linea bg-superficie px-3 py-2 md:bottom-0">
         {e.puede_escribir ? (
           <form onSubmit={enviar} className="mx-auto flex max-w-2xl items-center gap-2">
             <label htmlFor="meet-texto" className="sr-only">Mensaje</label>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Sparkles, ExternalLink, Share2, Eye, Users, CalendarDays, FileText, BadgeCheck, Check, ArrowRight,
+  Sparkles, ExternalLink, Share2, BadgeCheck, Check, ArrowRight, FileText,
 } from "lucide-react";
 import { SeccionPanel } from "@/components/panel/PanelShell";
 import { Etiqueta } from "@/components/ui/Chip";
@@ -27,14 +27,17 @@ type Datos = {
 };
 
 /**
- * Resumen del panel: lo que hay que saber al entrar y los tres atajos que más
- * se usan. El resto (lista entera, fotos, datos) tiene su sección.
+ * Inicio del panel: corto. Si la ficha no se ve, por qué; la acción principal
+ * (crear tardeo) y compartir; los dos próximos tardeos y tres cifras. Antes
+ * eran cuatro tarjetas con subtítulo, tres atajos y la lista: en el móvil la
+ * acción principal quedaba debajo de la primera pantalla. El resto (lista
+ * entera, fotos, datos) tiene su sección en el menú.
  *
  * Todo se pide a la vez. Antes eran cuatro esperas en fila (local, tardeos,
  * métricas, apuntados) y el panel tardaba la suma de las cuatro en aparecer.
  */
 export default function ResumenLocal() {
-  const { ficha, enlace, esPromotor } = useFicha();
+  const { ficha, enlace } = useFicha();
   const [d, setD] = useState<Datos | null>(null);
   const [compartido, setCompartido] = useState<"" | "copiado" | "error">("");
 
@@ -83,21 +86,26 @@ export default function ResumenLocal() {
     }
   };
 
+  // Sin subtítulos: la etiqueta ya dice qué es y el detalle está en su sección.
   const kpis = [
-    { icon: Eye, label: "Visitas a tu ficha y tardeos", valor: d?.visitas, ayuda: "Desde siempre" },
-    { icon: Users, label: "Apuntados", valor: d?.apuntados, ayuda: "A tus próximos tardeos", href: "/local/apuntados" },
-    { icon: CalendarDays, label: "Tardeos próximos", valor: d?.proximos, ayuda: "Publicados o programados", href: "/local/tardeos" },
-    { icon: FileText, label: "Borradores", valor: d?.borradores, ayuda: "Guardados sin publicar", href: "/local/tardeos?filtro=borradores" },
+    { label: "Apuntados", valor: d?.apuntados, href: "/local/apuntados" },
+    { label: "Próximos", valor: d?.proximos, href: "/local/tardeos" },
+    { label: "Visitas", valor: d?.visitas, href: "/local/estadisticas" },
   ];
 
   return (
     <SeccionPanel
       titulo={ficha.nombre}
-      descripcion={esPromotor ? "Resumen de tus eventos en TardeosClub." : "Resumen de tu local en TardeosClub."}
       acciones={
-        ficha.verificado
-          ? <Etiqueta tono="ok"><BadgeCheck size={14} aria-hidden /> Verificado</Etiqueta>
-          : publica ? <Etiqueta tono="ok">Publicada</Etiqueta> : <Etiqueta tono="aviso">Sin publicar</Etiqueta>
+        <>
+          {ficha.verificado
+            ? <Etiqueta tono="ok"><BadgeCheck size={14} aria-hidden /> Verificado</Etiqueta>
+            : publica ? <Etiqueta tono="ok">Publicada</Etiqueta> : <Etiqueta tono="aviso">Sin publicar</Etiqueta>}
+          <Link href={`/locales/${ficha.id}`} target="_blank"
+            className="inline-flex min-h-[44px] items-center gap-1 text-[15px] font-semibold text-magenta-700 underline-offset-2 hover:underline">
+            Ver mi ficha <ExternalLink size={14} aria-hidden />
+          </Link>
+        </>
       }
     >
       <div className="flex flex-col gap-6">
@@ -105,62 +113,28 @@ export default function ResumenLocal() {
             la web, es lo único que te importa. */}
         <FichaPendiente estado={ficha.estado} local={ficha} hrefEditar={enlace("/local/editar")} />
 
-        {d?.errorCifras && (
-          <p role="alert" className="-mb-3 rounded-xl border border-error/20 bg-error-fondo p-3 text-[15px] font-semibold text-error">
-            Algunas cifras no se han podido cargar: {d.errorCifras}
-          </p>
-        )}
-        <section aria-label="Cifras" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {kpis.map(({ icon: Icon, label, valor, ayuda, href }) => {
-            const cuerpo = (
-              <>
-                <Icon size={20} className="text-magenta" aria-hidden />
-                <p className="mt-2 text-[28px] font-bold leading-none">
-                  {d ? (valor ?? "—") : <span className="inline-block h-7 w-10 animate-pulse rounded bg-marfil-100" />}
-                </p>
-                <p className="mt-1.5 text-[15px] font-semibold leading-tight">{label}</p>
-                <p className="text-[13px] text-tinta-suave">{ayuda}</p>
-              </>
-            );
-            return href ? (
-              <Link key={label} href={enlace(href)} className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta transition hover:border-linea-fuerte">
-                {cuerpo}
-              </Link>
-            ) : (
-              <div key={label} className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta">{cuerpo}</div>
-            );
-          })}
-        </section>
-
-        <section aria-label="Accesos rápidos" className="grid gap-3 md:grid-cols-3">
+        {/* Las dos acciones de cada semana, a mano del pulgar. */}
+        <section aria-label="Acciones" className="grid gap-3 sm:grid-cols-2">
           <Link href={enlace("/local/crear")}
-            className="flex min-h-[88px] items-center gap-4 rounded-2xl bg-magenta p-4 text-white shadow-tarjeta transition hover:bg-magenta-600">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-white/15"><Sparkles size={24} aria-hidden /></span>
+            className="flex min-h-[72px] items-center gap-4 rounded-2xl bg-magenta p-4 text-white shadow-tarjeta transition hover:bg-magenta-600">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/15"><Sparkles size={22} aria-hidden /></span>
             <span>
-              <span className="block text-[17px] font-bold leading-tight">Crear tardeo con IA</span>
-              <span className="text-sm text-white/90">Sube el flyer y rellenamos los datos</span>
-            </span>
-          </Link>
-          <Link href={`/locales/${ficha.id}`} target="_blank"
-            className="flex min-h-[88px] items-center gap-4 rounded-2xl border border-linea bg-white p-4 shadow-tarjeta transition hover:border-linea-fuerte">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta"><ExternalLink size={22} aria-hidden /></span>
-            <span>
-              <span className="block text-[17px] font-bold leading-tight">Ver mi ficha pública</span>
-              <span className="text-sm text-tinta-suave">{publica ? "Así te ve la gente" : "Aún no es visible para el público"}</span>
+              <span className="block text-[17px] font-bold leading-tight">Crear tardeo</span>
+              <span className="text-sm text-white/90">Sube el flyer y lo rellenamos</span>
             </span>
           </Link>
           <button type="button" onClick={compartir} disabled={!publica}
-            className="flex min-h-[88px] items-center gap-4 rounded-2xl border border-linea bg-white p-4 text-left shadow-tarjeta transition hover:border-linea-fuerte disabled:cursor-not-allowed disabled:opacity-60">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta">
+            className="flex min-h-[72px] items-center gap-4 rounded-2xl border border-linea bg-white p-4 text-left shadow-tarjeta transition hover:border-linea-fuerte disabled:cursor-not-allowed disabled:opacity-60">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta">
               {compartido === "copiado" ? <Check size={22} aria-hidden /> : <Share2 size={22} aria-hidden />}
             </span>
             <span>
-              <span className="block text-[17px] font-bold leading-tight">Compartir ficha</span>
+              <span className="block text-[17px] font-bold leading-tight">Compartir mi ficha</span>
               <span className="text-sm text-tinta-suave" aria-live="polite">
                 {!publica ? "Podrás cuando esté publicada"
-                  : compartido === "copiado" ? "Enlace copiado. Pégalo donde quieras"
+                  : compartido === "copiado" ? "Enlace copiado"
                   : compartido === "error" ? "No se pudo copiar. Inténtalo otra vez"
-                  : "Por WhatsApp, Instagram o donde quieras"}
+                  : "Por WhatsApp o donde quieras"}
               </span>
             </span>
           </button>
@@ -175,23 +149,44 @@ export default function ResumenLocal() {
           </div>
           {!d ? (
             <div className="flex flex-col gap-2" aria-busy>
-              {[0, 1, 2].map((i) => <div key={i} className="h-[94px] animate-pulse rounded-2xl bg-white ring-1 ring-linea" />)}
+              {[0, 1].map((i) => <div key={i} className="h-[94px] animate-pulse rounded-2xl bg-white ring-1 ring-linea" />)}
             </div>
           ) : d.error ? (
             <p className="rounded-xl border border-error/20 bg-error-fondo p-4 text-[15px] font-semibold text-error">No se pudieron cargar: {d.error}</p>
           ) : d.siguientes.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-linea-fuerte bg-white p-6 text-center">
-              <p className="text-[15px] text-tinta-suave">No tienes tardeos próximos publicados.</p>
-              <Link href={enlace("/local/crear")} className="mt-3 inline-flex min-h-[48px] items-center gap-2 rounded-xl bg-magenta px-5 text-[16px] font-bold text-white hover:bg-magenta-600">
-                <Sparkles size={18} aria-hidden /> Crear el primero
-              </Link>
-            </div>
+            // Sin segundo botón de crear: el de arriba está a un palmo.
+            <p className="rounded-2xl border border-dashed border-linea-fuerte bg-white p-5 text-center text-[15px] text-tinta-suave">
+              No tienes tardeos próximos publicados.
+            </p>
           ) : (
             <ul className="flex flex-col gap-2">
               {d.siguientes.map((t) => <FilaTardeo key={t.id} t={t} enlace={enlace} />)}
             </ul>
           )}
         </section>
+
+        {d?.errorCifras && (
+          <p role="alert" className="-mb-3 rounded-xl border border-error/20 bg-error-fondo p-3 text-[15px] font-semibold text-error">
+            Algunas cifras no se han podido cargar: {d.errorCifras}
+          </p>
+        )}
+        <section aria-label="Cifras" className="grid grid-cols-3 gap-2 sm:gap-3">
+          {kpis.map(({ label, valor, href }) => (
+            <Link key={label} href={enlace(href)} className="rounded-2xl border border-linea bg-white p-3 text-center shadow-tarjeta transition hover:border-linea-fuerte sm:p-4">
+              <p className="text-[26px] font-bold leading-none tabular-nums">
+                {d ? (valor ?? "—") : <span className="inline-block h-7 w-10 animate-pulse rounded bg-marfil-100" />}
+              </p>
+              <p className="mt-1.5 text-[14px] font-semibold text-tinta-suave">{label}</p>
+            </Link>
+          ))}
+        </section>
+        {/* Los borradores solo se mencionan si los hay: son trabajo a medias. */}
+        {!!d?.borradores && (
+          <Link href={enlace("/local/tardeos?filtro=borradores")}
+            className="-mt-3 inline-flex min-h-[44px] items-center gap-2 self-start text-[15px] font-semibold text-magenta-700 hover:underline">
+            <FileText size={17} aria-hidden /> {d.borradores} {d.borradores === 1 ? "borrador sin publicar" : "borradores sin publicar"} <ArrowRight size={16} aria-hidden />
+          </Link>
+        )}
       </div>
     </SeccionPanel>
   );

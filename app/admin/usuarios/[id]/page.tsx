@@ -369,7 +369,7 @@ export default function FichaUsuario() {
     >
       <div aria-live="polite">{aviso && <Aviso tono={aviso.tono}>{aviso.texto}</Aviso>}</div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {/* Cuenta */}
         <Bloque titulo="Cuenta" icono={<User size={18} aria-hidden />}>
           <div className="mb-3 flex flex-wrap gap-1.5">

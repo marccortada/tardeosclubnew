@@ -83,8 +83,10 @@ export default function Acceso() {
   // ?volver= manda SIEMPRE, también al crear cuenta: quien llega con una
   // invitación (/reclamar?token=…) y elige "Local" tiene que volver a
   // reclamar SU ficha, no ir a /unirse a crear otra duplicada.
+  // El tardícola recién llegado va al Inicio de la app: allí ve planes y el
+  // bloque «ADN Tardícola» le invita (opcional) a contar qué le mueve.
   const destino = (alta: boolean) =>
-    leerVolver() ?? (alta ? (rol !== "tardicola" ? `/unirse?rol=${rol}` : "/perfil") : TRAS_LOGIN);
+    leerVolver() ?? (alta ? (rol !== "tardicola" ? `/unirse?rol=${rol}` : "/") : TRAS_LOGIN);
 
   const irTrasEntrar = async (uid: string) => {
     if (modo === "signup") { router.push(destino(true)); return; }

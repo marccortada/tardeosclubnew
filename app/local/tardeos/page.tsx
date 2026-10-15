@@ -73,8 +73,10 @@ export default function MisTardeos() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className={vista === "lista" ? "" : "hidden lg:block"}>
+      {/* grid-cols-1 + min-w-0: sin ellos, en móvil la columna medía lo que
+          la fila de filtros (que se desliza) y la página tenía scroll lateral. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className={vista === "lista" ? "min-w-0" : "hidden lg:block"}>
           <Filtros
             opciones={FILTROS.map((f) => ({ clave: f.clave, label: f.label, n: cuentas?.[f.clave] }))}
             valor={filtro}

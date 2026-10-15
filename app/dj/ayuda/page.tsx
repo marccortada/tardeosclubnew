@@ -3,7 +3,7 @@
 import { ChevronDown, Mail, MessageCircle } from "lucide-react";
 import { SeccionPanel } from "@/components/panel/PanelShell";
 import { claseBoton } from "@/components/Boton";
-import { whatsappTardeos, emailTardeos } from "@/components/ServiciosExternos";
+import ServiciosExternos, { whatsappTardeos, emailTardeos } from "@/components/ServiciosExternos";
 import { useDj } from "../contexto";
 
 /**
@@ -43,7 +43,7 @@ const PREGUNTAS: { p: string; r: string }[] = [
 ];
 
 export default function AyudaDj() {
-  const { dj } = useDj();
+  const { dj, modoAdmin } = useDj();
   const texto = `Hola, soy ${dj.nombre_artistico} (DJ en TardeosClub). Tengo una duda: `;
 
   return (
@@ -75,6 +75,10 @@ export default function AyudaDj() {
           ))}
         </div>
       </section>
+
+      {/* Servicios de pago de terceros: antes ocupaban medio Inicio; aquí,
+          como en la ayuda del local, los encuentra quien los busca. */}
+      {!modoAdmin && <ServiciosExternos tipo="dj" />}
     </SeccionPanel>
   );
 }

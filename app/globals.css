@@ -76,9 +76,11 @@ label {
 }
 
 /* ---------- Marca ---------- */
+/* Del rosa de la marca a uno más hondo (y no al neón): con el neón
+   #FF3DCF el texto blanco pequeño se quedaba en 2,9:1 en la esquina clara. */
 .bg-marca {
   background-color: theme("colors.magenta.DEFAULT");
-  background-image: linear-gradient(135deg, theme("colors.magenta.DEFAULT") 0%, theme("colors.magenta.400") 100%);
+  background-image: linear-gradient(135deg, theme("colors.magenta.DEFAULT") 0%, theme("colors.magenta.600") 100%);
 }
 h1, h2, h3 {
   letter-spacing: -0.02em;
@@ -186,6 +188,45 @@ h1, h2, h3 {
 .legal .tabla-scroll {
   overflow-x: auto;
 }
+/* En el móvil, cada fila se apila como una tarjeta: tres columnas en 340 px
+   dejaban una palabra por línea y había que deslizar para leer la tercera.
+   Las etiquetas de la 2.ª y 3.ª columna vienen de --c2/--c3, que pone cada
+   tabla (se pintan delante del valor). */
+@media (max-width: 639px) {
+  .legal table thead {
+    display: none;
+  }
+  .legal table,
+  .legal table tbody,
+  .legal table tr,
+  .legal table td {
+    display: block;
+    width: 100%;
+  }
+  .legal table tr {
+    border: 1px solid rgb(var(--c-linea));
+    border-radius: 0.75rem;
+    padding: 0.6rem 0.85rem;
+    margin-bottom: 0.6rem;
+  }
+  .legal table td {
+    border: 0;
+    padding: 0.1rem 0;
+  }
+  .legal table td:first-child {
+    font-weight: 700;
+  }
+  .legal table td:nth-child(2)::before {
+    content: var(--c2, "");
+    font-weight: 600;
+    color: rgb(var(--c-tinta-suave));
+  }
+  .legal table td:nth-child(3)::before {
+    content: var(--c3, "");
+    font-weight: 600;
+    color: rgb(var(--c-tinta-suave));
+  }
+}
 
 /* ---------- Mapa ---------- */
 .leaflet-container {
@@ -195,38 +236,63 @@ h1, h2, h3 {
   font-family: inherit;
 }
 
-/* ---------- Animaciones de la portada ----------
-   Suaves y con sentido: el hero entra al cargar, la foto se acerca muy
-   despacio y cada bloque aparece al llegar con el scroll. Todo queda quieto
-   con "reducir movimiento" (regla global de arriba) y sin JavaScript el
-   contenido se ve igual (la clase .revelar solo oculta si hay JS). */
+/* ---------- Portada sin sesión (landing) ----------
+   Animaciones suaves y con sentido: la foto del hero se acerca muy despacio,
+   el texto del hero sube un poco al cargar y cada bloque aparece al llegar
+   con el scroll.
+
+   Regla de oro: NADA importante empieza invisible. El hero solo se mueve
+   (transform), no se desvanece: si una animación no llega a arrancar (vista
+   previa de Instagram/WhatsApp, captura, pestaña en segundo plano, ahorro de
+   batería), el titular y los botones se ven igual. Antes empezaban en
+   opacity:0 (con retraso y `both`), y en un móvil de 375 px llegó a verse
+   la foto SIN titular ni botones: la animación se quedó en su primer
+   fotograma. Además, un titular que entra desde opacidad 0 retrasa el LCP.
+
+   Los bloques de más abajo solo se ocultan si components/Revelar.tsx ha
+   puesto .con-revelar en <html> (hay JS, hay IntersectionObserver y no se ha
+   pedido "reducir movimiento"). */
 @keyframes entrar-arriba {
-  from { opacity: 0; transform: translateY(18px); }
-  to { opacity: 1; transform: none; }
+  from { transform: translateY(14px); }
+  to { transform: none; }
 }
 @keyframes acercar {
   from { transform: scale(1.08); }
   to { transform: scale(1); }
 }
-@keyframes latido {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
-  60% { box-shadow: 0 0 0 14px rgba(34, 197, 94, 0); }
-}
-.entrar { animation: entrar-arriba 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.entrar-1 { animation-delay: 0.08s; }
-.entrar-2 { animation-delay: 0.18s; }
-.entrar-3 { animation-delay: 0.3s; }
-.entrar-4 { animation-delay: 0.42s; }
+.entrar { animation: entrar-arriba 0.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.entrar-1 { animation-delay: 0.05s; }
+.entrar-2 { animation-delay: 0.14s; }
+.entrar-3 { animation-delay: 0.24s; }
+.entrar-4 { animation-delay: 0.34s; }
 .acercar { animation: acercar 14s ease-out both; }
-.latido { animation: latido 2.4s ease-out infinite; }
-.js .revelar { opacity: 0; transform: translateY(24px); transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
-.js .revelar.visible { opacity: 1; transform: none; }
-.js .revelar-hijos > * { opacity: 0; transform: translateY(18px); transition: opacity 0.6s ease-out, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
-.js .revelar-hijos.visible > * { opacity: 1; transform: none; }
-.js .revelar-hijos.visible > *:nth-child(2) { transition-delay: 0.06s; }
-.js .revelar-hijos.visible > *:nth-child(3) { transition-delay: 0.12s; }
-.js .revelar-hijos.visible > *:nth-child(4) { transition-delay: 0.18s; }
-.js .revelar-hijos.visible > *:nth-child(5) { transition-delay: 0.24s; }
-.js .revelar-hijos.visible > *:nth-child(6) { transition-delay: 0.3s; }
-.js .revelar-hijos.visible > *:nth-child(7) { transition-delay: 0.36s; }
-.js .revelar-hijos.visible > *:nth-child(8) { transition-delay: 0.42s; }
+
+/* Alto del hero: la pantalla del móvil menos la cabecera (4rem) y la barra
+   de abajo (4rem + zona segura del iPhone). svh y no vh: con vh, en Safari
+   el hero medía más que lo visible y los botones quedaban bajo la barra del
+   navegador. En escritorio, la pantalla menos la cabecera, con tope. */
+.hero-landing { min-height: calc(100vh - 8rem); }
+@supports (height: 100svh) {
+  .hero-landing { min-height: calc(100svh - 8rem - env(safe-area-inset-bottom, 0px)); }
+}
+@media (min-width: 768px) {
+  .hero-landing { min-height: min(calc(100vh - 76px), 820px); }
+}
+
+.con-revelar .revelar:not(.visible) { opacity: 0; transform: translateY(22px); }
+.con-revelar .revelar-hijos:not(.visible) > * { opacity: 0; transform: translateY(16px); }
+.con-revelar .revelar,
+.con-revelar .revelar-hijos > * {
+  transition: opacity 0.6s ease-out, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.con-revelar .revelar-hijos.visible > *:nth-child(2) { transition-delay: 0.06s; }
+.con-revelar .revelar-hijos.visible > *:nth-child(3) { transition-delay: 0.12s; }
+.con-revelar .revelar-hijos.visible > *:nth-child(4) { transition-delay: 0.18s; }
+.con-revelar .revelar-hijos.visible > *:nth-child(5) { transition-delay: 0.24s; }
+.con-revelar .revelar-hijos.visible > *:nth-child(6) { transition-delay: 0.3s; }
+/* Doble seguro: aunque la clase quedara puesta, con "reducir movimiento" o
+   al imprimir todo se ve. */
+@media (prefers-reduced-motion: reduce), print {
+  .con-revelar .revelar,
+  .con-revelar .revelar-hijos > * { opacity: 1 !important; transform: none !important; }
+}

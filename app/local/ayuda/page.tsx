@@ -34,7 +34,7 @@ export default function Ayuda() {
   const hola = `Hola, soy de ${ficha.nombre} y tengo una duda con mi panel de TardeosClub.`;
   return (
     <SeccionPanel titulo="Ayuda y servicios" descripcion="Respuestas rápidas y cómo hablar con nosotros.">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section>
           <h2 className="mb-3 text-xl font-bold">Preguntas frecuentes</h2>
           <div className="flex flex-col gap-2">

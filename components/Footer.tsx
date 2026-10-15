@@ -18,8 +18,8 @@ const COLUMNAS: { titulo: string; enlaces: { href: string; label: string; extern
     titulo: "Tu cuenta",
     enlaces: [
       { href: "/perfil", label: "Entrar o crear cuenta" },
-      { href: "/favoritos", label: "Mis planes" },
-      { href: "/perfil/gustos", label: "Mis gustos" },
+      { href: "/proxima-parada", label: "Próxima Parada" },
+      { href: "/perfil/adn", label: "Mi ADN" },
     ],
   },
   {

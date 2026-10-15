@@ -3,23 +3,31 @@
 import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import {
-  LayoutDashboard, Inbox, CalendarDays, Store, Megaphone, Disc3, Users, Star, ClipboardList,
-  Bell, BellRing, Tag, Mail, Contact, Link2, LineChart, CreditCard, Stethoscope, Flag, MessageSquareWarning, Plus, LifeBuoy, Bug,
-  ListTodo, ShieldCheck, History, Home,
+  LayoutDashboard, ListTodo, CalendarDays, Store, Users, PartyPopper, Megaphone, Briefcase,
+  LineChart, Stethoscope, Home, Plus,
 } from "lucide-react";
-import { Gift, SmilePlus } from "lucide-react"; // equipo D (sorteos, encuestas)
-import { Radio } from "lucide-react"; // equipo B (Nexo Radio)
 import { usePermisosAdmin } from "@/components/admin/roles";
 import PanelShell, { type GrupoPanel } from "@/components/panel/PanelShell";
 import { leerContadores, type Contadores } from "@/lib/adminContadores";
 import Link from "next/link";
 
 /**
- * Barra lateral del admin, como la del admin antiguo (Inicio · Locales ·
- * Tardeos · DJs · Usuarios · Banner · Registro · Onboarding · Analytics) pero
- * agrupada por trabajo y con lo pendiente contado al lado.
+ * Barra lateral del admin.
  *
- * Suscripciones está, pero marcada "Desactivado": los cobros siguen apagados
+ * Tenía 30 entradas en 7 grupos y conceptos repetidos («Por revisar», «Cola de
+ * trabajo», «Reclamaciones», «Moderación»… eran casi lo mismo). Ahora son diez
+ * entradas, cada una con sus pantallas como pestañas arriba de la página
+ * (`hijas` → `SubSecciones`). Ninguna ruta /admin/* desaparece: solo cambia
+ * desde dónde se llega.
+ *
+ * Orden pensado para el móvil (el admin entra casi siempre desde ahí): Inicio
+ * y Cola de trabajo arriba, que es lo que se mira cada día; lo demás, por
+ * bloques. Agrupado según el dossier (pág. 15): colas de trabajo, fichas
+ * (locales/promotores/DJs), eventos con listas y espera, comunidad (sorteos,
+ * encuestas), comercial (planes, Coins, promociones) y métricas.
+ *
+ * Suscripciones y Coins van juntas en Comercial y marcadas «Próximamente»
+ * (pagos con PayPal más adelante): los cobros siguen apagados
  * (`ajustes.planes_activos`) hasta cerrar las reglas con el cliente.
  */
 export default function AdminShell({ children }: { children: ReactNode }) {
@@ -30,14 +38,27 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   useEffect(() => { leerContadores().then(setC).catch(() => setC(null)); }, [pathname]);
 
-  const revisar = c ? (c.localesPorVerificar ?? 0) + (c.reclamaciones ?? 0) + (c.resenas ?? 0) + (c.flyers ?? 0) : null;
+  const resenasFlyers = c ? (c.resenas ?? 0) + (c.flyers ?? 0) : null;
+  const revisar = c ? (c.localesPorVerificar ?? 0) + (c.reclamaciones ?? 0) + (resenasFlyers ?? 0) : null;
+  // «Por revisar» ya incluye reclamaciones y reseñas: la entrada cuenta cada
+  // cosa una vez, no la suma de las pestañas.
+  const pendientes = c ? (revisar ?? 0) + (c.incidencias ?? 0) : null;
 
   const grupos: GrupoPanel[] = [
     {
       items: [
         { href: "/admin", label: "Inicio", icon: LayoutDashboard, exacto: true },
-        { href: "/admin/revisar", label: "Por revisar", icon: Inbox, badge: revisar },
-        { href: "/admin/cola", label: "Cola de trabajo", icon: ListTodo },
+        {
+          href: "/admin/cola", label: "Cola de trabajo", icon: ListTodo, badge: pendientes,
+          hijas: [
+            { href: "/admin/cola", label: "Todo" },
+            { href: "/admin/revisar", label: "Por revisar", badge: revisar },
+            { href: "/admin/reclamaciones", label: "Reclamaciones", badge: c?.reclamaciones },
+            { href: "/admin/moderacion", label: "Reseñas y flyers", badge: resenasFlyers },
+            { href: "/admin/denuncias", label: "Denuncias" },
+            { href: "/admin/incidencias", label: "Ayuda e incidencias", badge: c?.incidencias },
+          ],
+        },
       ],
     },
     // Admin que además tiene local (Sergi: Local + Admin Tarragona): acceso directo a su panel.
@@ -46,55 +67,76 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       items: [{ href: "/local", label: `Mi local · ${permisos.miLocal.nombre}`, icon: Home }],
     }] : []),
     {
-      titulo: "Contenido",
+      titulo: "Gestión",
       items: [
-        { href: "/admin/tardeos", label: "Tardeos", icon: CalendarDays },
-        { href: "/admin/locales", label: "Locales", icon: Store },
-        { href: "/admin/promotores", label: "Promotores", icon: Megaphone },
-        { href: "/admin/djs", label: "DJs", icon: Disc3 },
-        { href: "/admin/usuarios", label: "Usuarios", icon: Users },
-        { href: "/admin/destacados", label: "Destacados (portada)", icon: Star },
-        { href: "/admin/registro", label: "Registro de asistencias", icon: ClipboardList },
+        {
+          href: "/admin/tardeos", label: "Eventos", icon: CalendarDays,
+          hijas: [
+            { href: "/admin/tardeos", label: "Tardeos" },
+            { href: "/admin/registro", label: "Asistencias y espera" },
+            { href: "/admin/destacados", label: "Destacados" },
+          ],
+        },
+        {
+          href: "/admin/locales", label: "Fichas", icon: Store,
+          hijas: [
+            { href: "/admin/locales", label: "Locales" },
+            { href: "/admin/promotores", label: "Promotores" },
+            { href: "/admin/djs", label: "DJs" },
+          ],
+        },
+        {
+          href: "/admin/usuarios", label: "Usuarios y equipo", icon: Users,
+          hijas: [
+            { href: "/admin/usuarios", label: "Usuarios" },
+            { href: "/admin/equipo", label: "Equipo y zonas" },
+          ],
+        },
       ],
     },
     {
-      titulo: "Moderación",
+      titulo: "Promoción",
       items: [
-        { href: "/admin/reclamaciones", label: "Reclamaciones", icon: Flag, badge: c?.reclamaciones },
-        { href: "/admin/moderacion", label: "Reseñas y flyers", icon: MessageSquareWarning, badge: c ? (c.resenas ?? 0) + (c.flyers ?? 0) : null },
-        { href: "/admin/denuncias", label: "Denuncias comunidad", icon: Flag },
+        {
+          href: "/admin/sorteos", label: "Comunidad", icon: PartyPopper,
+          hijas: [
+            { href: "/admin/sorteos", label: "Sorteos" },
+            { href: "/admin/encuestas", label: "Encuestas" },
+            { href: "/admin/nexo", label: "Nexo Radio" },
+          ],
+        },
+        {
+          href: "/admin/popups", label: "Avisos al público", icon: Megaphone,
+          hijas: [
+            { href: "/admin/popups", label: "Pop-ups" },
+            { href: "/admin/notificaciones", label: "Notificaciones push" },
+          ],
+        },
+        {
+          href: "/admin/crm", label: "Comercial", icon: Briefcase,
+          hijas: [
+            { href: "/admin/crm", label: "CRM" },
+            { href: "/admin/ofertas", label: "Ofertas por email" },
+            { href: "/admin/promociones", label: "Extras y precios" },
+            { href: "/admin/enlaces", label: "Enlaces de alta" },
+            { href: "/admin/suscripciones", label: "Suscripciones", nota: "Próximamente" },
+            { href: "/admin/coins", label: "Coins", nota: "Próximamente" },
+          ],
+        },
       ],
     },
     {
-      titulo: "Marketing",
+      titulo: "Datos",
       items: [
-        { href: "/admin/popups", label: "Pop-ups", icon: Bell },
-        { href: "/admin/notificaciones", label: "Notificaciones push", icon: BellRing },
-        { href: "/admin/promociones", label: "Promociones y precios", icon: Tag },
-        { href: "/admin/sorteos", label: "Sorteos", icon: Gift },
-        { href: "/admin/nexo", label: "Nexo Radio", icon: Radio },
-        { href: "/admin/encuestas", label: "Encuestas", icon: SmilePlus },
         { href: "/admin/estadisticas", label: "Estadísticas", icon: LineChart },
-      ],
-    },
-    {
-      titulo: "Comercial",
-      items: [
-        { href: "/admin/enlaces", label: "Enlaces para locales", icon: Link2 },
-        { href: "/admin/ofertas", label: "Ofertas por email", icon: Mail },
-        { href: "/admin/crm", label: "CRM", icon: Contact },
-        { href: "/admin/suscripciones", label: "Suscripciones", icon: CreditCard, nota: "Apagado" },
-        { href: "/admin/coins", label: "Coins", icon: CreditCard, nota: "Apagado" },
-      ],
-    },
-    {
-      titulo: "Sistema",
-      items: [
-        { href: "/admin/incidencias", label: "Incidencias", icon: LifeBuoy, badge: c?.incidencias },
-        { href: "/admin/errores", label: "Errores", icon: Bug },
-        { href: "/admin/equipo", label: "Equipo y zonas", icon: ShieldCheck },
-        { href: "/admin/auditoria", label: "Auditoría", icon: History },
-        { href: "/admin/salud", label: "Salud", icon: Stethoscope },
+        {
+          href: "/admin/salud", label: "Sistema", icon: Stethoscope,
+          hijas: [
+            { href: "/admin/salud", label: "Salud" },
+            { href: "/admin/errores", label: "Errores" },
+            { href: "/admin/auditoria", label: "Auditoría" },
+          ],
+        },
       ],
     },
   ];

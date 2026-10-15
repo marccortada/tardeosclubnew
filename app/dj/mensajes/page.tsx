@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import { entrarYVolver } from "@/lib/volver";
 import Boton from "@/components/Boton";
+import { SeccionPanel } from "@/components/panel/PanelShell";
 import Hoja from "@/components/ui/Hoja";
 import { Filtros } from "@/components/panel/Paginacion";
 import Conversacion from "@/components/comunidad/Conversacion";
@@ -85,12 +85,12 @@ export default function BandejaDj() {
   }
 
   return (
-    <div className="min-h-[70vh] bg-fondo">
-      <header className="sticky top-0 z-[700] flex items-center gap-2 border-b border-linea bg-superficie/95 px-2 py-1.5 backdrop-blur">
-        <Link href="/dj" aria-label="Volver al panel" className="grid min-h-tacto min-w-tacto place-items-center rounded-full hover:bg-marfil-100"><ArrowLeft size={22} aria-hidden /></Link>
-        <h1 className="flex-1 text-lg font-bold">Solicitudes de mensaje</h1>
-      </header>
-      <main className="mx-auto max-w-2xl space-y-4 px-4 py-5">
+    <>
+      {/* Dentro del panel del DJ: su cabecera ya trae menú y título. Antes
+          tenía otra cabecera fija propia con flecha y en móvil salían dos
+          barras apiladas. */}
+      <SeccionPanel titulo="Mensajes" ancho="estrecho">
+      <div className="space-y-4">
         {loading || (user && dj === undefined) ? (
           <p className="grid place-items-center py-12 text-tinta-suave"><Loader2 className="animate-spin" aria-label="Cargando" /></p>
         ) : !user ? (
@@ -102,7 +102,7 @@ export default function BandejaDj() {
           </div>
         ) : (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-linea bg-superficie p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-[15px]">{acepta ? "Recibes solicitudes nuevas." : "Solicitudes nuevas en pausa. Las conversaciones abiertas siguen."}</p>
               <Boton tamano="pequeno" variante="contorno" onClick={cambiarLimite}>{acepta ? "Pausar solicitudes" : "Volver a recibir"}</Boton>
             </div>
@@ -159,12 +159,13 @@ export default function BandejaDj() {
             })}
           </>
         )}
-      </main>
+      </div>
+      </SeccionPanel>
       <Hoja abierta={!!confirmar} onCerrar={() => setConfirmar(null)} titulo="¿Bloquear?"
         pie={<Boton variante="peligro" ancho cargando={!!ocupado} onClick={() => confirmar && responder(confirmar, "bloquear")}>Bloquear</Boton>}>
         <p className="text-[16px]">No podrá enviarte más solicitudes ni mensajes. Puedes desbloquear más tarde desde Rechazadas.</p>
       </Hoja>
       {denunciar && <Denunciar abierta onCerrar={() => setDenunciar(null)} tipo="mensaje_dj" objetoId={denunciar} />}
-    </div>
+    </>
   );
 }

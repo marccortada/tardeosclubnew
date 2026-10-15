@@ -115,7 +115,7 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
               <p className="flex min-w-0 items-center gap-2 text-[16px] text-tinta-suave">
                 <MapPin size={18} className="shrink-0 text-magenta" aria-hidden />
                 {tardeo.local.nombre ? (
-                  <Link href={`/locales/${tardeo.local.id}`} className="truncate hover:underline">{[tardeo.local.nombre, tardeo.zona].filter(Boolean).join(" · ")}</Link>
+                  <Link href={`/locales/${tardeo.local.id}`} className="flex min-h-[44px] min-w-0 items-center hover:underline"><span className="truncate">{[tardeo.local.nombre, tardeo.zona].filter(Boolean).join(" · ")}</span></Link>
                 ) : <span className="truncate">{tardeo.zona || "Por confirmar"}</span>}
               </p>
               <EnlaceExterno href={mapsUrl} canal="mapa" localId={tardeo.local.id} tardeoId={tardeo.id}

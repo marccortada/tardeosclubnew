@@ -6,8 +6,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import {
-  LayoutDashboard, CalendarDays, CalendarPlus, Users, LineChart, Images, Store, Megaphone,
-  Star, CreditCard, LifeBuoy, ShieldCheck, Loader2, LogIn, ArrowLeft, MessageSquareQuote, PlusCircle, Coins, Disc3, QrCode,
+  LayoutDashboard, CalendarDays, CalendarPlus, LineChart, Store, Megaphone,
+  Star, LifeBuoy, ShieldCheck, Loader2, LogIn, ArrowLeft,
 } from "lucide-react";
 import PanelShell, { type GrupoPanel, SeccionPanel } from "@/components/panel/PanelShell";
 import { claseBoton } from "@/components/Boton";
@@ -208,36 +208,46 @@ export default function PanelLocal({ children }: { children: ReactNode }) {
   }
 
   const tipo = ficha?.tipo === "promotor" ? "promotor" : "local";
+  // Seis entradas como mucho (antes eran quince sueltas): cada una agrupa sus
+  // pantallas, que salen como pestañas arriba de la página (SubSecciones).
+  // Lo de pago (Suscripción, Coins) va junto en «Promoción» y marcado
+  // «Próximamente» mientras los cobros sigan apagados (PayPal, más adelante).
   const grupos: GrupoPanel[] = ficha ? [
     {
       items: [
-        { href: enlace("/local"), label: "Resumen", icon: LayoutDashboard, exacto: true },
-        { href: enlace("/local/tardeos"), label: "Mis tardeos", icon: CalendarDays },
-        { href: enlace("/local/crear"), label: "Crear tardeo", icon: CalendarPlus },
-        { href: enlace("/local/apuntados"), label: "Apuntados", icon: Users },
-      ],
-    },
-    {
-      titulo: tipo === "promotor" ? "Tu marca" : "Tu local",
-      items: [
+        { href: enlace("/local"), label: "Inicio", icon: LayoutDashboard, exacto: true },
+        {
+          href: enlace("/local/tardeos"), label: tipo === "promotor" ? "Mis eventos" : "Mis tardeos", icon: CalendarDays,
+          hijas: [
+            { href: enlace("/local/tardeos"), label: "Todos" },
+            { href: enlace("/local/crear"), label: "Crear tardeo" },
+            { href: enlace("/local/apuntados"), label: "Apuntados" },
+            { href: enlace("/local/solicitudes"), label: "Solicitudes de DJs" },
+          ],
+        },
+        {
+          href: enlace("/local/editar"), label: tipo === "promotor" ? "Mi marca" : "Mi local", icon: tipo === "promotor" ? Megaphone : Store,
+          hijas: [
+            { href: enlace("/local/editar"), label: "Datos" },
+            { href: enlace("/local/fotos"), label: "Fotos" },
+            { href: enlace("/local/resenas"), label: "Reseñas" },
+            { href: enlace("/local/qr"), label: "Código QR" },
+            // Quien tiene un bar y además organiza fuera necesita dos fichas: una
+            // de local y otra de eventos. Va a una pantalla del panel y no a
+            // /unirse, que a quien ya tiene ficha le manda de vuelta aquí.
+            ...(ajena ? [] : [{ href: "/local/nueva-ficha", label: "Añadir otra ficha" }]),
+          ],
+        },
         { href: enlace("/local/estadisticas"), label: "Estadísticas", icon: LineChart },
-        { href: enlace("/local/fotos"), label: "Fotos", icon: Images },
-        { href: enlace("/local/resenas"), label: "Reseñas", icon: MessageSquareQuote },
-        { href: enlace("/local/editar"), label: tipo === "promotor" ? "Datos de la marca" : "Datos del local", icon: tipo === "promotor" ? Megaphone : Store },
-        { href: enlace("/local/promocionar"), label: "Promocionar", icon: Star },
-        { href: enlace("/local/qr"), label: "QR del local", icon: QrCode },
-        { href: enlace("/local/suscripcion"), label: "Suscripción", icon: CreditCard, nota: planes ? undefined : "Pronto" },
-        { href: enlace("/local/coins"), label: "Coins", icon: Coins, nota: "Pronto" },
-        { href: enlace("/local/solicitudes"), label: "Solicitudes de DJs", icon: Disc3 },
-      ],
-    },
-    {
-      items: [
-        { href: enlace("/local/ayuda"), label: "Ayuda y servicios", icon: LifeBuoy },
-        // Quien tiene un bar y además organiza fuera necesita dos fichas: una
-        // de local y otra de eventos. Va a una pantalla del panel y no a
-        // /unirse, que a quien ya tiene ficha le manda de vuelta aquí.
-        ...(ajena ? [] : [{ href: "/local/nueva-ficha", label: "Añadir otra ficha", icon: PlusCircle }]),
+        {
+          href: enlace("/local/promocionar"), label: "Promoción", icon: Star,
+          hijas: [
+            { href: enlace("/local/promocionar"), label: "Destacar" },
+            { href: enlace("/local/suscripcion"), label: "Suscripción", nota: planes ? undefined : "Próximamente" },
+            { href: enlace("/local/coins"), label: "Coins", nota: "Próximamente" },
+          ],
+        },
+        { href: enlace("/local/ayuda"), label: "Ayuda", icon: LifeBuoy },
       ],
     },
     ...(esAdmin ? [{ titulo: "Administración", items: [{ href: "/admin", label: "Volver al admin", icon: ShieldCheck }] }] : []),

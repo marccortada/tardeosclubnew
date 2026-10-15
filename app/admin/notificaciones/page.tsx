@@ -106,7 +106,7 @@ export default function AdminNotificaciones() {
       descripcion="Le suena en el móvil a quien las haya aceptado, aunque tenga la web cerrada. Úsalo con cariño: quien recibe tres avisos que no van con él desactiva el cuarto."
       ancho="estrecho"
     >
-      <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-[minmax(0,1fr)_300px]">
         <div className="flex flex-col gap-4">
           <Tarjeta className="flex flex-col gap-4">
             <Campo etiqueta="Título" htmlFor="pu-titulo">

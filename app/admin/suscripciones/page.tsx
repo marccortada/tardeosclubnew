@@ -210,7 +210,7 @@ export default function AdminSuscripciones() {
   return (
     <SeccionPanel
       titulo="Suscripciones"
-      descripcion="Planes de locales y DJs, marcados a mano. Sin pasarela de pago."
+      descripcion="Planes de locales y DJs, marcados a mano."
       ancho="ancho"
     >
       {/* Lo primero que se ve, y sin ambigüedad: hoy aquí no se cobra nada. */}
@@ -218,10 +218,9 @@ export default function AdminSuscripciones() {
         <section role="status" className="mb-5 flex items-start gap-3 rounded-2xl border-2 border-aviso/40 bg-aviso-fondo p-4 md:p-5">
           <PowerOff size={28} className="mt-0.5 shrink-0 text-aviso" aria-hidden />
           <div>
-            <p className="text-lg font-extrabold text-aviso md:text-xl">Suscripciones desactivadas: nadie paga ni se cobra nada</p>
+            <p className="text-lg font-extrabold text-aviso md:text-xl">Próximamente: nadie paga ni se cobra nada</p>
             <p className="mt-1 text-[15px] text-tinta">
-              No hay pasarela de pago y las reglas de los planes están apagadas: todos los locales y DJs tienen todas las
-              funciones, paguen o no. Lo que marques abajo es solo una anotación interna.
+              Todos tienen todas las funciones. Lo que marques abajo es solo una nota interna.
             </p>
           </div>
         </section>

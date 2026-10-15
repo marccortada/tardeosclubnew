@@ -218,9 +218,11 @@ function FormularioPerfil() {
         {ok && !cambiado && <Aviso tono="ok">{ok}</Aviso>}
       </div>
 
-      {/* Barra de guardar, fija abajo mientras haya cambios sin guardar. */}
+      {/* Barra de guardar, fija abajo mientras haya cambios sin guardar. En
+          el móvil va encima de la barra de pestañas (que está por delante):
+          con bottom-0 quedaba tapada y no se podía guardar. */}
       {cambiado && (
-        <div className="fixed inset-x-0 bottom-0 z-[700] border-t border-linea bg-white/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:left-[264px]">
+        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom)+var(--alto-mini,0px))] z-[700] border-t border-linea bg-white/95 px-4 py-3 backdrop-blur md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:left-[264px]">
           <div className="mx-auto flex max-w-3xl items-center gap-2">
             <p className="hidden flex-1 text-[15px] text-tinta-suave sm:block">Tienes cambios sin guardar.</p>
             <Boton variante="contorno" onClick={() => { setF(base); setErrores({}); setError(""); }} disabled={guardando}>Descartar</Boton>

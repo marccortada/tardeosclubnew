@@ -5,18 +5,17 @@ import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
-  House, Heart, Sparkles, Bell, Settings, Store, Megaphone, Disc3, ShieldCheck, LogOut, Loader2, ArrowRight,
+  House, Heart, Sparkles, Bell, Settings, Store, Megaphone, Disc3, ShieldCheck, LogOut, Loader2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { hoyISO } from "@/lib/tardeos";
 import { useAuth } from "@/lib/useAuth";
-import PanelShell, { SeccionPanel, type GrupoPanel } from "@/components/panel/PanelShell";
+import CabeceraApp from "@/components/CabeceraApp";
 
 /**
  * "Mi cuenta" del tardícola: datos de la cuenta y su menú. Las páginas se
- * pintan con `MarcoCuenta`, que usa el mismo PanelShell que los demás
- * portales (barra lateral fija en escritorio). `CuentaNav` queda para quien
- * quiera el menú suelto.
+ * pintan con `MarcoCuenta` (pantalla de la app con flecha a Perfil).
+ * `CuentaNav` queda para quien quiera el menú suelto.
  */
 
 export type DatosCuenta = {
@@ -91,8 +90,8 @@ function itemsDe(d: DatosCuenta | null): { cuenta: Item[]; paneles: Item[] } {
   // planes cuenta solo lo que está por venir (lo pasado no pide nada).
   const cuenta: Item[] = [
     { href: "/perfil", label: "Inicio", icon: House, exacto: true },
-    { href: "/favoritos", label: "Mis planes", icon: Heart, badge: d?.nProximas || undefined },
-    { href: "/perfil/gustos", label: "Mis gustos", icon: Sparkles },
+    { href: "/proxima-parada", label: "Próxima Parada", icon: Heart, badge: d?.nProximas || undefined },
+    { href: "/perfil/adn", label: "Mi ADN", icon: Sparkles },
     { href: "/perfil/notificaciones", label: "Avisos", icon: Bell },
     { href: "/perfil/ajustes", label: "Ajustes", icon: Settings },
   ];
@@ -197,59 +196,37 @@ export default function CuentaNav({ datos }: { datos: DatosCuenta | null }) {
 }
 
 /**
- * Marco de cada página de la cuenta: el MISMO panel con barra lateral fija
- * que el local, el DJ y el admin (en móvil, pestañas arriba y la barra de
- * abajo de la web). Antes era una columna dentro de la página que se iba con
- * el scroll.
+ * Marco de cada página de la cuenta (Notificaciones, Ajustes, Mis gustos).
+ *
+ * v2: son pantallas que cuelgan de la pestaña Perfil, así que se pintan como
+ * el resto de la app (vídeo, hoja 3): cabecera con flecha a Perfil y el
+ * título, y el contenido en una columna. Antes usaban el PanelShell de los
+ * portales: en móvil salían dos cabeceras (la del panel y su fila de
+ * pestañas) con un menú antiguo («Inicio», «Mis planes»…) que ya no existe
+ * en la app. Los accesos a los paneles (local, DJ, admin) están en Perfil.
  */
 export function MarcoCuenta({
-  titulo, descripcion, acciones, children, datos, ancho,
+  titulo, descripcion, acciones, children,
 }: {
   titulo: string;
   descripcion?: ReactNode;
   acciones?: ReactNode;
   children: ReactNode;
-  datos: DatosCuenta | null;
+  /** Se mantiene por compatibilidad con las páginas que lo pasan. */
+  datos?: DatosCuenta | null;
   ancho?: "normal" | "ancho" | "estrecho";
 }) {
-  const { cuenta, paneles } = itemsDe(datos);
-  const grupos: GrupoPanel[] = [
-    { titulo: paneles.length ? "Mi cuenta" : undefined, items: cuenta.map((i) => ({ href: i.href, label: i.label, icon: i.icon, exacto: i.exacto, badge: i.badge })) },
-  ];
-  // Quien lleva un local, es DJ o admin entra sobre todo a trabajar: sus
-  // paneles van arriba del todo y en grande (cabecera de la barra y cajón
-  // móvil), no al final de la lista como un enlace más.
-  const destacados = paneles.length > 0 && (
-    <div>
-      <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-wider text-magenta">Mis paneles</p>
-      <ul className="flex flex-col gap-1.5">
-        {paneles.map((i) => (
-          <li key={i.href}>
-            <Link href={i.href} className="flex min-h-[48px] items-center gap-3 rounded-xl bg-magenta px-3 text-[15px] font-bold text-white shadow-tarjeta transition hover:bg-magenta-600">
-              <i.icon size={19} aria-hidden /> <span className="flex-1 truncate">{i.label}</span> <ArrowRight size={17} aria-hidden />
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
   return (
-    <PanelShell rol="Mi cuenta" nombre={datos?.nombre ?? "Tardícola"} grupos={grupos} cabecera={destacados || undefined}>
-      {/* En móvil la cabecera de la barra solo se ve abriendo el menú: los
-          paneles se ponen también arriba de la página, siempre a la vista. */}
-      {destacados && (
-        <div className="flex flex-wrap gap-2 border-b border-linea bg-white px-4 py-3 lg:hidden">
-          {paneles.map((i) => (
-            <Link key={i.href} href={i.href} className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl bg-magenta px-4 text-[15px] font-bold text-white">
-              <i.icon size={18} aria-hidden /> Ir a {i.label.charAt(0).toLowerCase() + i.label.slice(1)}
-            </Link>
-          ))}
-        </div>
-      )}
-      <SeccionPanel titulo={titulo} descripcion={descripcion} acciones={acciones} ancho={ancho}>
-        {children}
-      </SeccionPanel>
-    </PanelShell>
+    <>
+      <CabeceraApp titulo={titulo} volver="/perfil" />
+      <main className="mx-auto w-full max-w-2xl px-4 pb-10 pt-4 md:pt-8">
+        {/* En móvil el título ya va en la cabecera: aquí solo en escritorio. */}
+        <h1 className="hidden text-[28px] font-bold tracking-tight md:block">{titulo}</h1>
+        {descripcion && <p className="text-[15px] text-tinta-suave md:mt-1">{descripcion}</p>}
+        {acciones && <div className="mt-3 flex flex-wrap gap-2">{acciones}</div>}
+        <div className="mt-5">{children}</div>
+      </main>
+    </>
   );
 }
 

@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/useAuth";
 import { useRoles } from "@/lib/permisos";
 import { entrarYVolver } from "@/lib/volver";
 import Boton from "@/components/Boton";
+import CabeceraApp from "@/components/CabeceraApp";
 import Hoja from "@/components/ui/Hoja";
 import { claseCampo } from "@/components/ui/Campo";
 import Paginacion, { Buscador, usePaginado, useDiferido } from "@/components/panel/Paginacion";
@@ -35,11 +36,16 @@ export default function EntreBeats() {
     if (p.get("tab") === "anuncios") setTab("anuncios");
   }, []);
 
+  // Cabecera de pestaña como las demás (vídeo, hoja 4: logo, título y
+  // campana). En escritorio no se pinta (manda SiteNav): ahí va el título.
   const cabecera = (
-    <div className="px-4 pb-2 pt-5">
-      <h1 className="text-center text-2xl font-bold">Entre Beats</h1>
-      <p className="mt-1 text-[15px] text-tinta-suave">DJs, locales y organizadores</p>
-    </div>
+    <>
+      <CabeceraApp titulo="Entre Beats" />
+      <div className="mx-auto max-w-2xl px-4 pb-3 pt-4">
+        <h1 className="hidden text-2xl font-bold md:block">Entre Beats</h1>
+        <p className="text-[15px] text-tinta-suave">DJs, locales y organizadores</p>
+      </div>
+    </>
   );
 
   if (loading || roles.cargando) {

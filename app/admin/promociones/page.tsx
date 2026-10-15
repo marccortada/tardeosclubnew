@@ -144,7 +144,7 @@ function FilaPromo({
           <Trash2 size={16} aria-hidden />
         </Boton>
       </div>
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_120px]">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_120px]">
         <div className="flex flex-col gap-1.5">
           <label htmlFor={`${id}-n`} className="text-[15px] font-semibold">Nombre</label>
           <input id={`${id}-n`} value={nombre} onChange={(e) => setNombre(e.target.value)} className={claseCampo} />

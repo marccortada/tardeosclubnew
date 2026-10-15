@@ -168,6 +168,11 @@ Flujo:
    (pregunta primero "¿Qué eres?").
 2. Tras entrar se va a `?volver=` si existe, o a `rutaDeInicio()` según el rol.
    Un local/DJ recién dado de alta va a `/unirse?rol=…` para crear su ficha.
+   El tardícola (al entrar y al crear cuenta) va al **Inicio de la app** (`/`), no
+   al menú de Perfil; el ADN es opcional desde el bloque «ADN Tardícola».
+   Sus pantallas de cuenta (`/perfil/ajustes`, `/perfil/notificaciones`) usan
+   `MarcoCuenta` = cabecera de app con flecha a Perfil, sin barra lateral.
+   `/perfil/gustos` → `/perfil/adn` y `/perfil/reservas` → `/proxima-parada`.
 3. Todos los portales usan `PanelShell`: barra lateral fija (no se mueve al hacer
    scroll), botón "Volver a la web", sin pie de página, pestañas en móvil.
 4. **Invitaciones**: el admin genera un enlace `/reclamar?token=…` para una
@@ -213,6 +218,14 @@ servidor local no está en el 3000.
   suaves con `<Revelar />` y clases `entrar`, `acercar`, `revelar`.
 - No poner carruseles nuevos salvo el de DJs (el cliente no los quiere).
 - Fotos de stock: `lib/fotos.ts` (Unsplash, `unoptimized`).
+
+### Menús de panel (admin, local, DJ)
+
+Pocas entradas en la barra (admin ~10, local 6, DJ 6). Las pantallas de una
+misma entrada van en `hijas` (`ItemPanel` de `PanelShell`): cualquiera de ellas
+enciende la entrada y `SeccionPanel` pinta solo las pestañas hermanas arriba
+(`components/panel/SubSecciones.tsx`). Pantalla nueva = añadirla a las `hijas`
+de su entrada, no una entrada nueva. Lo de pago va junto y «Próximamente».
 
 ### Listas de panel (patrón obligatorio)
 

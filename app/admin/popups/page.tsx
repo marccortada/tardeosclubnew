@@ -251,7 +251,7 @@ export default function AdminPopups() {
         {hayLote49 === false && (
           <Aviso tono="aviso">Falta pegar supabase/49_popups.sql: hasta entonces el botón será siempre «Ver tardeos» y no se guarda la imagen.</Aviso>
         )}
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
           <div className="flex flex-col gap-4">
             <Tarjeta className="flex flex-col gap-4">
               <h2 className="text-lg font-bold">Contenido</h2>

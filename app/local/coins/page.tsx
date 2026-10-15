@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Coins, Loader2, X } from "lucide-react";
+import { Coins, Loader2, X, ChevronDown } from "lucide-react";
 import { SeccionPanel } from "@/components/panel/PanelShell";
 import { Etiqueta } from "@/components/ui/Chip";
 import Hoja from "@/components/ui/Hoja";
@@ -74,10 +74,87 @@ export default function MonederoCoins() {
     void cargar();
   };
 
-  if (falta) {
+  const misReservas = (
+    <section>
+      <h2 className="mb-3 text-xl font-bold">Mis reservas</h2>
+      {reservas.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-linea-fuerte bg-white p-5 text-center text-[15px] text-tinta-suave">Aún no has reservado nada.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {reservas.map((r) => {
+            const e = ESTADO_RESERVA[r.estado] ?? { texto: r.estado, tono: "neutro" as const };
+            return (
+              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-linea bg-white p-4 shadow-tarjeta">
+                <div className="min-w-0">
+                  <p className="font-bold">{servicios.find((s) => s.slug === r.servicio)?.nombre ?? r.servicio} · {r.coste} Coins</p>
+                  <p className="text-sm text-tinta-suave">{fecha(r.created_at)}{r.detalle ? ` · ${r.detalle}` : ""}</p>
+                  {r.resultado && <p className="text-sm">{r.resultado}</p>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Etiqueta tono={e.tono}>{e.texto}</Etiqueta>
+                  {r.estado === "pendiente" && (
+                    <Boton tamano="pequeno" variante="contorno" onClick={() => cancelar(r)}><X size={16} aria-hidden /> Cancelar</Boton>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+  const historial = (
+    <section>
+      <h2 className="mb-3 text-xl font-bold">Historial</h2>
+      {movs.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-linea-fuerte bg-white p-5 text-center text-[15px] text-tinta-suave">Sin movimientos todavía.</p>
+      ) : (
+        <ul className="overflow-hidden rounded-2xl border border-linea bg-white shadow-tarjeta">
+          {movs.map((m) => (
+            <li key={m.id} className="flex items-center justify-between gap-2 border-b border-linea px-4 py-3 last:border-0">
+              <div className="min-w-0">
+                <p className="text-[15px] font-semibold">{TIPO_MOV[m.tipo] ?? m.tipo} <span className="font-normal text-tinta-suave">· {BOLSAS[m.bolsa]?.nombre ?? m.bolsa}</span></p>
+                <p className="text-sm text-tinta-suave">{fecha(m.created_at)}{m.motivo ? ` · ${m.motivo}` : ""}</p>
+              </div>
+              <p className={`shrink-0 text-[16px] font-bold ${m.importe > 0 ? "text-ok" : "text-tinta"}`}>{m.importe > 0 ? "+" : ""}{m.importe}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+
+  // Apagado (o sin el lote en la base): un único estado «Próximamente». Antes
+  // se veía el monedero entero con nueve servicios, cuatro paquetes y un
+  // «Desactivado · próximamente» en cada botón: mucho ruido para algo que
+  // aún no se puede usar. Si el admin le ha dado Coins o hay movimientos, se
+  // enseñan (son suyos); el catálogo queda plegado.
+  if (falta || !activos) {
     return (
       <SeccionPanel titulo="Coins" ancho="estrecho">
-        <p className="rounded-2xl border border-aviso/25 bg-aviso-fondo p-4 text-[15px]">El monedero llegará en breve (falta el lote 68).</p>
+        <section className="flex flex-col items-center px-2 py-6 text-center">
+          <span className="grid h-14 w-14 place-items-center rounded-full bg-oro/20 text-tinta"><Coins size={26} aria-hidden /></span>
+          <h2 className="mt-3 text-xl font-bold">Próximamente</h2>
+          <p className="mt-1 max-w-sm text-[16px] text-tinta-suave">Créditos para promocionar tus tardeos: destacados, stories, pop-ups…</p>
+          {total > 0 && <p className="mt-4 text-[16px]">Ya tienes <b>{total} Coins</b> guardados.</p>}
+        </section>
+        {servicios.length > 0 && (
+          <details className="group border-t border-linea pt-2">
+            <summary className="flex min-h-[48px] cursor-pointer list-none items-center justify-between text-[16px] font-semibold text-tinta">
+              Qué podrás hacer <ChevronDown size={18} className="transition group-open:rotate-180" aria-hidden />
+            </summary>
+            <ul className="divide-y divide-linea pb-2">
+              {servicios.map((x) => (
+                <li key={x.slug} className="py-3">
+                  <p className="text-[16px] font-semibold">{x.nombre}</p>
+                  <p className="text-[15px] text-tinta-suave">{x.alcance}</p>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+        {reservas.length > 0 && <div className="mt-6">{misReservas}</div>}
+        {movs.length > 0 && <div className="mt-6">{historial}</div>}
       </SeccionPanel>
     );
   }
@@ -136,52 +213,8 @@ export default function MonederoCoins() {
           <p className="mt-2 text-sm text-tinta-suave">Sin bonus. Los comprados no caducan, no se transfieren y se conservan si te das de baja. Impuestos por confirmar antes de cobrar.</p>
         </section>
 
-        <section>
-          <h2 className="mb-3 text-xl font-bold">Mis reservas</h2>
-          {reservas.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-linea-fuerte bg-white p-5 text-center text-[15px] text-tinta-suave">Aún no has reservado nada.</p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {reservas.map((r) => {
-                const e = ESTADO_RESERVA[r.estado] ?? { texto: r.estado, tono: "neutro" as const };
-                return (
-                  <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-linea bg-white p-4 shadow-tarjeta">
-                    <div className="min-w-0">
-                      <p className="font-bold">{servicios.find((s) => s.slug === r.servicio)?.nombre ?? r.servicio} · {r.coste} Coins</p>
-                      <p className="text-sm text-tinta-suave">{fecha(r.created_at)}{r.detalle ? ` · ${r.detalle}` : ""}</p>
-                      {r.resultado && <p className="text-sm">{r.resultado}</p>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Etiqueta tono={e.tono}>{e.texto}</Etiqueta>
-                      {r.estado === "pendiente" && (
-                        <Boton tamano="pequeno" variante="contorno" onClick={() => cancelar(r)}><X size={16} aria-hidden /> Cancelar</Boton>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        <section>
-          <h2 className="mb-3 text-xl font-bold">Historial</h2>
-          {movs.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-linea-fuerte bg-white p-5 text-center text-[15px] text-tinta-suave">Sin movimientos todavía.</p>
-          ) : (
-            <ul className="overflow-hidden rounded-2xl border border-linea bg-white shadow-tarjeta">
-              {movs.map((m) => (
-                <li key={m.id} className="flex items-center justify-between gap-2 border-b border-linea px-4 py-3 last:border-0">
-                  <div className="min-w-0">
-                    <p className="text-[15px] font-semibold">{TIPO_MOV[m.tipo] ?? m.tipo} <span className="font-normal text-tinta-suave">· {BOLSAS[m.bolsa]?.nombre ?? m.bolsa}</span></p>
-                    <p className="text-sm text-tinta-suave">{fecha(m.created_at)}{m.motivo ? ` · ${m.motivo}` : ""}</p>
-                  </div>
-                  <p className={`shrink-0 text-[16px] font-bold ${m.importe > 0 ? "text-ok" : "text-tinta"}`}>{m.importe > 0 ? "+" : ""}{m.importe}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        {misReservas}
+        {historial}
       </div>
 
       <Hoja abierta={!!elegido} onCerrar={() => !enviando && setElegido(null)} titulo={elegido ? `Reservar: ${elegido.nombre}` : ""}

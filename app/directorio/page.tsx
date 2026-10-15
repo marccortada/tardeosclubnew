@@ -77,9 +77,11 @@ export default function Directorio() {
 
         <div className="mt-4">
           <EstadoLista cargando={pag.cargando} error={pag.error} vacio="No hay nada con esa búsqueda." filas={pag.filas.length} />
-          <ul className="grid gap-3 sm:grid-cols-2">
+          {/* grid-cols-1 = minmax(0,1fr): sin ella la columna medía lo que el
+              nombre más largo y el `truncate` no cortaba (scroll lateral). */}
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {pag.filas.map((f) => (
-              <li key={f.id}>
+              <li key={f.id} className="min-w-0">
                 <Link href={href(f)} className="flex min-h-[72px] items-center gap-3 rounded-2xl border border-linea bg-superficie p-3">
                   <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-marfil-100">
                     {f.foto ? <Image src={f.foto} alt="" fill sizes="56px" className="object-cover" />

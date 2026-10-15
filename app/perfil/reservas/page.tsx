@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** "Mis reservas" pasó a ser la pestaña "Me he apuntado" de Mis planes. */
+/** "Mis reservas" (v1) son ahora los planes de Próxima Parada (v2). Directo, sin pasar por /favoritos. */
 export default function Redirigir() {
-  redirect("/favoritos?ver=apuntados");
+  redirect("/proxima-parada");
 }

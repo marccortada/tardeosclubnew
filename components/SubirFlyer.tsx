@@ -71,8 +71,9 @@ export default function SubirFlyer({
         ¿Tienes el flyer? Lo leemos con IA
       </p>
       <p className="mt-1.5 text-[15px] text-tinta-suave">
-        Súbelo y pulsa «Analizar con IA»: rellenamos título, fecha, horas, DJ y precio. Tú solo
-        revisas. Puedes arrastrarlo aquí o pegarlo con Ctrl/Cmd+V.
+        Rellenamos título, fecha, horas, DJ y precio. Tú solo revisas.
+        {/* Arrastrar y pegar solo existen con ratón y teclado: en el móvil sobraba. */}
+        <span className="hidden md:inline"> Puedes arrastrarlo aquí o pegarlo con Ctrl/Cmd+V.</span>
       </p>
 
       <input

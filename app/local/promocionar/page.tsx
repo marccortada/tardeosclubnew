@@ -36,7 +36,7 @@ export default function Promocionar() {
 
   return (
     <SeccionPanel titulo="Promocionar" descripcion="Haz que un tardeo salga destacado en la portada.">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <section>
           <h2 className="mb-3 text-xl font-bold">Elige qué tardeo destacar</h2>
           {proximos === null ? (

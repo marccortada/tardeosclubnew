@@ -36,7 +36,7 @@ export default function Privacidad() {
 
       <h2>2. Qué datos guardamos y por qué</h2>
       <div className="tabla-scroll">
-        <table>
+        <table style={{ "--c2": "'Para qué: '", "--c3": "'Base legal: '" } as React.CSSProperties}>
           <thead>
             <tr>
               <th>Qué</th>
@@ -155,7 +155,7 @@ export default function Privacidad() {
         Solo proveedores que trabajan para nosotros, con contrato de tratamiento de datos:
       </p>
       <div className="tabla-scroll">
-        <table>
+        <table style={{ "--c2": "'Para qué: '", "--c3": "'Dónde: '" } as React.CSSProperties}>
           <thead>
             <tr>
               <th>Proveedor</th>

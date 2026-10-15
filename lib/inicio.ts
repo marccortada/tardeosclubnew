@@ -3,8 +3,9 @@ import { supabase } from "@/lib/supabase";
 /**
  * A qué portal va cada cuenta nada más entrar (si no venía de ningún sitio
  * con ?volver=): el admin a /admin, quien lleva un local o eventos a /local,
- * el DJ a /dj y el tardícola a su cuenta. Antes todos caían en /perfil y el
- * local tenía que buscar su panel.
+ * el DJ a /dj y el tardícola al Inicio de la app (v2: su casa es la barra de
+ * abajo, no el menú de Perfil; el Inicio ya le invita a rellenar su ADN).
+ * Antes todos caían en /perfil y el local tenía que buscar su panel.
  *
  * Si alguna consulta falla, se va a /perfil: desde ahí están todos los
  * paneles y no se deja a nadie en una pantalla en blanco.
@@ -19,6 +20,7 @@ export async function rutaDeInicio(uid: string): Promise<string> {
     if (perfil.data?.is_admin) return "/admin";
     if (local.data) return "/local";
     if (dj.data) return "/dj";
+    return "/";
   } catch { /* a la cuenta */ }
   return "/perfil";
 }

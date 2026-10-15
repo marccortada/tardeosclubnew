@@ -4,7 +4,7 @@ import { entrarYVolver } from "@/lib/volver";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
-import { LayoutDashboard, UserRound, Images, FileText, CalendarDays, ExternalLink, Disc3, Loader2, ShieldCheck, Star, LifeBuoy, Headphones, Radio, MessageCircle, SunMoon, Bell } from "lucide-react";
+import { LayoutDashboard, UserRound, CalendarDays, Disc3, Loader2, ShieldCheck, LifeBuoy, Headphones, MessageCircle } from "lucide-react";
 import PanelShell, { type GrupoPanel } from "@/components/panel/PanelShell";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
@@ -228,35 +228,34 @@ export default function PanelDj({ children }: { children: ReactNode }) {
   const { dj, modoAdmin, sinColumna } = estado;
   const ruta = (href: string) => (modoAdmin ? `${href}?id=${dj.id}` : href);
 
-  // Menú del profesional según el vídeo (2:55): Mis eventos, Publicar set,
-  // Mi press kit, Enviar sesión a Nexo, Solicitudes de mensaje, Modo claro,
-  // Notificaciones, Necesito ayuda.
+  // Menú del profesional según el vídeo (2:55), agrupado: eran trece entradas
+  // sueltas y en el móvil no se encontraba nada. Cada entrada lleva sus
+  // pantallas como pestañas arriba de la página (SubSecciones).
+  // Fuera del menú: «Ver mi ficha pública» (está en Inicio) y «Modo claro» /
+  // «Notificaciones», que son de la cuenta y siguen en Perfil (barra de abajo).
   const grupos: GrupoPanel[] = [
     {
       items: [
-        { href: ruta("/dj"), label: "Resumen", icon: LayoutDashboard, exacto: true },
+        { href: ruta("/dj"), label: "Inicio", icon: LayoutDashboard, exacto: true },
+        {
+          href: ruta("/dj/perfil"), label: "Mi perfil", icon: UserRound,
+          hijas: [
+            { href: ruta("/dj/perfil"), label: "Datos" },
+            { href: ruta("/dj/presskit"), label: "PressKit", nota: dj.presskit_url ? undefined : "Sin subir" },
+            { href: ruta("/dj/contenido"), label: "Fotos y flyers" },
+            { href: ruta("/dj/resenas"), label: "Reseñas" },
+          ],
+        },
+        {
+          href: ruta("/dj/sets"), label: "Música", icon: Headphones,
+          hijas: [
+            { href: ruta("/dj/sets"), label: "Publicar set" },
+            { href: ruta("/dj/nexo"), label: "Enviar a Nexo Radio" },
+          ],
+        },
         { href: ruta("/dj/tardeos"), label: "Mis eventos", icon: CalendarDays },
-        { href: ruta("/dj/sets"), label: "Publicar set", icon: Headphones },
-        { href: ruta("/dj/presskit"), label: "Mi press kit", icon: FileText, nota: dj.presskit_url ? undefined : "Sin subir" },
-        { href: ruta("/dj/nexo"), label: "Enviar sesión a Nexo", icon: Radio },
-        { href: ruta("/dj/mensajes"), label: "Solicitudes de mensaje", icon: MessageCircle },
-      ],
-    },
-    {
-      titulo: "Tu ficha",
-      items: [
-        { href: ruta("/dj/perfil"), label: "Mi perfil", icon: UserRound },
-        { href: ruta("/dj/contenido"), label: "Fotos y flyers", icon: Images },
-        { href: ruta("/dj/resenas"), label: "Reseñas", icon: Star },
-        { href: `/djs/${dj.id}`, label: "Ver mi ficha pública", icon: ExternalLink },
-      ],
-    },
-    {
-      titulo: "Cuenta",
-      items: [
-        { href: "/perfil/ajustes", label: "Modo claro", icon: SunMoon },
-        { href: "/perfil/notificaciones", label: "Notificaciones", icon: Bell },
-        { href: ruta("/dj/ayuda"), label: "Necesito ayuda", icon: LifeBuoy },
+        { href: ruta("/dj/mensajes"), label: "Mensajes", icon: MessageCircle },
+        { href: ruta("/dj/ayuda"), label: "Ayuda", icon: LifeBuoy },
       ],
     },
   ];

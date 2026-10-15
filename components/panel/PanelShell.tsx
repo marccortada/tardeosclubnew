@@ -9,6 +9,9 @@ import { Menu, X, LogOut, ArrowLeft, Home, LifeBuoy } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import ReportarProblema from "@/components/ReportarProblema";
+import SubSecciones, { SubCtx, rutaActiva, type ContextoSub, type HijaPanel } from "@/components/panel/SubSecciones";
+
+export type { HijaPanel };
 
 /**
  * El esqueleto común de TODOS los paneles: admin, local/promotor, DJ y
@@ -23,7 +26,8 @@ export type ItemPanel = {
   href: string;
   label: string;
   icon: LucideIcon;
-  /** Número a la derecha (pendientes). 0 o null no se pinta. */
+  /** Número a la derecha (pendientes). 0 o null no se pinta. Si no se da y
+   *  hay `hijas`, se suman las de las hijas. */
   badge?: number | null;
   /** Rutas que también encienden este item. */
   grupo?: string[];
@@ -31,8 +35,20 @@ export type ItemPanel = {
   exacto?: boolean;
   /** Etiqueta pequeña ("Próximamente", "Desactivado"). */
   nota?: string;
+  /**
+   * Pantallas que cuelgan de esta entrada. La barra enseña solo la entrada
+   * (el admin tenía 30 en la barra y nadie encontraba nada); las hijas salen
+   * como pestañas arriba de cada página (`SubSecciones`, dentro de
+   * `SeccionPanel`) y cualquiera de ellas enciende la entrada.
+   */
+  hijas?: HijaPanel[];
 };
 export type GrupoPanel = { titulo?: string; items: ItemPanel[] };
+
+const sumaBadges = (hijas: HijaPanel[]) => {
+  const n = hijas.reduce((t, h) => t + (h.badge ?? 0), 0);
+  return n > 0 ? n : null;
+};
 
 export default function PanelShell({
   rol, nombre, grupos, children, cabecera,
@@ -63,13 +79,16 @@ export default function PanelShell({
     return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", tecla); };
   }, [abierto]);
 
-  const activo = (i: ItemPanel) => {
-    const base = i.href.split("?")[0];
-    if (i.exacto) return pathname === base;
-    return [base, ...(i.grupo ?? [])].some((g) => pathname === g || pathname.startsWith(g + "/"));
-  };
+  const activo = (i: ItemPanel) =>
+    rutaActiva(pathname, i.href, i.exacto)
+    || (i.grupo ?? []).some((g) => rutaActiva(pathname, g))
+    || (i.hijas ?? []).some((h) => rutaActiva(pathname, h.href, h.exacto));
+  const badgeDe = (i: ItemPanel) => (i.badge !== undefined ? i.badge : i.hijas ? sumaBadges(i.hijas) : null);
 
   const actual = grupos.flatMap((g) => g.items).find(activo);
+  const hijaActual = actual?.hijas?.find((h) => rutaActiva(pathname, h.href, h.exacto));
+  // Con una sola hija no hay entre qué saltar: no se pintan pestañas.
+  const sub: ContextoSub = actual?.hijas && actual.hijas.length > 1 ? { titulo: actual.label, hijas: actual.hijas } : null;
 
   const salir = async () => {
     await supabase.auth.signOut();
@@ -77,7 +96,7 @@ export default function PanelShell({
   };
 
   const navegacion = (
-    <nav aria-label={rol} className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
+    <nav aria-label={rol} className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-3 lg:gap-5 lg:py-4">
       {grupos.map((g, gi) => (
         <div key={gi}>
           {g.titulo && (
@@ -86,6 +105,7 @@ export default function PanelShell({
           <ul className="flex flex-col gap-0.5">
             {g.items.map((i) => {
               const on = activo(i);
+              const badge = badgeDe(i);
               return (
                 <li key={i.href}>
                   <Link
@@ -100,9 +120,9 @@ export default function PanelShell({
                     {i.nota && (
                       <span className="shrink-0 rounded-full bg-marfil-100 px-1.5 py-0.5 text-[11px] font-semibold text-tinta-suave">{i.nota}</span>
                     )}
-                    {!!i.badge && i.badge > 0 && (
+                    {!!badge && badge > 0 && (
                       <span className="grid min-w-[22px] place-items-center rounded-full bg-magenta px-1.5 text-xs font-bold leading-[22px] text-white">
-                        {i.badge > 99 ? "99+" : i.badge}
+                        {badge > 99 ? "99+" : badge}
                       </span>
                     )}
                   </Link>
@@ -125,6 +145,23 @@ export default function PanelShell({
         <button onClick={salir} className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-[15px] font-semibold text-tinta-suave hover:bg-marfil-100 hover:text-tinta">
           <LogOut size={18} aria-hidden />
           <span className="flex-1 truncate">Salir <span className="font-normal">· {user.email}</span></span>
+        </button>
+      )}
+    </div>
+  );
+
+  // En el cajón del móvil el pie va en una sola fila: con el menú completo y
+  // dos filas de pie, en un teléfono normal el último bloque quedaba tapado.
+  const pieMovil = (
+    <div className="flex items-center gap-1 border-t border-linea px-2 py-2">
+      <ReportarProblema
+        etiqueta={<><LifeBuoy size={18} aria-hidden /><span className="truncate">¿Algo no funciona?</span></>}
+        className="flex min-h-[44px] min-w-0 flex-1 items-center gap-2 rounded-lg px-3 text-left text-[15px] font-semibold text-tinta-suave hover:bg-marfil-100 hover:text-tinta"
+      />
+      {user && (
+        <button onClick={salir} aria-label={`Salir de ${user.email}`}
+          className="flex min-h-[44px] shrink-0 items-center gap-2 rounded-lg px-3 text-[15px] font-semibold text-tinta-suave hover:bg-marfil-100 hover:text-tinta">
+          <LogOut size={18} aria-hidden /> Salir
         </button>
       )}
     </div>
@@ -169,19 +206,22 @@ export default function PanelShell({
         </button>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase leading-none tracking-wider text-magenta">{rol}</p>
-          <p className="truncate text-base font-bold leading-tight">{actual?.label ?? nombre ?? ""}</p>
+          <p className="truncate text-base font-bold leading-tight">{hijaActual?.label ?? actual?.label ?? nombre ?? ""}</p>
         </div>
         <Link href="/" className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-linea-fuerte px-3 text-[14px] font-semibold text-tinta hover:bg-marfil-100">
           <Home size={17} aria-hidden /> Web
         </Link>
       </header>
 
-      {/* Secciones siempre a la vista en móvil (el ☰ solo no lo descubre
-          nadie). Fila deslizable; la activa se centra al entrar. */}
+      {/* Secciones a la vista al entrar en móvil (el ☰ solo no lo descubre
+          nadie). Fila deslizable; la activa se centra al entrar. NO es fija:
+          cabecera + esta fila + barra de abajo fijas se comían casi 180 px de
+          una pantalla de 812; al bajar se va y deja sitio al contenido. */}
       <nav aria-label={`Secciones · ${rol}`}
-        className="no-scrollbar sticky top-14 z-[790] flex gap-1.5 overflow-x-auto border-b border-linea bg-white/95 px-3 py-2 backdrop-blur lg:hidden">
+        className="no-scrollbar flex gap-1.5 overflow-x-auto border-b border-linea bg-superficie px-3 py-2 lg:hidden">
         {grupos.flatMap((g) => g.items).map((i) => {
           const on = activo(i);
+          const badge = badgeDe(i);
           return (
             <Link key={i.href} href={i.href} aria-current={on ? "page" : undefined}
               ref={on ? (el) => el?.scrollIntoView({ block: "nearest", inline: "center" }) : undefined}
@@ -189,8 +229,8 @@ export default function PanelShell({
                 on ? "border-tinta bg-tinta text-white" : "border-linea-fuerte bg-white text-tinta"}`}>
               <i.icon size={16} aria-hidden />
               {i.label}
-              {!!i.badge && i.badge > 0 && (
-                <span className={`rounded-full px-1.5 text-xs font-bold ${on ? "bg-white/20" : "bg-magenta text-white"}`}>{i.badge}</span>
+              {!!badge && badge > 0 && (
+                <span className={`rounded-full px-1.5 text-xs font-bold ${on ? "bg-white/20" : "bg-magenta text-white"}`}>{badge > 99 ? "99+" : badge}</span>
               )}
             </Link>
           );
@@ -203,7 +243,8 @@ export default function PanelShell({
           <div className="absolute inset-0 bg-tinta/50" onClick={() => setAbierto(false)} aria-hidden />
           <aside role="dialog" aria-modal="true" aria-label={`Menú · ${rol}`}
             className="absolute inset-y-0 left-0 flex w-[86%] max-w-[320px] flex-col bg-white shadow-elevada">
-            {volverWeb}
+            {/* Sin «Volver a la web»: en el móvil ya está el botón «Web» de la
+                cabecera, y aquí robaba una fila al menú. */}
             <div className="relative">
               {marca}
               <button onClick={() => setAbierto(false)} aria-label="Cerrar menú"
@@ -213,12 +254,14 @@ export default function PanelShell({
             </div>
             {cabecera && <div className="border-b border-linea px-4 py-3">{cabecera}</div>}
             {navegacion}
-            <div className="pb-[env(safe-area-inset-bottom)]">{pie}</div>
+            <div className="pb-[env(safe-area-inset-bottom)]">{pieMovil}</div>
           </aside>
         </div>
       )}
 
-      <div className="min-w-0">{children}</div>
+      <SubCtx.Provider value={sub}>
+        <div className="min-w-0">{children}</div>
+      </SubCtx.Provider>
     </div>
   );
 }
@@ -243,6 +286,10 @@ export function SeccionPanel({
   const max = ancho === "estrecho" ? "max-w-3xl" : "max-w-7xl";
   return (
     <main className={`w-full ${max} px-4 pb-16 pt-5 md:px-8 md:pt-8`}>
+      {/* Pestañas con las hermanas de esta pantalla (si la entrada de la barra
+          agrupa varias). Va aquí y no en cada página: así sale en todas, con
+          el mismo ancho que el contenido, sin tocar ninguna. */}
+      <SubSecciones />
       <div className="mb-5 flex flex-col gap-3 md:mb-7 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight md:text-[28px]">{titulo}</h1>

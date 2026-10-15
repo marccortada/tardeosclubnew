@@ -104,7 +104,7 @@ export default function AdminCoins() {
     <SeccionPanel titulo="Coins" descripcion="Apuntes manuales, reservas y devoluciones."
       acciones={activos ? <Etiqueta tono="ok">Activos</Etiqueta> : <Etiqueta>Desactivado · próximamente</Etiqueta>}>
       <div className="flex flex-col gap-6">
-        {!activos && <p className="rounded-xl bg-marfil-100 p-3 text-[15px] text-tinta-suave">Los locales aún no pueden reservar (ajuste <code>coins_activos</code> apagado). Puedes preparar saldos; nadie paga nada desde la web.</p>}
+        {!activos && <p className="rounded-xl bg-marfil-100 p-3 text-[15px] text-tinta-suave">Próximamente: los locales aún no pueden reservar ni pagar. Puedes preparar saldos.</p>}
         {msg && <p role="status" className={`rounded-xl p-3 text-[15px] font-semibold ${msg.tono === "ok" ? "bg-ok-fondo text-ok" : "bg-error-fondo text-error"}`}>{msg.texto}</p>}
 
         <section className="rounded-2xl border border-linea bg-white p-5 shadow-tarjeta">

@@ -21,7 +21,7 @@ export default function Cookies() {
         guardamos en tu navegador es lo imprescindible para que la web funcione:
       </p>
       <div className="tabla-scroll">
-        <table>
+        <table style={{ "--c2": "'Para qué: '", "--c3": "'Cuánto dura: '" } as React.CSSProperties}>
           <thead>
             <tr>
               <th>Qué</th>

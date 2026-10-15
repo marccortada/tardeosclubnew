@@ -4,14 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  BadgeCheck, Star, Eye, EyeOff, ExternalLink, CalendarDays, Images, FileText, ChevronRight,
-  CheckCircle2, Circle, Share2, Check, MousePointerClick, MessageCircle,
+  BadgeCheck, EyeOff, ExternalLink, ChevronRight, Circle, Share2, Check, MessageCircle,
 } from "lucide-react";
 import { SeccionPanel } from "@/components/panel/PanelShell";
 import { Etiqueta } from "@/components/ui/Chip";
 import Aviso from "@/components/admin/Aviso";
 import { claseBoton } from "@/components/Boton";
-import ServiciosExternos, { whatsappTardeos } from "@/components/ServiciosExternos";
+import { whatsappTardeos } from "@/components/ServiciosExternos";
 import { supabase } from "@/lib/supabase";
 import { hoyISO } from "@/lib/tardeos";
 import { formatFecha } from "@/lib/formato";
@@ -19,9 +18,13 @@ import { tieneValoracion, valoracion } from "@/lib/reputacion";
 import { useDj, consultaTardeosDj, type TardeoDj } from "./contexto";
 
 /**
- * Resumen del panel DJ: cómo está su ficha de un vistazo, qué le falta para
- * que quede completa y dónde pincha próximamente. Cada cosa que falta es un
- * enlace directo a la sección donde se arregla.
+ * Inicio del panel DJ, corto: quién eres y cómo se te ve, las dos acciones
+ * (compartir la ficha, verla), dónde pinchas pronto, lo que le FALTA a tu
+ * ficha (solo lo pendiente; si está completa no sale) y tres cifras.
+ *
+ * Antes eran cinco cifras, la lista entera de pasos con los hechos tachados,
+ * textos de ayuda y los servicios de pago (ahora en Ayuda): en el móvil no se
+ * llegaba a ver dónde pinchabas sin bajar varias pantallas.
  */
 export default function ResumenDj() {
   const { dj, ruta, modoAdmin } = useDj();
@@ -72,31 +75,30 @@ export default function ResumenDj() {
   ];
   const hechos = pasos.filter((p) => p.ok).length;
   const pct = Math.round((hechos / pasos.length) * 100);
+  // Mientras se cuenta el contenido no se sabe si falta: no se enseña aún.
+  const faltan = nContenido === null ? [] : pasos.filter((p) => !p.ok);
 
   return (
-    <SeccionPanel titulo="Resumen" descripcion="Cómo está tu ficha y qué tienes por delante.">
+    <SeccionPanel titulo="Inicio">
       {modoAdmin && <Aviso tono="aviso">Estás viendo el panel de {dj.nombre_artistico} como administración. Lo que cambies se guarda en su ficha.</Aviso>}
 
-      {/* Tarjeta de identidad */}
+      {/* Quién eres y las dos acciones */}
       <section className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta md:p-6">
         <div className="flex items-center gap-4">
           {dj.avatar_url ? (
-            <Image src={dj.avatar_url} alt="" width={80} height={80} className="h-20 w-20 shrink-0 rounded-2xl object-cover ring-1 ring-linea" />
+            <Image src={dj.avatar_url} alt="" width={64} height={64} className="h-16 w-16 shrink-0 rounded-2xl object-cover ring-1 ring-linea" />
           ) : (
-            <span className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-marfil-100 text-3xl font-bold text-tinta-suave" aria-hidden>{inicial}</span>
+            <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-marfil-100 text-2xl font-bold text-tinta-suave" aria-hidden>{inicial}</span>
           )}
           <div className="min-w-0">
             <h2 className="flex items-center gap-2 text-xl font-bold leading-tight md:text-2xl">
               <span className="truncate">{dj.nombre_artistico}</span>
               {dj.verificado && <BadgeCheck size={22} className="shrink-0 text-magenta" aria-label="Verificado" />}
             </h2>
-            <p className="mt-1 flex items-center gap-1.5 text-[15px] text-tinta-suave">
-              <Star size={16} className="text-oro-600" fill="currentColor" aria-hidden />
-              {tieneValoracion(dj.reputacion_score) ? `${valoracion(dj.reputacion_score)} de valoración` : "Aún sin valoraciones"}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {dj.verificado ? <Etiqueta tono="ok"><BadgeCheck size={14} aria-hidden /> Verificado</Etiqueta> : <Etiqueta tono="aviso">Sin verificar</Etiqueta>}
-              {dj.oculto ? <Etiqueta tono="neutro"><EyeOff size={14} aria-hidden /> Oculto al público</Etiqueta> : <Etiqueta tono="ok"><Eye size={14} aria-hidden /> Visible</Etiqueta>}
+            {/* Solo se avisa de lo que no va bien: «Visible» no aporta nada. */}
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {!dj.verificado && <Etiqueta tono="aviso">Sin verificar</Etiqueta>}
+              {dj.oculto && <Etiqueta tono="neutro"><EyeOff size={14} aria-hidden /> Oculto al público</Etiqueta>}
             </div>
           </div>
         </div>
@@ -105,89 +107,41 @@ export default function ResumenDj() {
             Tu ficha está oculta: solo la ves tú. Si crees que es un error, escríbenos y lo revisamos.
           </p>
         )}
-        {!dj.verificado && !dj.oculto && (
-          <p className="mt-4 text-[15px] text-tinta-suave">
-            El sello de verificado lo pone el equipo de TardeosClub cuando comprueba que el perfil es tuyo.
-          </p>
-        )}
         {dj.oculto && !modoAdmin && (
           <a href={whatsappTardeos(`Hola, soy ${dj.nombre_artistico} (DJ) y mi ficha de TardeosClub aparece oculta. ¿Podéis revisarla?`)}
             target="_blank" rel="noopener noreferrer" className={claseBoton("contorno", "pequeno", true, "mt-2")}>
             <MessageCircle size={18} aria-hidden /> Escribir a TardeosClub
           </a>
         )}
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <Link href={`/djs/${dj.id}`} className={claseBoton("contorno", "pequeno", true)}>
-            <ExternalLink size={18} aria-hidden /> Ver mi ficha pública
-          </Link>
+        <div className="mt-4 grid grid-cols-2 gap-2">
           <BotonCompartir nombre={dj.nombre_artistico} url={`/djs/${dj.id}`} />
+          <Link href={`/djs/${dj.id}`} className={claseBoton("contorno", "pequeno", true)}>
+            <ExternalLink size={18} aria-hidden /> Ver mi ficha
+          </Link>
         </div>
       </section>
 
-      {/* Cifras sencillas */}
-      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <Cifra icono={MousePointerClick} valor={visitas} texto="Visitas a tu ficha (30 días)" />
-        <Cifra icono={CalendarDays} valor={nProximos} texto="Tardeos próximos" href={ruta("/dj/tardeos")} />
-        <Cifra icono={Images} valor={nContenido} texto="Sesiones y fotos" href={ruta("/dj/contenido")} />
-        <Cifra icono={Star} valor={tieneValoracion(dj.reputacion_score) ? valoracion(dj.reputacion_score) : "—"} texto="Valoración" />
-        <Cifra icono={FileText} valor={dj.presskit_url ? "Subido" : "No"} texto="PressKit" href={ruta("/dj/presskit")} />
-      </div>
-
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        {/* Perfil completo */}
-        <section className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta md:p-5">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="text-lg font-bold">Tu perfil, al {pct} %</h2>
-            <span className="text-sm text-tinta-suave">{hechos} de {pasos.length}</span>
-          </div>
-          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-marfil-200" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Perfil completado">
-            <div className="h-full rounded-full bg-magenta transition-all" style={{ width: `${pct}%` }} />
-          </div>
-          {hechos === pasos.length ? (
-            <p className="mt-3 text-[15px] text-ok">Lo tienes todo. Así es como más te contratan.</p>
-          ) : (
-            <p className="mt-3 text-[15px] text-tinta-suave">Una ficha completa da confianza a los locales. Te falta:</p>
-          )}
-          <ul className="mt-2 flex flex-col">
-            {pasos.map((p) => (
-              <li key={p.texto}>
-                {p.ok ? (
-                  <span className="flex min-h-[44px] items-center gap-3 text-[15px] text-tinta-suave">
-                    <CheckCircle2 size={20} className="shrink-0 text-ok" aria-hidden /> <span>{p.texto}</span>
-                    <span className="sr-only">(hecho)</span>
-                  </span>
-                ) : (
-                  <Link href={p.href} className="flex min-h-[44px] items-center gap-3 rounded-lg text-[15px] font-semibold text-tinta hover:text-magenta-700">
-                    <Circle size={20} className="shrink-0 text-linea-fuerte" aria-hidden />
-                    <span className="flex-1">{p.texto}</span>
-                    <ChevronRight size={18} className="text-tinta-suave" aria-hidden />
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-
         {/* Próximos tardeos */}
         <section className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta md:p-5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-bold">Dónde pinchas pronto</h2>
             {(nProximos ?? 0) > 0 && (
-              <Link href={ruta("/dj/tardeos")} className="text-[15px] font-semibold text-magenta-700 hover:underline">Ver todos</Link>
+              <Link href={ruta("/dj/tardeos")} className="inline-flex min-h-[44px] items-center text-[15px] font-semibold text-magenta-700 hover:underline">Ver todos</Link>
             )}
           </div>
           {error && <p className="mt-3 rounded-xl bg-error-fondo p-3 text-[15px] font-semibold text-error">{error}</p>}
           {proximos === null ? (
             <div className="mt-3 flex flex-col gap-2" aria-busy>
-              {[0, 1, 2].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-marfil-100" />)}
+              {[0, 1].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-marfil-100" />)}
             </div>
           ) : proximos.length === 0 && !error ? (
             <p className="mt-3 text-[15px] text-tinta-suave">
-              No tienes tardeos próximos. Los locales te añaden como DJ al publicar un tardeo: comparte tu ficha para que te encuentren.
+              Aún nada. Los locales te añaden al publicar un tardeo: comparte tu ficha para que te encuentren.
             </p>
           ) : (
             <ul className="mt-2 divide-y divide-linea">
-              {proximos.map((t) => (
+              {proximos.slice(0, 3).map((t) => (
                 <li key={t.id}>
                   <Link href={`/tardeos/${t.id}`} className="flex min-h-[56px] items-center gap-3 py-2 hover:text-magenta-700">
                     <span className="min-w-0 flex-1">
@@ -203,24 +157,52 @@ export default function ResumenDj() {
             </ul>
           )}
         </section>
+
+        {/* Lo que le falta a la ficha: solo lo pendiente, y nada si está completa. */}
+        {faltan.length > 0 && (
+          <section className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta md:p-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-lg font-bold">Completa tu ficha</h2>
+              <span className="text-sm font-semibold text-tinta-suave">{pct} %</span>
+            </div>
+            <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-marfil-200" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Perfil completado">
+              <div className="h-full rounded-full bg-magenta transition-all" style={{ width: `${pct}%` }} />
+            </div>
+            <ul className="mt-2 flex flex-col">
+              {faltan.map((p) => (
+                <li key={p.texto}>
+                  <Link href={p.href} className="flex min-h-[44px] items-center gap-3 rounded-lg text-[15px] font-semibold text-tinta hover:text-magenta-700">
+                    <Circle size={20} className="shrink-0 text-linea-fuerte" aria-hidden />
+                    <span className="flex-1">{p.texto}</span>
+                    <ChevronRight size={18} className="text-tinta-suave" aria-hidden />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
 
-      {!modoAdmin && <ServiciosExternos tipo="dj" />}
+      {/* Tres cifras, sin explicaciones: el detalle está en cada sección. */}
+      <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+        <Cifra valor={nProximos} texto="Próximos" href={ruta("/dj/tardeos")} />
+        <Cifra valor={visitas} texto="Visitas (30 d)" />
+        <Cifra valor={tieneValoracion(dj.reputacion_score) ? valoracion(dj.reputacion_score) : "—"} texto="Valoración" href={ruta("/dj/resenas")} />
+      </div>
     </SeccionPanel>
   );
 }
 
 function Cifra({
-  icono: Icono, valor, texto, href,
-}: { icono: typeof Star; valor: number | string | null; texto: string; href?: string }) {
+  valor, texto, href,
+}: { valor: number | string | null; texto: string; href?: string }) {
   const dentro = (
     <>
-      <Icono size={20} className="text-magenta" aria-hidden />
-      <span className="mt-2 block text-2xl font-bold leading-none">{valor ?? "…"}</span>
-      <span className="mt-1 block text-sm text-tinta-suave">{texto}</span>
+      <span className="block text-[26px] font-bold leading-none tabular-nums">{valor ?? "…"}</span>
+      <span className="mt-1.5 block text-[14px] font-semibold text-tinta-suave">{texto}</span>
     </>
   );
-  const cls = "block rounded-2xl border border-linea bg-white p-4 shadow-tarjeta";
+  const cls = "block rounded-2xl border border-linea bg-white p-3 text-center shadow-tarjeta sm:p-4";
   return href ? <Link href={href} className={`${cls} transition-colors hover:border-magenta/40`}>{dentro}</Link> : <div className={cls}>{dentro}</div>;
 }
 
@@ -250,7 +232,7 @@ function BotonCompartir({ nombre, url }: { nombre: string; url: string }) {
     <button type="button" onClick={compartir} className={claseBoton("contorno", "pequeno", true)} aria-live="polite">
       {hecho === "copiado" ? <><Check size={18} className="text-ok" aria-hidden /> Enlace copiado</>
         : hecho === "error" ? <>No se pudo copiar</>
-        : <><Share2 size={18} aria-hidden /> Compartir mi ficha</>}
+        : <><Share2 size={18} aria-hidden /> Compartir</>}
     </button>
   );
 }

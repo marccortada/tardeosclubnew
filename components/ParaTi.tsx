@@ -46,7 +46,7 @@ export default function ParaTi({ tardeos }: { tardeos: Tardeo[] }) {
     return (
       <section className="mx-auto max-w-6xl px-4 pt-10 md:px-8 md:pt-14">
         <Link
-          href="/perfil/gustos"
+          href="/perfil/adn"
           className="group flex items-center gap-4 rounded-2xl border border-linea bg-white p-5 shadow-tarjeta transition hover:shadow-elevada"
         >
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta">

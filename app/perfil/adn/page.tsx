@@ -85,7 +85,14 @@ export default function MiAdn() {
         <p className="mt-6 flex items-center gap-2 rounded-2xl border border-linea bg-superficie p-4 text-[15px] text-tinta-suave">
           <Lock size={16} aria-hidden /> Tus preferencias completas son privadas.
         </p>
-        {estado === "ok" && <p role="status" className="mt-3 rounded-xl bg-ok-fondo px-3 py-2 font-semibold text-ok">Guardado. Eventos ya parte de tu ADN.</p>}
+        {estado === "ok" && (
+          <p role="status" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-ok-fondo px-3 py-2 font-semibold text-ok">
+            Guardado. Eventos ya parte de tu ADN.
+            {/* Tras rellenarlo (a menudo justo después de crear la cuenta), el
+                siguiente paso natural es ver los planes, no quedarse aquí. */}
+            <Link href="/" className="inline-flex min-h-[44px] items-center font-bold text-magenta-700">Ver mis planes →</Link>
+          </p>
+        )}
         {estado === "error" && <p role="alert" className="mt-3 rounded-xl bg-error-fondo px-3 py-2 font-semibold text-error">No se pudo guardar. Inténtalo otra vez.</p>}
         <button type="button" onClick={guardar} disabled={estado === "guardando"}
           className="mt-4 min-h-[52px] w-full rounded-2xl bg-magenta text-[17px] font-bold text-white disabled:opacity-60">

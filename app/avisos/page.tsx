@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, CalendarClock, CheckCheck, Gift, LogIn, Music, PartyPopper, Ban, Star } from "lucide-react";
+import { Bell, CalendarClock, CheckCheck, Gift, LogIn, Music, PartyPopper, Ban, Star, Settings } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import { entrarYVolver, enlacePropio } from "@/lib/volver";
@@ -120,43 +120,12 @@ export default function Avisos() {
           })}
         </ul>
         <Paginacion pagina={p.pagina} total={p.total} porPagina={p.porPagina} onCambiar={p.setPagina} cargando={p.cargando} />
-        <Preferencias uid={user.id} />
+        {/* Qué avisos quieres se elige en Perfil → Notificaciones: aquí solo
+            la bandeja (antes estaban en los dos sitios). */}
+        <Link href="/perfil/notificaciones" className="mt-6 flex min-h-[48px] items-center justify-center gap-2 text-[15px] font-semibold text-magenta-700">
+          <Settings size={17} aria-hidden /> Elegir qué avisos quiero
+        </Link>
       </main>
     </div>
-  );
-}
-
-/** Interruptores: recordatorios (día antes y 1 h antes) y aviso de fin. Cambios y cancelaciones llegan siempre. */
-function Preferencias({ uid }: { uid: string }) {
-  const [v, setV] = useState<{ recordatorios: boolean; fin_evento: boolean } | null>(null);
-  const [falta, setFalta] = useState(false);
-  useEffect(() => {
-    supabase.from("preferencias_avisos").select("recordatorios,fin_evento").eq("profile_id", uid).maybeSingle()
-      .then(({ data, error }) => {
-        if (error) { setFalta(true); return; }
-        setV(data ?? { recordatorios: true, fin_evento: true });
-      });
-  }, [uid]);
-  if (falta) return null;
-  if (!v) return null;
-  const poner = async (k: "recordatorios" | "fin_evento", val: boolean) => {
-    const nuevo = { ...v, [k]: val };
-    setV(nuevo);
-    const { error } = await supabase.from("preferencias_avisos").upsert({ profile_id: uid, ...nuevo, updated_at: new Date().toISOString() });
-    if (error) setV(v);
-  };
-  const fila = (k: "recordatorios" | "fin_evento", t: string, d: string) => (
-    <label className="flex min-h-[56px] items-center justify-between gap-3 border-b border-linea py-3 last:border-0">
-      <span><span className="block text-[16px] font-semibold">{t}</span><span className="block text-[14px] text-tinta-suave">{d}</span></span>
-      <input type="checkbox" className="h-6 w-6 accent-magenta" checked={v[k]} onChange={(e) => poner(k, e.target.checked)} />
-    </label>
-  );
-  return (
-    <section className="mt-8 rounded-2xl border border-linea bg-white px-4">
-      <h2 className="pt-4 text-[17px] font-bold">Qué avisos quiero</h2>
-      {fila("recordatorios", "Recordatorios de mis planes", "El día antes y 1 h antes, con música para ir calentando.")}
-      {fila("fin_evento", "Al terminar el tardeo", "«¿Qué tal ha ido?» y consejos para volver seguro.")}
-      <p className="pb-4 text-[14px] text-tinta-suave">Los cambios de hora y las cancelaciones te llegan siempre.</p>
-    </section>
   );
 }

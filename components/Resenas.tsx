@@ -119,20 +119,27 @@ export default function Resenas({
       ) : (
         <div className="rounded-2xl border border-linea bg-white p-4">
           <p className="mb-2 text-[15px] font-semibold text-tinta-suave">¿Qué tal {nombre}?</p>
-          <div className="mb-3 flex gap-1">
+          <div className={`flex gap-1 ${puntos > 0 ? "mb-3" : ""}`}>
             {[1, 2, 3, 4, 5].map((n) => (
               <button key={n} onClick={() => setPuntos(n)} aria-label={`${n} estrellas`} aria-pressed={n === puntos} className="grid h-12 w-12 place-items-center rounded-xl hover:bg-marfil-100">
                 <Star size={32} className={n <= puntos ? "text-oro" : "text-linea-fuerte"} fill={n <= puntos ? "currentColor" : "none"} />
               </button>
             ))}
           </div>
-          <textarea value={comentario} onChange={(e) => setComentario(e.target.value)} rows={2} placeholder="Cuenta tu experiencia (opcional)…"
-            className={claseCampo} />
-          {estado === "error" && <p role="alert" className="mt-1 text-[15px] font-semibold text-error">No se pudo enviar. ¿Ya la habías dejado?</p>}
-          <button onClick={enviar} disabled={puntos === 0 || estado === "enviando"}
-            className={claseBoton("primario", "normal", true, "mt-3")}>
-            {estado === "enviando" ? <Loader2 size={18} className="animate-spin" /> : <Star size={18} />} Enviar reseña
-          </button>
+          {/* El comentario y el botón salen al tocar una estrella: con las
+              estrellas solas la ficha pesa mucho menos, y quien no va a
+              valorar no ve un formulario entero. */}
+          {puntos > 0 && (
+            <>
+              <textarea value={comentario} onChange={(e) => setComentario(e.target.value)} rows={2} placeholder="Cuenta tu experiencia (opcional)…"
+                className={claseCampo} />
+              {estado === "error" && <p role="alert" className="mt-1 text-[15px] font-semibold text-error">No se pudo enviar. ¿Ya la habías dejado?</p>}
+              <button onClick={enviar} disabled={estado === "enviando"}
+                className={claseBoton("primario", "normal", true, "mt-3")}>
+                {estado === "enviando" ? <Loader2 size={18} className="animate-spin" /> : <Star size={18} />} Enviar reseña
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -153,9 +160,7 @@ export default function Resenas({
             </div>
           ))}
         </div>
-      ) : (
-        <p className="mt-4 text-center text-[15px] text-tinta-suave">Aún no hay reseñas. ¡Sé el primero!</p>
-      )}
+      ) : null /* Sin reseñas no se dice nada: las estrellas ya invitan a dejar la primera. */}
     </section>
   );
 }

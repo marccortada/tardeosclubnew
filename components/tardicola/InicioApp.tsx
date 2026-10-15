@@ -4,12 +4,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Instagram, MessageCircle, Play, SlidersHorizontal, Map as MapaIcono } from "lucide-react";
-import MapaClient from "@/components/MapaClient";
+import dynamic from "next/dynamic";
 import TarjetaPlan from "@/components/tardicola/TarjetaPlan";
 import CabeceraApp, { useZona } from "@/components/CabeceraApp";
 import { useAuth } from "@/lib/useAuth";
 import { getAdn, tieneAdn, type AdnTardicola } from "@/lib/tardicola";
 import { encajeDe } from "@/lib/recomendar";
+
+// El mapa (Leaflet + teselas) solo hace falta en el Inicio CON sesión. Importado
+// a pelo viajaba también en la portada pública, que ya no lo enseña: ahí es
+// peso muerto en el primer pantallazo del móvil.
+const MapaClient = dynamic(() => import("@/components/MapaClient"), { ssr: false });
 import { FAMILIAS } from "@/lib/musica";
 import { mismaZona } from "@/lib/zonas";
 import type { Tardeo } from "@/lib/types";

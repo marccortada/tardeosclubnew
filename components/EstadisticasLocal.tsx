@@ -257,19 +257,21 @@ function Canales({ localId, dias }: { localId: string; dias: number }) {
   return (
     <div className="mt-6">
       <h3 className="mb-3 flex items-center gap-2 text-lg font-bold"><MousePointerClick size={18} className="text-magenta" aria-hidden /> Clics por canal</h3>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {/* Una lista y no siete tarjetas: en el móvil eran cuatro filas de
+          cajas con un número cada una, y la pantalla se veía cargada. */}
+      <ul className="divide-y divide-linea rounded-2xl border border-linea bg-white px-4 md:grid md:grid-cols-2 md:gap-x-8 md:divide-y-0">
         {CANALES.map(({ k, t }) => (
-          <div key={k} className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta">
-            <p className="text-[24px] font-bold leading-none">
-              {datos === null ? <span className="inline-block h-6 w-8 animate-pulse rounded bg-marfil-100" />
+          <li key={k} className="flex min-h-[48px] items-center justify-between gap-3 md:border-b md:border-linea">
+            <span className="text-[15px] font-semibold text-tinta-suave">{t}</span>
+            <span className="text-[18px] font-bold tabular-nums">
+              {datos === null ? <span className="inline-block h-5 w-8 animate-pulse rounded bg-marfil-100" />
                 : datos === "nd" ? <span className="text-[15px] font-semibold text-tinta-suave">No disponible</span>
                 : (datos[k] ?? 0).toLocaleString("es-ES")}
-            </p>
-            <p className="mt-1.5 text-[15px] font-semibold text-tinta-suave">{t}</p>
-          </div>
+            </span>
+          </li>
         ))}
-      </div>
-      <p className="mt-2 text-sm text-tinta-suave">Un clic no es una venta: es alguien que ha pulsado para ir. Las ventas solo si la ticketera las comparte.</p>
+      </ul>
+      <p className="mt-2 text-[15px] text-tinta-suave">Un clic no es una venta: es alguien que ha pulsado para ir.</p>
     </div>
   );
 }

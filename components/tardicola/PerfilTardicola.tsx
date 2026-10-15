@@ -139,6 +139,12 @@ export default function PerfilTardicola({ uid }: { uid: string }) {
         )}
 
         <ul className="mt-5 divide-y divide-linea">
+          {/* Los paneles, lo primero: quien es DJ, local o admin entra sobre
+              todo a trabajar (vídeo: el perfil del DJ empieza por sus cosas).
+              Al final de la lista, tras «Ajustes», no los encontraba nadie. */}
+          {(roles.esLocal || roles.esPromotor) && <Fila href="/local" icono={<Store size={20} />}>Mi panel de {roles.esPromotor ? "eventos" : "local"}</Fila>}
+          {roles.esDj && <Fila href="/dj" icono={<Disc3 size={20} />}>Mi panel de DJ</Fila>}
+          {roles.esAdmin && <Fila href="/admin" icono={<Shield size={20} />}>Administración</Fila>}
           <Fila href="/perfil/djs" icono={<Headphones size={20} />}>Mis DJs</Fila>
           <Fila href="/perfil/sets" icono={<Play size={20} />}>Mis sets</Fila>
           <Fila href="/perfil/adn" icono={<SlidersHorizontal size={20} />}>Mi ADN</Fila>
@@ -161,9 +167,6 @@ export default function PerfilTardicola({ uid }: { uid: string }) {
             <ReportarProblema etiqueta="Necesito ayuda" className="min-h-[48px] flex-1 text-left" />
           </li>
           <Fila href="/perfil/ajustes" icono={<Settings size={20} />}>Ajustes de la cuenta</Fila>
-          {(roles.esLocal || roles.esPromotor) && <Fila href="/local" icono={<Store size={20} />}>Mi panel de {roles.esPromotor ? "eventos" : "local"}</Fila>}
-          {roles.esDj && <Fila href="/dj" icono={<Disc3 size={20} />}>Mi panel de DJ</Fila>}
-          {roles.esAdmin && <Fila href="/admin" icono={<Shield size={20} />}>Administración</Fila>}
           <li>
             <button type="button" onClick={salir} className="flex min-h-[56px] w-full items-center gap-3 text-left text-[16px] font-medium text-tinta">
               <LogOut size={20} className="text-tinta-suave" aria-hidden /> Cerrar sesión

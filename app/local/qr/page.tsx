@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
-import { Download, Printer } from "lucide-react";
+import { ChevronDown, Download, Printer } from "lucide-react";
 import { SeccionPanel } from "@/components/panel/PanelShell";
 import { claseBoton } from "@/components/Boton";
 import { useFicha } from "../_panel/PanelLocal";
@@ -132,7 +132,7 @@ export default function QrDelLocal() {
         }
       `}</style>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
         <section className="flex flex-col gap-5 rounded-2xl border border-linea bg-white p-5 shadow-tarjeta">
           {fichas.length > 1 && !ajena ? (
             <label className="block">
@@ -199,15 +199,22 @@ export default function QrDelLocal() {
             <button type="button" onClick={descargarSvg} disabled={!svg} className={claseBoton("contorno", "normal", true)}>
               <Download size={19} aria-hidden /> Descargar SVG
             </button>
-            <p className="text-[14px] text-tinta-suave">
-              Para el PDF, en la ventana de imprimir elige «Guardar como PDF». El SVG es solo el código,
-              para tu imprenta o para meterlo en tu propio cartel.
-            </p>
           </div>
 
-          <p className="break-all rounded-xl bg-marfil-100 p-3 text-[13px] text-tinta-suave">
-            <span className="font-semibold text-tinta">Abre:</span> {url}
-          </p>
+          {/* Lo técnico (cómo sacar el PDF, la dirección exacta) plegado:
+              a la vista solo lo que hace falta para imprimir. */}
+          <details className="group">
+            <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-1.5 text-[15px] font-semibold text-tinta-suave">
+              <ChevronDown size={17} className="transition group-open:rotate-180" aria-hidden /> Más info
+            </summary>
+            <p className="text-[15px] text-tinta-suave">
+              Para el PDF, en la ventana de imprimir elige «Guardar como PDF». El SVG es solo el código,
+              para tu imprenta o tu propio cartel.
+            </p>
+            <p className="mt-2 break-all text-[14px] text-tinta-suave">
+              <span className="font-semibold text-tinta">Abre:</span> {url}
+            </p>
+          </details>
         </section>
 
         {/* Vista previa a escala: la misma hoja que se imprime. */}

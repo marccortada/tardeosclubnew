@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CreditCard, BadgeCheck, CalendarClock, Crown } from "lucide-react";
+import { CreditCard, BadgeCheck, CalendarClock, Crown, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PRESTACIONES, cupoDelCiclo, type CupoCiclo } from "@/lib/cuotas";
 import { SeccionPanel } from "@/components/panel/PanelShell";
@@ -32,29 +32,24 @@ export default function Suscripcion() {
   }, [ficha.id]);
 
   if (!planes) {
+    // Apagado: un solo estado «Próximamente», sin precios a la vista ni
+    // contadores (el cliente: «lo justo»). El detalle de cada plan queda
+    // plegado para quien quiera curiosear.
     return (
-      <SeccionPanel titulo="Suscripción" descripcion="Planes para locales y promotores." ancho="normal">
-        <div className="flex flex-col gap-4">
-        <section className="rounded-2xl border border-linea bg-white p-6 shadow-tarjeta">
-          <div className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-xl bg-marfil-100 text-tinta-suave"><CreditCard size={24} aria-hidden /></span>
-            <div>
-              <p className="text-lg font-bold">Suscripciones</p>
-              <Etiqueta>Desactivado · próximamente</Etiqueta>
-            </div>
-          </div>
-          <p className="mt-4 text-[15px] text-tinta">
-            Ahora mismo publicar en TardeosClub <b>no cuesta nada</b>: puedes crear todos los tardeos
-            que quieras.
-          </p>
-          <p className="mt-2 text-[15px] text-tinta-suave">
-            Cuando lleguen los planes te avisaremos antes, con precios y condiciones por escrito.
-            Nunca se cobra nada sin que lo aceptes tú.
+      <SeccionPanel titulo="Suscripción" ancho="estrecho">
+        <section className="flex flex-col items-center px-2 py-6 text-center">
+          <span className="grid h-14 w-14 place-items-center rounded-full bg-magenta-50 text-magenta"><CreditCard size={26} aria-hidden /></span>
+          <h2 className="mt-3 text-xl font-bold">Próximamente</h2>
+          <p className="mt-1 max-w-sm text-[16px] text-tinta-suave">
+            Ahora publicar es <b className="text-tinta">gratis y sin límite</b>. Te avisaremos antes de que llegue ningún plan.
           </p>
         </section>
-        <CupoInformativo c={cupo} />
-        <TablaPlanes apagado plazas={plazas} />
-        </div>
+        <details className="group mt-2 border-t border-linea pt-2">
+          <summary className="flex min-h-[48px] cursor-pointer list-none items-center justify-between text-[16px] font-semibold text-tinta">
+            Qué incluirá cada plan <ChevronDown size={18} className="transition group-open:rotate-180" aria-hidden />
+          </summary>
+          <div className="pb-4 pt-2"><TablaPlanes apagado plazas={plazas} /></div>
+        </details>
       </SeccionPanel>
     );
   }
@@ -133,19 +128,22 @@ function TablaPlanes({ apagado, plazas, actual }: { apagado: boolean; plazas: nu
       {planes.map((p) => {
         const x = PRESTACIONES[p];
         return (
-          <article key={p} className={`flex flex-col rounded-2xl border bg-white p-5 shadow-tarjeta ${actual === p ? "border-magenta" : "border-linea"}`}>
+          <article key={p} className={`flex flex-col rounded-2xl border bg-white p-4 ${actual === p ? "border-magenta" : "border-linea"}`}>
             <p className="flex items-center gap-2 text-lg font-bold">
               {p === "fundador" && <Crown size={18} className="text-oro" aria-hidden />} {ETIQUETA[p]}
             </p>
             <p className="mt-1 text-[15px] font-semibold">{precioTexto(p)}</p>
             <ul className="mt-3 flex flex-col gap-1.5 text-[15px] text-tinta-suave">
-              <li>{x.eventos}</li><li>{x.promos}</li><li>{x.estadisticas}</li><li>{x.coins}</li>
+              {/* Sin repetir: el Fundador dice «Como Premium» en tres apartados. */}
+              {[...new Set([x.eventos, x.promos, x.estadisticas, x.coins])].map((t) => <li key={t}>{t}</li>)}
               {p === "fundador" && <li>Primeros 50 locales{plazas != null ? ` (quedan ${plazas})` : ""}. Sello Fundador mientras siga activo.</li>}
             </ul>
-            <div className="mt-auto pt-4">
-              {apagado ? <Etiqueta>Desactivado · próximamente</Etiqueta>
-                : actual === p ? <Etiqueta tono="ok">Tu plan</Etiqueta> : <Etiqueta>Escríbenos para cambiar</Etiqueta>}
-            </div>
+            {/* Apagado ya lo dice arriba «Próximamente»: una etiqueta por plan sobraba. */}
+            {!apagado && (
+              <div className="mt-auto pt-4">
+                {actual === p ? <Etiqueta tono="ok">Tu plan</Etiqueta> : <Etiqueta>Escríbenos para cambiar</Etiqueta>}
+              </div>
+            )}
           </article>
         );
       })}

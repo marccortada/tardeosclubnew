@@ -36,9 +36,13 @@ export default function PaginaLegal({
           {faltanDatos && (
             <p className="mt-4 flex items-start gap-2 rounded-xl border border-linea bg-marfil-100 px-4 py-3 text-[15px] text-tinta-suave">
               <Info size={18} className="mt-0.5 shrink-0" aria-hidden />
-              Algunos datos de la empresa titular aparecen como «Pendiente» porque la entidad está en
-              constitución. Se completarán aquí en cuanto estén. Para cualquier asunto, escríbenos a{" "}
-              <a href={`mailto:${RESPONSABLE.emailContacto}`} className="font-semibold text-tinta underline">{RESPONSABLE.emailContacto}</a>.
+              {/* Texto y enlace en un solo hijo: sueltos dentro del flex, cada
+                  trozo era una columna y en móvil el texto quedaba en una tira
+                  de una palabra por línea. */}
+              <span className="min-w-0">
+                Algunos datos salen como «Pendiente»: la empresa está en constitución. Dudas:{" "}
+                <a href={`mailto:${RESPONSABLE.emailContacto}`} className="font-semibold text-tinta underline [overflow-wrap:anywhere]">{RESPONSABLE.emailContacto}</a>.
+              </span>
             </p>
           )}
 

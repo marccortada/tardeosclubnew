@@ -106,7 +106,7 @@ export default function AdminEstadisticas() {
             <Barras filas={enOrden.map((x) => ({ etiqueta: NOMBRES[x.k] ?? x.k, valor: x.n }))} />
           </Bloque>
 
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             {datos.busquedas.length > 0 && (
               <Bloque titulo="Qué busca la gente" icon={Search}
                 pie="Las que no encuentran nada dicen qué cartelera falta.">
@@ -193,7 +193,7 @@ function Bloque({
   titulo: string; icon: typeof Activity; pie?: string; children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-linea bg-white p-5 shadow-tarjeta">
+    <section className="min-w-0 rounded-2xl border border-linea bg-white p-5 shadow-tarjeta">
       <h2 className="flex items-center gap-2 text-lg font-bold">
         <Icon size={18} className="text-magenta" aria-hidden /> {titulo}
       </h2>
