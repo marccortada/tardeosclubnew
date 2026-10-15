@@ -280,7 +280,7 @@ funciones SECURITY DEFINER en `private`, índices en claves foráneas (reglas de
 | Listas y espera | Aforo y confirmación en base con bloqueo (sin duplicados ni sobreventa); espera ordenada, promoción automática al liberar plaza |
 | Chat y encuesta | Ventana = fin + 72 h calculada en servidor, se recalcula si cambia la fecha; mensajes se conservan internamente 90 días (a confirmar) |
 | Audio/Nexo | Fuentes: SoundCloud/YouTube/Mixcloud embebidos + stream de Nexo; una sola fuente; segundo plano según navegador (iOS limita) |
-| Planes/pagos/Coins | Todo construido y apagado; pasarela (Stripe recomendado) cuando el cliente la active |
+| Planes/pagos/Coins | Todo construido y apagado ("Próximamente"); pasarela PayPal cuando el cliente la active |
 | Partidas recuperadas | OCR/IA del flyer ya funciona (Claude); QR/fidelización en Fase 5 |
 | Datos/operación | Migración hecha; limpieza de duplicados pendiente de "sí"; CSV para HubSpot |
 | Continuidad | Supabase (BBDD/Auth/Storage), droplet propio, Resend, Anthropic; copias diarias de Supabase; errores e incidencias en el panel |

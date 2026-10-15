@@ -28,7 +28,9 @@ Sustituye a la web antigua `tardeosclub.com` (SPA React con muchos fallos).
 Recorrido: descubrir → **Asistiré** (lista de espera si se llena) → **Meet Zone**
 (chat del evento, cierra 72 h tras el fin) → **encuesta** → volver. Además: feed
 vertical de DJs, seguir, sets, reproductor persistente, Nexo Radio dentro, sorteos,
-avisos, Coins (apagado), admin por zonas. Auditoría y plan: `PLAN_DOSSIER_2.0.md`;
+avisos, Coins (apagado, "Próximamente"), admin por zonas. **Se usa casi siempre desde
+el móvil**: el móvil manda; en escritorio basta con que se vea correcto. Pantallas
+ligeras, lo justo, sin bloques de relleno. Auditoría y plan: `PLAN_DOSSIER_2.0.md`;
 reparto por módulos: `docs/v2/CONTRATOS.md`. Nombre y marca pueden cambiar
 (decisión del cliente, 18‑oct): **todo color/fuente va por tokens**.
 
@@ -75,8 +77,9 @@ Claves en `.env.local` (no se sube). La de la vieja: `OLD_SUPABASE_*`, solo para
 
 ## 4. Reglas del cliente (no negociables)
 
-1. **Pagos y suscripciones: presentes pero APAGADOS.** Se controla con
-   `ajustes.planes_activos`. No tocar la lógica de `lib/planes.ts`,
+1. **Pagos y suscripciones: presentes pero APAGADOS.** Se mostrarán como
+   **"Próximamente"**; la pasarela será **PayPal** (por decidir cuándo). Se controla con
+   `ajustes.planes_activos` (y `coins_activos` para Coins). No tocar la lógica de `lib/planes.ts`,
    `lib/cuotas.ts`, `lib/estados.ts`, `lib/ajustes.ts`: solo presentación. Donde
    se enseñe una suscripción, debe verse "Desactivado / próximamente".
 2. **Nada de borrar datos importantes** sin enseñar antes cuántas filas y tener
@@ -421,6 +424,10 @@ salvo `.env.example`.
 - Cargar oferta real: hoy solo hay 1 tardeo próximo.
 
 **Técnico:**
+- Pasarela de pago con **PayPal** (suscripciones Basic/Pro/Premium, Fundador, recargas de
+  Coins). Todo lo de cobro existe y está apagado: falta integrar PayPal (webhook que
+  confirme el pago → `coins_movimientos` tipo compra / alta de plan) y encender
+  `planes_activos` / `coins_activos`. Hasta entonces la UI dice "Próximamente".
 - Programar el cron de `/api/avisos` (cada 10 min) y `/api/recordatorios` en el
   servidor (§9) y poner `CRON_SECRET` en su `.env`.
 - Borrar las cuentas `@prueba.tardeosclub.com` al lanzar; dejar un solo admin global.
