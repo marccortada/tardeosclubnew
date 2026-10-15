@@ -14,6 +14,8 @@ import { Etiqueta } from "@/components/ui/Chip";
 import { etiquetaPublicacion } from "@/lib/estados";
 import { refrescarPortada } from "@/components/admin/revalidar";
 import { descargarCsv, leerPorLotes, hoyFichero } from "@/components/admin/csv";
+import { useFiltroZona, SelectorZona, esperar } from "@/components/admin/FiltroZona";
+import { useAuth } from "@/lib/useAuth";
 import {
   BadgeCheck, Eye, EyeOff, Plus, ExternalLink, Pencil, Store, Disc3, Megaphone, Trash2, Download, CheckCircle2, Loader2,
 } from "lucide-react";
@@ -32,6 +34,8 @@ type Fila = {
   imagen: string | null;
   created_at: string | null;
   zonas?: string[] | null;
+  /** Zona normalizada (lote 69); solo locales/promotores y solo si el lote está. */
+  zona_slug?: string | null;
 };
 
 /** Confirmaciones que abren la hoja. */
@@ -71,11 +75,18 @@ export default function FichasAdmin({ tipo }: { tipo: TipoFicha }) {
   const [confirmar, setConfirmar] = useState<Confirmar | null>(null);
   const [obrando, setObrando] = useState<string | null>(null);
   const [exportando, setExportando] = useState<number | null>(null);
+  const { user } = useAuth();
+  // Filtro de zona (lote 69). Los DJs no tienen `zona_slug` (guardan varias
+  // zonas en un array): a ellos no se les aplica.
+  const zona = useFiltroZona();
+  const conZona = !esDj && zona.activo;
+  const esperaZona = !esDj && !zona.listo;
+  const claveZona = esDj ? "" : zona.clave;
 
   const base = (cuenta: boolean) => {
     const cols = esDj
       ? "id,nombre:nombre_artistico,zonas,verificado,oculto,dueno:profile_id,imagen:avatar_url,created_at"
-      : "id,nombre,zona,verificado,estado,dueno:owner_id,imagen:logo_url,created_at";
+      : `id,nombre,zona,verificado,estado,dueno:owner_id,imagen:logo_url,created_at${conZona ? ",zona_slug" : ""}`;
     let q = supabase.from(tabla).select(cols, cuenta ? { count: "exact" } : undefined);
     if (!esDj) q = q.eq("tipo", tipo === "promotores" ? "promotor" : "local");
     return q;
@@ -97,14 +108,15 @@ export default function FichasAdmin({ tipo }: { tipo: TipoFicha }) {
   /** Filtros + búsqueda + orden. La usan la lista y el CSV. */
   const filtrada = (cuenta: boolean): Q => {
     let q = aplicarFiltro(base(cuenta) as Q, filtro);
+    if (!esDj) q = zona.aplicar(q);
     const l = limpiar(busca);
     if (l) q = (esDj ? q.ilike("nombre_artistico", `%${l}%`) : q.or(`nombre.ilike.%${l}%,zona.ilike.%${l}%`));
     return q.order(esDj ? "nombre_artistico" : "nombre").order("id");
   };
 
   const p = usePaginado<Fila>(
-    (desde, hasta) => filtrada(true).range(desde, hasta),
-    [tipo, filtro, busca],
+    (desde, hasta) => (esperaZona ? esperar() : filtrada(true).range(desde, hasta)),
+    [tipo, filtro, busca, claveZona],
     25,
   );
 
@@ -122,16 +134,18 @@ export default function FichasAdmin({ tipo }: { tipo: TipoFicha }) {
     });
   }, [p.filas]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Contadores de cada pestaña (solo recuento, sin filas).
+  // Contadores de cada pestaña (solo recuento, sin filas). Con la misma zona
+  // que la lista: si no, la pestaña dice 300 y al pulsarla salen 40.
   const contar = () => {
+    if (esperaZona) return;
     const fs: Filtro[] = ["todos", "publicados", "pendientes", "ocultos", "sin_dueno", "verificados"];
     Promise.all(fs.map((f) => {
       let q = supabase.from(tabla).select("id", { count: "exact", head: true });
-      if (!esDj) q = q.eq("tipo", tipo === "promotores" ? "promotor" : "local");
+      if (!esDj) q = zona.aplicar(q.eq("tipo", tipo === "promotores" ? "promotor" : "local"));
       return aplicarFiltro(q as Q, f).then((r: { count: number | null }) => [f, r.count ?? 0] as const);
     })).then((rs) => setCuentas(Object.fromEntries(rs)));
   };
-  useEffect(contar, [tipo]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(contar, [tipo, claveZona]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Guarda y comprueba que la base escribió la fila. Devuelve si fue bien. */
   const guardar = async (f: Fila, cambio: Record<string, unknown>, local: Partial<Fila>, msg: string) => {
@@ -232,7 +246,10 @@ export default function FichasAdmin({ tipo }: { tipo: TipoFicha }) {
       ancho="ancho"
     >
       <div className="mb-4 flex flex-col gap-3">
-        <Buscador valor={texto} onCambiar={setTexto} placeholder={esDj ? "Buscar DJ por nombre…" : `Buscar ${t.uno} por nombre o zona…`} />
+        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+          <Buscador valor={texto} onCambiar={setTexto} placeholder={esDj ? "Buscar DJ por nombre…" : `Buscar ${t.uno} por nombre o zona…`} />
+          {!esDj && <SelectorZona zona={zona} />}
+        </div>
         <Filtros<Filtro>
           valor={filtro}
           onCambiar={setFiltro}
@@ -250,7 +267,7 @@ export default function FichasAdmin({ tipo }: { tipo: TipoFicha }) {
       <div aria-live="polite">{aviso && <Aviso tono={aviso.tono}>{aviso.texto}</Aviso>}</div>
 
       <EstadoLista cargando={p.cargando} error={p.error} filas={filas.length}
-        vacio={busca || filtro !== "todos" ? "Nada con esos filtros." : `Todavía no hay ${t.titulo.toLowerCase()}.`} />
+        vacio={busca || filtro !== "todos" || (!esDj && zona.filtra) ? "Nada con esos filtros." : `Todavía no hay ${t.titulo.toLowerCase()}.`} />
 
       {filas.length > 0 && (
         <div className={`overflow-hidden rounded-2xl border border-linea bg-white ${p.cargando ? "opacity-60" : ""}`}>
@@ -267,6 +284,10 @@ export default function FichasAdmin({ tipo }: { tipo: TipoFicha }) {
               {filas.map((f) => {
                 const email = f.dueno ? correos.get(f.dueno) ?? "…" : null;
                 const ocupada = obrando === f.id;
+                // Fuera de su zona el admin de zona solo mira: la base no le
+                // dejaría guardar (lote 69), así que no se le ofrecen botones.
+                // El dueño de la ficha sí puede (caso local + admin de zona).
+                const soloLectura = conZona && !zona.puedeEditar(f.zona_slug) && f.dueno !== user?.id;
                 return (
                   <tr key={f.id} className="flex flex-col gap-2 p-4 md:table-row md:p-0">
                     <td className="md:px-4 md:py-3">
@@ -294,13 +315,22 @@ export default function FichasAdmin({ tipo }: { tipo: TipoFicha }) {
                       </div>
                     </td>
                     <td className="max-w-[280px] md:px-4 md:py-3">
-                      <AsignarDueno key={`${f.id}-${f.dueno ?? ""}`} tabla={tabla} campo={esDj ? "profile_id" : "owner_id"} id={f.id} duenoEmail={email}
+                      {soloLectura ? <span className="text-sm text-tinta-suave">{email ?? "Sin dueño"}</span> : <AsignarDueno key={`${f.id}-${f.dueno ?? ""}`} tabla={tabla} campo={esDj ? "profile_id" : "owner_id"} id={f.id} duenoEmail={email}
                         onAsignado={(em) => { setAviso({ tono: "ok", texto: `«${f.nombre}»: ahora es de ${em}.` }); p.recargar(); contar(); }}
-                        onQuitado={() => { p.cambiar((x) => x.id === f.id, { dueno: null }); setAviso({ tono: "ok", texto: `«${f.nombre}»: dueño quitado.` }); contar(); }} />
+                        onQuitado={() => { p.cambiar((x) => x.id === f.id, { dueno: null }); setAviso({ tono: "ok", texto: `«${f.nombre}»: dueño quitado.` }); contar(); }} />}
                     </td>
                     <td className="md:px-4 md:py-3">
                       <div className="flex flex-wrap items-center gap-1.5 md:justify-end">
                         {ocupada && <Loader2 size={18} className="animate-spin text-tinta-suave" aria-label="Guardando" />}
+                        {soloLectura ? (
+                          <>
+                            <Etiqueta>{f.zona_slug ? "Solo lectura · otra zona" : "Solo lectura · sin zona"}</Etiqueta>
+                            <Link href={`/locales/${f.id}`} target="_blank" aria-label={`Ver ficha pública de ${f.nombre}`}
+                              className="grid min-h-[40px] min-w-[40px] place-items-center rounded-lg border border-linea-fuerte bg-white hover:bg-marfil-100">
+                              <ExternalLink size={16} aria-hidden />
+                            </Link>
+                          </>
+                        ) : (<>
                         {!esDj && f.estado === "borrador" && (
                           <button onClick={() => publicar(f)} disabled={ocupada}
                             className={`${btn} border-magenta bg-magenta text-white hover:bg-magenta-600`}>
@@ -329,6 +359,7 @@ export default function FichasAdmin({ tipo }: { tipo: TipoFicha }) {
                           className="grid min-h-[40px] min-w-[40px] place-items-center rounded-lg border border-linea-fuerte bg-white text-error hover:bg-error-fondo disabled:opacity-50">
                           <Trash2 size={16} aria-hidden />
                         </button>
+                        </>)}
                       </div>
                     </td>
                   </tr>

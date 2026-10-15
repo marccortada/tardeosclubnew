@@ -13,6 +13,7 @@ import { hoyISO } from "@/lib/tardeos";
 import { finDelDiaMadrid, partesFecha } from "@/components/admin/fechas";
 import { refrescarPortada } from "@/components/admin/revalidar";
 import { descargarCsv, leerPorLotes, hoyFichero } from "@/components/admin/csv";
+import { useFiltroZona, SelectorZona, esperar } from "@/components/admin/FiltroZona";
 import {
   MoreHorizontal, Download, CheckCircle2, FileEdit, Ban, Flag, Star, StarOff, Pencil, ExternalLink, Trash2, Clock, Plus, Users,
 } from "lucide-react";
@@ -29,12 +30,16 @@ type Fila = {
   destacado_hasta: string | null;
   destacado_orden: number | null;
   locales: { nombre: string | null; zona: string | null } | null;
+  /** Zona normalizada (lote 69); solo llega si el lote está. */
+  zona_slug?: string | null;
 };
 /** "visibles" y "destacados" eran contadores sueltos: ahora también filtran. */
 type FiltroEstado = "todos" | "visibles" | "destacados" | Estado;
 type FiltroTiempo = "todos" | "proximos" | "pasados";
 
 const COLUMNAS = "id,titulo,fecha,hora_inicio,estado,zona,publicar_en,destacado_hasta,destacado_orden,locales(nombre,zona)";
+/** Con el lote 69 se pide también la zona normalizada (para marcar "solo lectura"). */
+const columnas = (conZona: boolean) => (conZona ? COLUMNAS + ",zona_slug" : COLUMNAS);
 
 const TEXTO_ESTADO: Record<Estado, { t: string; tono: "neutro" | "ok" | "aviso" | "error" | "marca" }> = {
   borrador: { t: "Borrador", tono: "aviso" },
@@ -102,13 +107,16 @@ export default function GestionTardeos() {
   const [errHoja, setErrHoja] = useState("");
 
   const [exportando, setExportando] = useState<number | null>(null);
+  // Filtro de zona (lote 69): el admin de zona ve lo suyo por defecto.
+  const zona = useFiltroZona();
+  const cols = columnas(zona.activo);
 
   /**
    * La consulta con los filtros puestos, ya ordenada. La usan la lista y el
    * CSV: así lo exportado es exactamente lo filtrado.
    */
   const consultaFiltrada = async () => {
-    let q = filtrarTiempo(filtrarEstado(supabase.from("tardeos").select(COLUMNAS, { count: "exact" }), estado), tiempo);
+    let q = zona.aplicar(filtrarTiempo(filtrarEstado(supabase.from("tardeos").select(cols, { count: "exact" }), estado), tiempo));
     const l = limpiar(busca);
     if (l) {
       // El nombre del local está en otra tabla: primero se buscan sus ids
@@ -129,12 +137,14 @@ export default function GestionTardeos() {
 
   const p = usePaginado<Fila>(
     async (desde, hasta) => {
+      // Hasta saber la zona del admin no se pide nada (si no, el de zona vería todo un instante).
+      if (!zona.listo) return esperar();
       const { q, error: e } = await consultaFiltrada();
       if (!q) return { data: null, count: null, error: e };
       const r = await q.range(desde, hasta);
       return { data: (r.data ?? null) as unknown as Fila[] | null, count: r.count, error: r.error };
     },
-    [estado, tiempo, busca],
+    [estado, tiempo, busca, zona.clave],
     25,
   );
 
@@ -160,10 +170,12 @@ export default function GestionTardeos() {
 
   /**
    * Números de cada pestaña. Los de estado respetan el filtro de fecha (y al
-   * revés), así el número de la pestaña es lo que saldrá al pulsarla.
+   * revés), y todos el de zona: así el número de la pestaña es lo que saldrá
+   * al pulsarla.
    */
   const contar = useCallback(async () => {
-    const cuenta = () => supabase.from("tardeos").select("id", { count: "exact", head: true });
+    if (!zona.listo) return;
+    const cuenta = () => zona.aplicar(supabase.from("tardeos").select("id", { count: "exact", head: true }));
     const estados: FiltroEstado[] = ["todos", "borrador", "programado", "publicado", "visibles", "destacados", "cancelado", "finalizado"];
     const tiempos: FiltroTiempo[] = ["todos", "proximos", "pasados"];
     const [re, rt] = await Promise.all([
@@ -175,7 +187,7 @@ export default function GestionTardeos() {
     setErrCont("");
     setCEstado(Object.fromEntries(estados.map((e, i) => [e, re[i].count ?? 0])));
     setCTiempo(Object.fromEntries(tiempos.map((t, i) => [t, rt[i].count ?? 0])));
-  }, [estado, tiempo]);
+  }, [estado, tiempo, zona.clave]); // eslint-disable-line react-hooks/exhaustive-deps -- `zona.clave` resume todo lo que cambia el filtro de zona
   useEffect(() => { contar(); }, [contar]);
 
   const cerrar = () => { setSel(null); setConfirmar(null); setErrHoja(""); };
@@ -194,7 +206,7 @@ export default function GestionTardeos() {
   /** Aplica un cambio y comprueba que la base lo guardó de verdad. */
   const aplicar = async (f: Fila, cambio: Record<string, unknown>, verificado: (g: Fila) => boolean, mensaje: string) => {
     setTrabajando(true); setErrHoja("");
-    const { data, error: e } = await supabase.from("tardeos").update(cambio).eq("id", f.id).select(COLUMNAS);
+    const { data, error: e } = await supabase.from("tardeos").update(cambio).eq("id", f.id).select(cols);
     setTrabajando(false);
     if (e) { setErrHoja("No se pudo guardar: " + e.message); return; }
     const g = (data?.[0] ?? null) as unknown as Fila | null;
@@ -242,7 +254,9 @@ export default function GestionTardeos() {
     contar(); refrescarPortada();
   };
 
-  const hayFiltro = estado !== "todos" || tiempo !== "todos" || busca.trim() !== "";
+  const hayFiltro = estado !== "todos" || tiempo !== "todos" || busca.trim() !== "" || zona.filtra;
+  // Fuera de su zona el admin de zona solo mira: la base no le dejaría guardar (lote 69).
+  const soloLectura = (f: Fila) => zona.activo && !zona.puedeEditar(f.zona_slug);
 
   return (
     <SeccionPanel
@@ -262,7 +276,10 @@ export default function GestionTardeos() {
       ancho="ancho"
     >
       <div className="mb-4 flex flex-col gap-3">
-        <Buscador valor={texto} onCambiar={setTexto} placeholder="Buscar por título, local o zona…" />
+        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+          <Buscador valor={texto} onCambiar={setTexto} placeholder="Buscar por título, local o zona…" />
+          <SelectorZona zona={zona} />
+        </div>
         <Filtros<FiltroTiempo>
           valor={tiempo}
           onCambiar={setTiempo}
@@ -310,7 +327,7 @@ export default function GestionTardeos() {
             </thead>
             <tbody className="divide-y divide-linea">
               {p.filas.map((f) => (
-                <FilaTardeo key={f.id} f={f} onAcciones={() => { setSel(f); setOk(""); }} />
+                <FilaTardeo key={f.id} f={f} soloLectura={soloLectura(f)} onAcciones={() => { setSel(f); setOk(""); }} />
               ))}
             </tbody>
           </table>
@@ -330,7 +347,16 @@ export default function GestionTardeos() {
             <p className="mb-4 text-[15px] text-tinta-suave">{sel.fecha} · {sel.locales?.nombre ?? "Sin local"}</p>
             {errHoja && <Aviso tono="error">{errHoja}</Aviso>}
 
-            {confirmar === "eliminar" ? (
+            {soloLectura(sel) ? (
+              <div className="flex flex-col gap-3">
+                <Aviso tono="aviso">
+                  {sel.zona_slug ? "Este tardeo es de otra zona" : "Este tardeo no tiene zona"}: puedes verlo, pero solo lo cambia quien administra su zona.
+                </Aviso>
+                <Link href={`/tardeos/${sel.id}`} target="_blank" rel="noopener noreferrer" className={claseBoton("suave", "normal", true, "!justify-start")}>
+                  <ExternalLink size={20} aria-hidden /> Ver ficha pública
+                </Link>
+              </div>
+            ) : confirmar === "eliminar" ? (
               <div className="flex flex-col gap-3">
                 <p className="rounded-xl bg-error-fondo p-4 text-[15px] font-semibold text-error">
                   Se borra para siempre, con sus favoritos e inscripciones. No se puede deshacer.
@@ -398,7 +424,7 @@ function Accion({ icono, children, onClick, disabled }: { icono: React.ReactNode
 }
 
 /** Fila de la tabla en escritorio; en móvil se apila como tarjeta. */
-function FilaTardeo({ f, onAcciones }: { f: Fila; onAcciones: () => void }) {
+function FilaTardeo({ f, onAcciones, soloLectura }: { f: Fila; onAcciones: () => void; soloLectura: boolean }) {
   const p = partesFecha(f.fecha);
   const pasado = f.fecha < hoyISO();
   const e = TEXTO_ESTADO[f.estado] ?? { t: f.estado, tono: "neutro" as const };
@@ -427,6 +453,7 @@ function FilaTardeo({ f, onAcciones }: { f: Fila; onAcciones: () => void }) {
           <Etiqueta tono={e.tono}>{e.t}</Etiqueta>
           {estaDestacado(f) && <Etiqueta tono="marca"><Star size={13} aria-hidden /> Destacado</Etiqueta>}
           {pasado && <Etiqueta>Ya pasó</Etiqueta>}
+          {soloLectura && <Etiqueta>Solo lectura</Etiqueta>}
           {f.estado === "programado" && f.publicar_en && (
             <Etiqueta>
               <Clock size={13} aria-hidden /> Sale el {new Date(f.publicar_en).toLocaleString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" })}
@@ -436,13 +463,15 @@ function FilaTardeo({ f, onAcciones }: { f: Fila; onAcciones: () => void }) {
       </td>
       <td className="md:px-4 md:py-3">
         <div className="flex items-center gap-1.5 md:justify-end">
-          <Link href={`/local/tardeos/${f.id}/editar`} aria-label={`Editar ${f.titulo}`}
-            className="grid min-h-[44px] min-w-[44px] place-items-center rounded-lg border border-linea-fuerte bg-white hover:bg-marfil-100">
-            <Pencil size={16} aria-hidden />
-          </Link>
-          <button type="button" onClick={onAcciones} aria-label={`Más acciones para ${f.titulo}`}
+          {!soloLectura && (
+            <Link href={`/local/tardeos/${f.id}/editar`} aria-label={`Editar ${f.titulo}`}
+              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-lg border border-linea-fuerte bg-white hover:bg-marfil-100">
+              <Pencil size={16} aria-hidden />
+            </Link>
+          )}
+          <button type="button" onClick={onAcciones} aria-label={`${soloLectura ? "Ver" : "Más acciones para"} ${f.titulo}`}
             className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg border border-linea-fuerte bg-white px-3 text-sm font-semibold hover:bg-marfil-100 md:flex-none">
-            <MoreHorizontal size={18} aria-hidden /> Acciones
+            <MoreHorizontal size={18} aria-hidden /> {soloLectura ? "Ver" : "Acciones"}
           </button>
         </div>
       </td>

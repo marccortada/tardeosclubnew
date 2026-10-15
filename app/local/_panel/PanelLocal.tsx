@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import {
   LayoutDashboard, CalendarDays, CalendarPlus, Users, LineChart, Images, Store, Megaphone,
-  Star, CreditCard, LifeBuoy, ShieldCheck, Loader2, LogIn, ArrowLeft, MessageSquareQuote, PlusCircle, Coins, Disc3,
+  Star, CreditCard, LifeBuoy, ShieldCheck, Loader2, LogIn, ArrowLeft, MessageSquareQuote, PlusCircle, Coins, Disc3, QrCode,
 } from "lucide-react";
 import PanelShell, { type GrupoPanel, SeccionPanel } from "@/components/panel/PanelShell";
 import { claseBoton } from "@/components/Boton";
@@ -225,6 +225,7 @@ export default function PanelLocal({ children }: { children: ReactNode }) {
         { href: enlace("/local/resenas"), label: "Reseñas", icon: MessageSquareQuote },
         { href: enlace("/local/editar"), label: tipo === "promotor" ? "Datos de la marca" : "Datos del local", icon: tipo === "promotor" ? Megaphone : Store },
         { href: enlace("/local/promocionar"), label: "Promocionar", icon: Star },
+        { href: enlace("/local/qr"), label: "QR del local", icon: QrCode },
         { href: enlace("/local/suscripcion"), label: "Suscripción", icon: CreditCard, nota: planes ? undefined : "Pronto" },
         { href: enlace("/local/coins"), label: "Coins", icon: Coins, nota: "Pronto" },
         { href: enlace("/local/solicitudes"), label: "Solicitudes de DJs", icon: Disc3 },

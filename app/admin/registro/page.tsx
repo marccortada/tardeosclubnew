@@ -9,6 +9,7 @@ import { Etiqueta } from "@/components/ui/Chip";
 import { claseCampo } from "@/components/ui/Campo";
 import { supabase } from "@/lib/supabase";
 import { marcarAsistencia } from "@/lib/tardeos";
+import { useFiltroZona, SelectorZona, esperar, type FiltroZona } from "@/components/admin/FiltroZona";
 import { Download, Users, CheckCircle2, XCircle, Clock, X } from "lucide-react";
 
 /**
@@ -30,7 +31,7 @@ type BuscarEn = "persona" | "tardeo";
 type Bruta = {
   id: string; tardeo_id: string; estado: EstadoIns; asistencia?: Asist | null; created_at: string;
   profiles: { display_name: string | null; email: string | null } | null;
-  tardeos: { titulo: string | null; fecha: string | null; hora_inicio: string | null; locales: { nombre: string | null } | null } | null;
+  tardeos: { titulo: string | null; fecha: string | null; hora_inicio: string | null; zona_slug?: string | null; locales: { nombre: string | null } | null } | null;
 };
 
 type Filtro = { estado: Estado; asist: "todas" | Asist; periodo: Periodo; dia: string; busca: string; buscaEn: BuscarEn; sinAsistencia: boolean };
@@ -49,16 +50,17 @@ const esColumnaQueFalta = (e: unknown) => {
  * visible y para el CSV, así lo exportado es exactamente lo filtrado.
  *
  * Filtrar por un campo de la persona o del tardeo exige `!inner`: sin él,
- * PostgREST deja la fila y solo vacía el objeto anidado.
+ * PostgREST deja la fila y solo vacía el objeto anidado. La zona (lote 69)
+ * es la del tardeo: `tardeos.zona_slug`.
  */
-function consulta(f: Filtro, contar: boolean) {
+function consulta(f: Filtro, contar: boolean, zona: FiltroZona) {
   const porPersona = !!f.busca && f.buscaEn === "persona";
-  const porTardeo = (!!f.busca && f.buscaEn === "tardeo") || f.periodo !== "todos" || !!f.dia;
+  const porTardeo = (!!f.busca && f.buscaEn === "tardeo") || f.periodo !== "todos" || !!f.dia || zona.filtra;
   const cols = [
     "id,tardeo_id,estado,created_at",
     f.sinAsistencia ? "" : "asistencia",
     `profiles${porPersona ? "!inner" : ""}(display_name,email)`,
-    `tardeos${porTardeo ? "!inner" : ""}(titulo,fecha,hora_inicio,locales(nombre))`,
+    `tardeos${porTardeo ? "!inner" : ""}(titulo,fecha,hora_inicio,${zona.activo ? "zona_slug," : ""}locales(nombre))`,
   ].filter(Boolean).join(",");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- la select se arma en tiempo de ejecución y el tipado de supabase-js no la sigue
@@ -71,6 +73,7 @@ function consulta(f: Filtro, contar: boolean) {
   const l = limpiar(f.busca);
   if (l && f.buscaEn === "persona") q = q.or(`display_name.ilike.%${l}%,email.ilike.%${l}%`, { referencedTable: "profiles" });
   if (l && f.buscaEn === "tardeo") q = q.ilike("tardeos.titulo", `%${l}%`);
+  q = zona.aplicar(q, "tardeos");
   // `id` desempata: con created_at repetidos, las páginas (y los bloques del
   // CSV) podían repetir o saltarse filas.
   return q.order("created_at", { ascending: false }).order("id");
@@ -102,12 +105,14 @@ export default function Registro() {
   const [exportando, setExportando] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
+  // Filtro de zona (lote 69), por la zona del tardeo de cada inscripción.
+  const zona = useFiltroZona();
 
   const filtro: Filtro = { estado, asist, periodo, dia, busca, buscaEn, sinAsistencia };
 
   const p = usePaginado<Bruta>(
-    (desde, hasta) =>
-      (consulta(filtro, true).range(desde, hasta) as PromiseLike<{ data: Bruta[] | null; count: number | null; error: unknown }>).then((r) => {
+    (desde, hasta) => !zona.listo ? esperar() :
+      (consulta(filtro, true, zona).range(desde, hasta) as PromiseLike<{ data: Bruta[] | null; count: number | null; error: unknown }>).then((r) => {
         // Sin el lote 48 no existe la columna `asistencia`: se repite sin ella.
         // (Se devuelve vacío sin error para que no parpadee un fallo mientras.)
         if (r.error && !sinAsistencia && esColumnaQueFalta(r.error)) {
@@ -116,13 +121,17 @@ export default function Registro() {
         }
         return r;
       }),
-    [estado, asist, periodo, dia, busca, buscaEn, sinAsistencia],
+    [estado, asist, periodo, dia, busca, buscaEn, sinAsistencia, zona.clave],
     25,
   );
 
-  // Resumen global (no depende de los filtros): solo recuentos, sin filas.
+  // Resumen (solo recuentos, sin filas). No depende de los filtros de la
+  // lista, pero sí de la zona: al admin de Tarragona le sirve SU resumen.
   const contar = () => {
-    const base = () => supabase.from("inscripciones").select("id", { count: "exact", head: true }).eq("estado", "apuntado");
+    if (!zona.listo) return;
+    const base = () => zona.aplicar(
+      supabase.from("inscripciones").select(zona.filtra ? "id,tardeos!inner(zona_slug)" : "id", { count: "exact", head: true }).eq("estado", "apuntado"),
+      "tardeos");
     Promise.all([
       base(),
       sinAsistencia ? null : base().eq("asistencia", "asistio"),
@@ -132,7 +141,7 @@ export default function Registro() {
       apuntados: a.count ?? undefined, asistio: b?.count ?? undefined, no_asistio: c?.count ?? undefined, pendiente: d?.count ?? undefined,
     }));
   };
-  useEffect(contar, [sinAsistencia]);
+  useEffect(contar, [sinAsistencia, zona.clave]); // eslint-disable-line react-hooks/exhaustive-deps -- `zona.clave` resume el filtro de zona
 
   const marcar = async (f: Bruta, valor: Asist) => {
     if (f.asistencia === valor) return;
@@ -174,7 +183,7 @@ export default function Registro() {
     const todas: Bruta[] = [];
     // Por lotes de 1000 (el tope de PostgREST por petición), hasta agotar.
     for (let desde = 0; desde < 100000; desde += 1000) {
-      const { data, error: e } = await consulta(filtro, false).range(desde, desde + 999);
+      const { data, error: e } = await consulta(filtro, false, zona).range(desde, desde + 999);
       if (e) { setExportando(null); setError("No se pudo exportar: " + e.message); return; }
       todas.push(...((data ?? []) as Bruta[]));
       setExportando(todas.length);
@@ -200,6 +209,10 @@ export default function Registro() {
   };
 
   const hayFiltros = !!busca || estado !== "apuntado" || periodo !== "todos" || !!dia || asist !== "todas";
+  // Fuera de su zona el admin de zona solo mira: mover o promover lo rechaza
+  // la base (lote 69), y la asistencia se deja igual de quieta para que la
+  // fila sea de verdad "solo lectura".
+  const soloLectura = (f: Bruta) => zona.activo && !zona.puedeEditar(f.tardeos?.zona_slug);
   const limpiarFiltros = () => { setTexto(""); setEstado("apuntado"); setPeriodo("todos"); setDia(""); setAsist("todas"); };
 
   return (
@@ -213,7 +226,7 @@ export default function Registro() {
       }
       ancho="ancho"
     >
-      <section className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Resumen de todas las inscripciones">
+      <section className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4" aria-label={zona.filtra ? "Resumen de las inscripciones de la zona elegida" : "Resumen de todas las inscripciones"}>
         {[
           { icono: Users, t: "Apuntados", v: resumen.apuntados },
           { icono: CheckCircle2, t: "Vinieron", v: resumen.asistio },
@@ -240,6 +253,7 @@ export default function Registro() {
         <div className="flex flex-col gap-2 md:flex-row md:items-center">
           <Buscador valor={texto} onCambiar={setTexto}
             placeholder={buscaEn === "persona" ? "Buscar persona por nombre o email…" : "Buscar por título del tardeo…"} />
+          <SelectorZona zona={zona} />
           <div role="group" aria-label="Dónde buscar" className="flex gap-1.5">
             {([["persona", "En personas"], ["tardeo", "En tardeos"]] as [BuscarEn, string][]).map(([k, t]) => (
               <button key={k} type="button" onClick={() => setBuscaEn(k)} aria-pressed={buscaEn === k}
@@ -300,7 +314,7 @@ export default function Registro() {
       </div>
 
       <EstadoLista cargando={p.cargando} error={p.error} filas={p.filas.length}
-        vacio={hayFiltros ? "Ninguna inscripción con esos filtros." : "Todavía no se ha apuntado nadie."} />
+        vacio={hayFiltros || zona.filtra ? "Ninguna inscripción con esos filtros." : "Todavía no se ha apuntado nadie."} />
 
       {p.filas.length > 0 && (
         <div className={`overflow-hidden rounded-2xl border border-linea bg-white ${p.cargando ? "opacity-60" : ""}`}>
@@ -331,14 +345,15 @@ export default function Registro() {
                   <td className="md:px-4 md:py-3">
                     {/* Mover entre confirmado / espera / cancelado (lote 69, con rastro y
                         respetando el aforo). El admin de zona solo puede en su zona. */}
-                    <select value={f.estado} disabled={obrando === f.id} onChange={(e) => mover(f, e.target.value as EstadoIns)}
+                    {soloLectura(f) && <p className="mb-1"><Etiqueta>Solo lectura</Etiqueta></p>}
+                    <select value={f.estado} disabled={obrando === f.id || soloLectura(f)} onChange={(e) => mover(f, e.target.value as EstadoIns)}
                       aria-label="Estado de la inscripción"
                       className={`min-h-[44px] rounded-lg border px-2 text-sm font-semibold ${f.estado === "apuntado" ? "border-ok text-ok" : "border-linea-fuerte"}`}>
                       <option value="apuntado">Apuntado</option>
                       <option value="espera">En espera</option>
                       <option value="cancelado">Cancelado</option>
                     </select>
-                    {f.estado === "espera" && (
+                    {f.estado === "espera" && !soloLectura(f) && (
                       <button type="button" onClick={() => promover(f)} disabled={obrando === f.id}
                         className="mt-1 block min-h-[40px] text-sm font-semibold text-magenta-700 underline">
                         Promover al primero de la espera
@@ -351,7 +366,7 @@ export default function Registro() {
                         {([["pendiente", "Sin marcar"], ["asistio", "Vino"], ["no_asistio", "No vino"]] as [Asist, string][]).map(([v, t]) => {
                           const on = (f.asistencia ?? "pendiente") === v;
                           return (
-                            <button key={v} type="button" onClick={() => marcar(f, v)} disabled={obrando === f.id} aria-pressed={on}
+                            <button key={v} type="button" onClick={() => marcar(f, v)} disabled={obrando === f.id || soloLectura(f)} aria-pressed={on}
                               className={`min-h-[44px] rounded-lg border px-3 text-sm font-semibold transition-colors disabled:opacity-60 ${
                                 on
                                   ? v === "asistio" ? "border-ok bg-ok text-white" : v === "no_asistio" ? "border-error bg-error text-white" : "border-tinta bg-tinta text-white"
