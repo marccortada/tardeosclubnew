@@ -19,6 +19,19 @@ Catalunya, para público de 30+. Móvil primero.
 
 Sustituye a la web antigua `tardeosclub.com` (SPA React con muchos fallos).
 
+**Versión 2.0 (15‑oct‑2026, en producción):** sigue el *Dossier 2.0* del cliente
+(PDF 14‑oct + vídeo de simulación). Es una **app móvil** con barra inferior:
+
+- **Tardícola:** Inicio · Eventos · DJs · Próxima Parada · Perfil.
+- **Profesional** (DJ, local, promotor, admin): Inicio · Eventos · DJs · **Entre Beats** · Perfil.
+
+Recorrido: descubrir → **Asistiré** (lista de espera si se llena) → **Meet Zone**
+(chat del evento, cierra 72 h tras el fin) → **encuesta** → volver. Además: feed
+vertical de DJs, seguir, sets, reproductor persistente, Nexo Radio dentro, sorteos,
+avisos, Coins (apagado), admin por zonas. Auditoría y plan: `PLAN_DOSSIER_2.0.md`;
+reparto por módulos: `docs/v2/CONTRATOS.md`. Nombre y marca pueden cambiar
+(decisión del cliente, 18‑oct): **todo color/fuente va por tokens**.
+
 ---
 
 ## 2. Stack
@@ -81,14 +94,23 @@ Claves en `.env.local` (no se sube). La de la vieja: `OLD_SUPABASE_*`, solo para
 
 ```
 app/                    rutas (App Router; casi todo "use client")
-  page.tsx              portada / landing
-  tardeos/, tardeos/[id]    listado y ficha de tardeo
-  locales/[id], djs/, djs/[id], dj/[slug], mapa/   fichas públicas
+  page.tsx              sin sesión: landing · con sesión: Inicio app (5 bloques)
+  eventos/              Mapa · Lista · Mes + filtros desde el ADN (/tardeos y /mapa redirigen)
+  tardeos/[id]          ficha (Asistiré, Quiénes van, Line-up, Meet Zone)
+  tardeos/[id]/meet     Meet Zone · tardeos/[id]/encuesta  ¿Qué tal el tardeo?
+  proxima-parada/       guardados + Asistiré (Próximos / Pasados)
+  djs/                  feed vertical de DJs · djs/[id] perfil · djs/[id]/mensaje
+  nexo/                 Nexo Radio (Escuchar · Programación · Enviar sesión)
+  entre-beats/          hilos y anuncios, solo profesionales
+  mensajes/             conversaciones tardícola ↔ DJ
+  avisos/               bandeja de la campana · sorteos/  sorteos
+  directorio/           locales · promotores · DJs (/colaboradores redirige)
+  locales/[id], dj/[slug]   fichas públicas
   unirse/               alta de local o DJ ("¿Qué eres?")
   reclamar/             reclamar ficha con enlace de invitación (token)
-  perfil/**, favoritos/ portal TARDÍCOLA ("Mi cuenta")
-  local/**              portal LOCAL / EVENTO
-  dj/{perfil,contenido,presskit,tardeos,resenas,ayuda}   portal DJ
+  perfil/**             Perfil tardícola: adn, djs, sets, ajustes, notificaciones…
+  local/**              portal LOCAL / EVENTO (+ coins, qr, solicitudes de DJs)
+  dj/**                 portal DJ (perfil, sets, presskit, nexo, mensajes, tardeos…)
   admin/**              portal ADMIN (protegido por GuardiaAdmin)
   api/**                rutas de servidor (service role, cron, IA, push…)
   legal/**              aviso legal, cookies, privacidad
@@ -99,6 +121,10 @@ components/
   admin/                AdminNav (barra admin), FichasAdmin, CSV, ordenar…
   cuenta/               Acceso (login/alta), AltaPortal, usePortal…
   ui/                   Campo, Chip, Hoja (modal), Tarjeta
+  tardicola/            InicioApp, FichaPiezas, PerfilTardicola…
+  musica/Reproductor.tsx   reproductor persistente (montado en app/layout.tsx)
+  comunidad/ retorno/   Meet Zone, mensajes, denuncias · encuesta, sorteos
+  CabeceraApp.tsx, BottomNav.tsx   cabecera (zona + campana) y barra de 5 pestañas
   *.tsx                 piezas públicas (TardeoCard, CarruselDjs, SiteNav…)
 lib/                    lógica y acceso a datos (tardeos.ts, djs.ts, salud.ts…)
 supabase/               lotes SQL numerados (ver §8)
@@ -114,6 +140,11 @@ Piezas clave:
 - `lib/volver.ts` — `?volver=` seguro (solo rutas propias, sin trucos).
 - `lib/rutasPanel.ts` — en qué rutas se oculta la cabecera pública / barra inferior.
 - `lib/salud.ts` + `/admin/salud` — comprueba que la base tiene todo lo que el código espera.
+- `lib/permisos.ts` → `useRoles()` — esAdmin / esLocal / esPromotor / esDj / **esProfesional**
+  (decide la 4.ª pestaña, Entre Beats y press kit; la base lo protege con `es_profesional()`).
+- `lib/qr.ts` — generador de QR propio (sin dependencias), usado en `/local/qr`.
+- Modo claro/oscuro: colores como variables CSS (`app/globals.css`), `darkMode: "class"`,
+  preferencia en `profiles.tema` + navegador.
 - `lib/erroresApp.ts`, `components/CapturaErrores.tsx`, `/api/errores` — seguimiento de errores.
 
 ---
@@ -154,7 +185,15 @@ node --env-file=.env.local scripts/sesion-prueba.mjs dj@prueba.tardeosclub.com
 #     que abre la web ya con esa sesión (solo funciona con @prueba.tardeosclub.com)
 ```
 
-Con "código por email" no entran (esos correos no existen): usar contraseña o el enlace.
+**Cómo entrar:** `/perfil` → "Entrar" → **"Con contraseña"** → email + contraseña del
+fichero. Con "código por email" NO entran (esos correos no existen: Supabase responde
+"Ese email no parece válido"). Las contraseñas son fáciles de recordar a propósito
+(para enseñar la app) y **no van en este fichero porque se sube a GitHub**: están en
+`.env.cuentas-prueba.local`, en la raíz, solo en el ordenador.
+
+⚠️ Existen en la base de **producción** (la del admin es admin de verdad). Borrarlas
+antes del lanzamiento con `--borrar`. `sesion-prueba.mjs` acepta `PUERTO=3001` si el
+servidor local no está en el 3000.
 
 ---
 
@@ -207,14 +246,44 @@ veces sin romper nada). Se aplican en orden desde Supabase → SQL Editor.
 - `61` Performance Advisor: políticas con `(select auth.uid())`, políticas
   solapadas fusionadas, índices en todas las claves foráneas.
 - `62` Tablas internas: política explícita "solo admin lee".
+- `63` Base común v2: `es_profesional()`, `zonas` (zona madre barcelona/tarragona/girona
+  + marca), `avisos` (bandeja), `auditoria` (`public.auditar`), `denuncias` genéricas,
+  `profiles.alias|bio|tema`, `perfil_publico()`.
+- `64` Asistiré + lista de espera (`asistire()`, `retirar_asistencia()`, promoción
+  automática al liberarse plaza), `quienes_van()`, `popups_vistos`.
+- `65` Música: `sets` (+ likes, guardados, comentarios con respuesta del DJ),
+  `seguidores_dj`, `nexo_envios`, `nexo_programacion`, `feed_djs()`. **`djs` tiene
+  permisos por columna**: `presskit_url` solo con `presskit_de()` (profesionales). Toda
+  columna nueva de `djs` necesita `grant select (col) on public.djs to anon, authenticated`
+  y nunca `select *` sobre `djs`.
+- `66` Comunidad: Meet Zone (`meet_mensajes`, `meet_fijado`, `meet_estado`), solicitudes y
+  mensajes con DJs, `bloqueos`, Entre Beats (`eb_hilos`, `eb_respuestas`, `eb_anuncios`),
+  filtro de teléfonos/emails, retención con 3 denuncias, Realtime.
+- `67` Retorno: `tardeo_inicio/fin`, versión de horario, `encuestas`, `sorteos`,
+  `preferencias_avisos`, `resenas.tardeo_id`.
+- `68` Negocio: cupos 1/2/∞ por ciclo, Fundadores (50), Coins (libro contable inmutable,
+  reservas, devoluciones; `coins_activos` apagado), `promo_canjes`, `posibles_duplicados`,
+  `dj_solicitudes` (vincularse / proponer evento), DJs provisionales.
+- `69` Admin por zonas: `admin_roles` (zona/tarea; sin filas = admin global, compatible),
+  `zona_slug` en locales/tardeos, `cola_trabajo()`, `asignaciones`, mover/promover
+  inscripciones, medición (`origen`, `es_equipo`, deduplicado, `cohortes_retorno()`),
+  `favoritos` documentada.
+- `70` Índices duplicados que dejó el paquete. `71` `feed_djs` enseña todos los DJs.
 
-`supabase/PEGAR_45_a_62.sql` = los lotes 45–62 juntos en un fichero (ya
-aplicado en producción el 15‑oct‑2026). `supabase/limpieza/` = limpieza de
-duplicados de la migración (**no aplicada**: necesita "sí" del cliente).
+Paquetes para pegar de una vez: `PEGAR_45_a_62.sql`, `PEGAR_63_a_69.sql`,
+`PEGAR_70_71.sql` — **todos aplicados en producción el 15‑oct‑2026**.
+`supabase/limpieza/` = limpieza de duplicados de la migración (**no aplicada**:
+necesita "sí"; recuentos con `node --env-file=.env.local scripts/limpieza-recuentos.mjs`,
+solo lectura).
 
-**Estado de los Advisors (15‑oct‑2026):** Security 0 errores, 1 aviso
-("Leaked Password Protection", requiere plan Pro: descartado). Performance 0
-avisos. Los "Unused index" (info) son normales con poco tráfico: **no borrarlos**.
+**Estado de los Advisors (15‑oct‑2026, tras el 71):** Security 0 errores, 1 aviso
+("Leaked Password Protection", requiere plan Pro: **el cliente no quiere Pro**,
+descartado). Performance 0 errores, 0 avisos. Los "Unused index" (info, ~100) son
+normales con poco tráfico: **no borrarlos**.
+
+Comprobar si un lote está en producción: `select(...).limit(1)` con la service role
+(PGRST205 = no existe). **No** con `head: true`: devuelve "sin error" aunque la
+tabla no exista.
 
 ### Reglas para escribir SQL nuevo
 
@@ -253,9 +322,17 @@ avisos. Los "Unused index" (info) son normales con poco tráfico: **no borrarlos
 
 Hay un Postgres 16 local (`/opt/homebrew/opt/postgresql@16/bin`) que simula
 Supabase (roles `anon`/`authenticated`/`service_role`, `auth.uid()` falso).
-Flujo: base limpia → lotes 01–44 → lote nuevo **dos veces** → probar como
+Flujo: base limpia → lotes 01–(último) → lote nuevo **dos veces** → probar como
 `set role anon;` / `set role authenticated; set request.jwt.claim.sub='<uuid>';`.
-Arrancar siempre con `LC_ALL=en_US.UTF-8` (si no, no arranca).
+Arrancar siempre con `LC_ALL=en_US.UTF-8` (si no, no arranca). La base local NO
+tiene los permisos por defecto de Supabase (`grant` sobre tablas a anon/authenticated,
+`usage` en el esquema `auth`): en las pruebas hay que darlos a mano, y en los lotes
+conviene ponerlos explícitos.
+
+Pegar en producción: el modo automático de permisos de Claude Code bloquea
+escribir en Supabase y desplegar aunque se autorice en el chat. Lo hace la persona:
+abrir el `PEGAR_*.sql`, ⌘A ⌘C, SQL Editor → Run (si pregunta, **"Run without RLS"**:
+los lotes ya activan RLS) → "Run query".
 
 Al copiar SQL al portapapeles en macOS usar
 `osascript -e 'set the clipboard to (read POSIX file "/ruta.sql" as «class utf8»)'`
@@ -279,6 +356,9 @@ Al copiar SQL al portapapeles en macOS usar
 | `enviar-oferta` | email de oferta comercial (Resend) |
 | `recordatorios`, `revalidar` | cron, protegidos con `x-cron-secret` |
 | `avisos` | cron **cada 10 min** (lote 67): aviso 1 h antes con propuesta musical, "¿Qué tal ha ido?" + vuelta segura al acabar, cambios de hora y cancelaciones; bandeja `avisos` + push. Idempotente (clave por aviso). Probar con fecha simulada: `?ahora=2026-10-24T14:10:00Z` |
+| `errores` | recibe errores del navegador (límite por IP y global) |
+| `borrar-cuenta` | el usuario borra su cuenta y datos |
+| `admin/usuario/[id]` | acciones de admin sobre un usuario |
 
 Cron a programar en el servidor (no está programado; lo hace quien despliega):
 
@@ -292,9 +372,6 @@ valida la base), bandeja `/avisos` (+ preferencias), `/sorteos`, `/admin/sorteos
 `/admin/encuestas`. Lógica pura de horas y avisos en `lib/avisos.ts` (misma regla que
 `public.tardeo_fin`). El ajuste `avisos_1h_guardados` = 'true' manda el aviso de 1 h también a
 guardados (por defecto solo "Asistiré").
-| `errores` | recibe errores del navegador (límite por IP y global) |
-| `borrar-cuenta` | el usuario borra su cuenta y datos |
-| `admin/usuario/[id]` | acciones de admin sobre un usuario |
 
 Errores: el navegador los manda a `/api/errores`, el servidor los agrupa por
 huella en `errores_app` (máx. 500 nuevos/día). Se ven en `/admin/errores`.
@@ -313,7 +390,13 @@ Compila con `NEXT_PUBLIC_SITE_URL=https://crm.gnerai.com`, sube por rsync al
 droplet (`/var/www/tardeosclub`), repone `sharp` de Linux y reinicia PM2.
 El script explica por qué cada exclusión de rsync es necesaria: **no quitarlas**.
 Antes de desplegar: `npx tsc --noEmit` y `npm run lint` sin errores, y los
-lotes SQL que necesite el código ya aplicados.
+lotes SQL que necesite el código ya aplicados (**primero SQL, luego despliegue**:
+p. ej. con el lote 65 el código viejo ya no puede leer `presskit_url`). El script
+termina en "▸ Listo." si todas las comprobaciones dan ok. Servidor:
+`root@46.101.185.148`, proceso PM2 `tardeosclub`; logs con
+`ssh root@46.101.185.148 'pm2 logs tardeosclub --lines 50 --nostream'`. Los
+"Failed to find Server Action" en los logs tras desplegar son de pestañas abiertas
+con la versión anterior: normales.
 
 Git: rama de trabajo `rediseno`; `main` es la estable. No subir
 `AUDITORIA_Y_PLAN.md` (datos de seguridad de la web vieja) ni ningún `.env*`
@@ -321,14 +404,35 @@ salvo `.env.example`.
 
 ---
 
-## 11. Pendiente (depende del cliente)
+## 11. Pendiente
 
-- Limpieza de duplicados de la migración (`supabase/limpieza/`, L0–L7):
-  enseñar recuentos y pedir "sí".
+**Del cliente (no se puede cerrar sin ellos):**
+- Nombre y marca (domingo 18‑oct). Si cambian: tokens de `tailwind.config.ts` /
+  `globals.css`, logos de `public/branding/`, textos con "TardeosClub".
+- URL del stream de Nexo (`NEXT_PUBLIC_NEXO_STREAM_URL`) y quién recibe los envíos.
+- Enlaces oficiales de Instagram y comunidad WhatsApp por zona (Inicio usa
+  `instagram.com/tardeosclub`, supuesto).
+- Email de Sergi → `/admin/equipo`: tarea Zona, zona Tarragona (+ su local).
+  Nombre del responsable de Girona.
+- "Sí" a la limpieza de duplicados (15‑oct: 794 tardeos, 59 locales, 30 DJs;
+  6 métricas cuelgan de tardeos duplicados: reasignar, no borrar).
+- Decidir: aviso de 1 h también a guardados (hoy no); valorar si el local te marcó
+  "no vino" (hoy no); acceso sin cuenta / corte de 5 minutos.
+- Cargar oferta real: hoy solo hay 1 tardeo próximo.
+
+**Técnico:**
+- Programar el cron de `/api/avisos` (cada 10 min) y `/api/recordatorios` en el
+  servidor (§9) y poner `CRON_SECRET` en su `.env`.
+- Borrar las cuentas `@prueba.tardeosclub.com` al lanzar; dejar un solo admin global.
 - Ocultar fichas de prueba (gnerai, Interdesign, localp).
 - Rotar claves VAPID si producción usa las del historial.
-- Borrar las cuentas `@prueba.tardeosclub.com` al lanzar.
-- Dejar un solo admin (hoy hay varias cuentas con `is_admin`).
+- Press kit en PDF: sigue en el bucket público `flyers` (la URL ya no se expone a
+  no profesionales); cerrarlo del todo = bucket privado + URL firmada.
+- "Desde X €" (falta columna de precio mínimo), banner/ciudad editables en
+  `/dj/perfil`, botón "Canjear" promo en la ficha, `/unirse` con estado de
+  validación, denunciar comentarios de sets y perfiles.
+- Probar en móviles reales (Android Chrome + iPhone Safari): piloto de 2 semanas
+  del dossier (pág. 19). El reproductor en segundo plano depende del navegador.
 
 Documentos: `README.md` (arranque), `ANALISIS.md` (producto),
 `PEDIR_AL_DUENO.md` (lo que falta del dueño), `TEST_PLAN.md`.
