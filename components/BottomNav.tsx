@@ -59,7 +59,7 @@ export default function BottomNav() {
               <Link key={href} href={href} aria-current={on ? "page" : undefined}
                 className="flex min-h-[64px] min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1.5">
                 <Icon size={24} strokeWidth={on ? 2.4 : 1.9} className={on ? "text-magenta" : "text-tinta-suave"} aria-hidden />
-                <span className={`max-w-full truncate px-0.5 text-[12px] font-semibold leading-none ${on ? "text-magenta" : "text-tinta-suave"}`}>
+                <span className={`max-w-full px-0.5 text-center text-[12px] font-semibold leading-[1.1] ${on ? "text-magenta" : "text-tinta-suave"}`}>
                   {label}
                 </span>
               </Link>
