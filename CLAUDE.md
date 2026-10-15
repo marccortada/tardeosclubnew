@@ -392,12 +392,18 @@ Al copiar SQL al portapapeles en macOS usar
 | `borrar-cuenta` | el usuario borra su cuenta y datos |
 | `admin/usuario/[id]` | acciones de admin sobre un usuario |
 
-Cron a programar en el servidor (no está programado; lo hace quien despliega):
+Cron **programado en el servidor desde el 15‑oct** (crontab de root, hora de Madrid,
+líneas marcadas `# tardeosclub-cron`; el servidor tiene cron de otros proyectos, no tocarlos):
 
 ```cron
-*/10 * * * * curl -fsS -m 55 -X POST -H "x-cron-secret: $CRON_SECRET" https://crm.gnerai.com/api/avisos >/dev/null
-0 10 * * *   curl -fsS -m 55 -X POST -H "x-cron-secret: $CRON_SECRET" https://crm.gnerai.com/api/recordatorios >/dev/null
+*/10 * * * * /root/tardeos-cron.sh avisos        # tardeosclub-cron
+0 10 * * *   /root/tardeos-cron.sh recordatorios # tardeosclub-cron
 ```
+
+`/root/tardeos-cron.sh` lee `CRON_SECRET` del `.env` en cada ejecución (cron arranca sin
+variables de entorno: poner `$CRON_SECRET` en el crontab manda la cabecera vacía y da 401)
+y apunta fecha, ruta, código HTTP y respuesta en `/var/log/tardeos-cron.log`. Copia del
+crontab anterior: `/root/crontab.antes-tardeos.bak`.
 
 Retorno (lote 67): encuesta `/tardeos/[id]/encuesta` (solo confirmados, hasta fin + 72 h, lo
 valida la base), bandeja `/avisos` (+ preferencias), `/sorteos`, `/admin/sorteos`,
@@ -457,8 +463,6 @@ salvo `.env.example`.
   Coins). Todo lo de cobro existe y está apagado: falta integrar PayPal (webhook que
   confirme el pago → `coins_movimientos` tipo compra / alta de plan) y encender
   `planes_activos` / `coins_activos`. Hasta entonces la UI dice "Próximamente".
-- Programar el cron de `/api/avisos` (cada 10 min) y `/api/recordatorios` en el
-  servidor (§9) y poner `CRON_SECRET` en su `.env`.
 - Borrar las cuentas `@prueba.tardeosclub.com` al lanzar; dejar un solo admin global.
 - Ocultar fichas de prueba (gnerai, Interdesign, localp).
 - Rotar claves VAPID si producción usa las del historial.

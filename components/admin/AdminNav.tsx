@@ -42,7 +42,9 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const revisar = c ? (c.localesPorVerificar ?? 0) + (c.reclamaciones ?? 0) + (resenasFlyers ?? 0) : null;
   // «Por revisar» ya incluye reclamaciones y reseñas: la entrada cuenta cada
   // cosa una vez, no la suma de las pestañas.
-  const pendientes = c ? (revisar ?? 0) + (c.incidencias ?? 0) : null;
+  // El globo de «Cola de trabajo» es la cifra de la propia cola (la que se ve
+  // al entrar y en Inicio); la suma a mano queda solo si la cola no se lee.
+  const pendientes = c ? (c.cola ?? (revisar ?? 0) + (c.incidencias ?? 0)) : null;
 
   const grupos: GrupoPanel[] = [
     {

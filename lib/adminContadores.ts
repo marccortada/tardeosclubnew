@@ -23,6 +23,13 @@ export type Contadores = {
   vencenPronto: number | null;
   /** Avisos de la gente que nadie ha mirado aún (lote 57). */
   incidencias: number | null;
+  /**
+   * Abiertas en la cola de trabajo (lote 69), la misma cifra que /admin/cola.
+   * Es la buena para «Cola de trabajo»: ya filtra por zona y quita lo marcado
+   * como hecho o descartado, cosa que la suma de las tablas sueltas no hace.
+   * No incluye reseñas (no son fuente de la cola): van aparte.
+   */
+  cola: number | null;
 };
 
 const contar = async (q: PromiseLike<{ count: number | null; error: unknown }>): Promise<number | null> => {
@@ -52,7 +59,7 @@ export async function leerContadores(): Promise<Contadores> {
     Promise.all((["locales", "djs"] as const).map((t) =>
       contar(f(supabase.from(t).select("id", { count: "exact", head: true }) as unknown as Recuento))));
 
-  const [resenas, flyers, reclamaciones, localesPorVerificar, imp, cad, ven, incidencias] = await Promise.all([
+  const [resenas, flyers, reclamaciones, localesPorVerificar, imp, cad, ven, incidencias, cola] = await Promise.all([
     contar(supabase.from("resenas").select("id", { count: "exact", head: true }).in("estado", ["pendiente", "apelada"])),
     contar(supabase.from("denuncias_flyer").select("id", { count: "exact", head: true }).eq("estado", "pendiente")),
     contar(supabase.from("solicitudes_reclamacion").select("id", { count: "exact", head: true }).eq("estado", "pendiente")),
@@ -65,10 +72,13 @@ export async function leerContadores(): Promise<Contadores> {
     // «no se sabe», no un 0.
     supabase.from("incidencias").select("id", { count: "exact", head: true }).eq("estado", "abierta")
       .then((r) => (r.error ? null : r.count), () => null),
+    // Solo el total: se pide una fila y la RPC trae la cuenta en `total`.
+    supabase.rpc("cola_trabajo", { p_tipo: null, p_zona: null, p_solo_mias: false, p_estado: "abiertas", p_limite: 1, p_desde: 0 })
+      .then(({ data, error }) => (error ? null : Number((data as { total: number }[] | null)?.[0]?.total ?? 0)), () => null),
   ]);
 
   return {
-    resenas, flyers, reclamaciones, localesPorVerificar, incidencias,
+    resenas, flyers, reclamaciones, localesPorVerificar, incidencias, cola,
     impagos: sumar(imp[0], imp[1]),
     caducadas: sumar(cad[0], cad[1]),
     vencenPronto: sumar(ven[0], ven[1]),

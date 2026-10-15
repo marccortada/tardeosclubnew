@@ -41,16 +41,10 @@ export default function AdminInicio() {
   const [errProximos, setErrProximos] = useState("");
   const [fallos, setFallos] = useState<number | null>(null);
   const [cobros, setCobros] = useState<boolean | null>(null);
-  /** Abiertas en la cola de trabajo (lote 69). null = sin lote o sin leer. */
-  const [cola, setCola] = useState<number | null>(null);
-
   useEffect(() => {
     leerContadores().then(setC).catch(() => setC(null));
     revisarSalud().then(({ pruebas }) => setFallos(pruebas.filter((p) => !p.ok).length)).catch(() => setFallos(null));
     planesActivos().then(setCobros).catch(() => setCobros(false));
-    // Solo el total: se pide una fila y la RPC trae la cuenta en `total`.
-    supabase.rpc("cola_trabajo", { p_tipo: null, p_zona: null, p_solo_mias: false, p_estado: "abiertas", p_limite: 1, p_desde: 0 })
-      .then(({ data, error }) => setCola(error ? null : ((data as { total: number }[] | null)?.[0]?.total ?? 0)), () => setCola(null));
 
     /**
      * "Visible" = publicado, o programado cuya hora ya llegó: lo mismo que
@@ -65,7 +59,9 @@ export default function AdminInicio() {
 
     Promise.all([
       visibles("id", cuenta).gte("fecha", hoy),
-      supabase.from("locales").select("id", cuenta).eq("estado", "activo"),
+      // Solo tipo local: la tabla guarda también promotores, y Fichas › Locales
+      // los deja fuera. Sin esto el panel decía 126 y la lista 122.
+      supabase.from("locales").select("id", cuenta).eq("estado", "activo").eq("tipo", "local"),
       supabase.from("djs").select("id", cuenta),
       supabase.from("profiles").select("id", cuenta),
     ]).then(([t, l, d, u]) =>
@@ -82,7 +78,7 @@ export default function AdminInicio() {
   // Lo que pide algo. Cada fila sale SOLO si hay algo (o si no se pudo leer:
   // "—" avisa de que falta un dato; un 0 escondido no engaña a nadie).
   const filas: { clave: string; href: string; icono: ReactNode; titulo: string; valor: number | null }[] = [
-    { clave: "cola", href: "/admin/cola", icono: <ListTodo size={22} aria-hidden />, titulo: "Cola de trabajo", valor: cola },
+    { clave: "cola", href: "/admin/cola", icono: <ListTodo size={22} aria-hidden />, titulo: "Cola de trabajo", valor: c ? c.cola : null },
     { clave: "verificar", href: "/admin/revisar", icono: <BadgeCheck size={22} aria-hidden />, titulo: "Locales por verificar", valor: c ? c.localesPorVerificar : 0 },
     { clave: "reclamaciones", href: "/admin/reclamaciones", icono: <Flag size={22} aria-hidden />, titulo: "Reclamaciones", valor: c ? c.reclamaciones : 0 },
     { clave: "resenas", href: "/admin/moderacion", icono: <MessageSquareWarning size={22} aria-hidden />, titulo: "Reseñas por moderar", valor: c ? c.resenas : 0 },
@@ -97,7 +93,12 @@ export default function AdminInicio() {
   ].filter((f) => f.valor === null ? f.clave !== "cola" : f.valor > 0);
   // La cola sin lote 69 no es un aviso: simplemente no existe todavía.
 
-  const pendientes = c ? (c.resenas ?? 0) + (c.flyers ?? 0) + (c.reclamaciones ?? 0) + (c.localesPorVerificar ?? 0) + (c.incidencias ?? 0) : null;
+  // La cola ya incluye flyers, reclamaciones, verificación e incidencias (y
+  // quita lo hecho); las reseñas no son fuente de la cola y se suman aparte.
+  // Sin cola (lote 69 no leído), la suma a mano de antes.
+  const pendientes = !c ? null
+    : c.cola !== null ? c.cola + (c.resenas ?? 0)
+    : (c.resenas ?? 0) + (c.flyers ?? 0) + (c.reclamaciones ?? 0) + (c.localesPorVerificar ?? 0) + (c.incidencias ?? 0);
   const leido = c !== null && fallos !== null;
 
   return (
