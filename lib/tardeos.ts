@@ -304,13 +304,25 @@ export function getTardeosMasAdelante(limite = 12): Promise<Tardeo[]> {
  * es lo que la gente espera.
  */
 async function leerLocalesPublicos(): Promise<any[]> {
-  const { data, error } = await supabase
-    .from("locales")
-    .select("id,nombre,zona,direccion,logo_url,tipo,verificado,destacado_orden,plan")
-    .eq("estado", "activo")
-    .order("destacado_orden", { ascending: true, nullsFirst: false })
-    .order("verificado", { ascending: false })
-    .order("nombre", { ascending: true });
+  // Por bloques de 1.000 (el tope de PostgREST por petición): sin esto, a
+  // partir del local 1.001 el directorio se cortaba en silencio. `id` desempata
+  // para que los bloques no repitan ni se salten filas.
+  const data: any[] = [];
+  let error: unknown = null;
+  for (let desde = 0; desde < 20000; desde += 1000) {
+    const r = await supabase
+      .from("locales")
+      .select("id,nombre,zona,direccion,logo_url,tipo,verificado,destacado_orden,plan")
+      .eq("estado", "activo")
+      .order("destacado_orden", { ascending: true, nullsFirst: false })
+      .order("verificado", { ascending: false })
+      .order("nombre", { ascending: true })
+      .order("id", { ascending: true })
+      .range(desde, desde + 999);
+    if (r.error) { error = r.error; break; }
+    data.push(...(r.data ?? []));
+    if ((r.data ?? []).length < 1000) break;
+  }
   if (error) registrar("locales", "no se pudo cargar el directorio", error);
   const reglas = await planesActivos();
   const caidos = await caidosSiReglas(reglas);
@@ -635,8 +647,15 @@ export async function getMiDj(profileId: string): Promise<any | null> {
   // Si el lote 47 aún no está pegado, `presskit_url` no existe y la consulta
   // entera fallaría: el DJ vería «Crear mi perfil» teniendo ya uno. Se
   // reintenta sin esa columna.
-  if (error && falloPorColumna(error, "presskit_url")) {
+  // Desde el lote 65 la columna no se puede leer (42501): el press kit es
+  // solo para profesionales y se pide con `presskit_de`, que al dueño sí se
+  // la devuelve.
+  if (error && (falloPorColumna(error, "presskit_url") || error.code === "42501")) {
     ({ data, error } = await pedir(BASE));
+    if (data) {
+      const pk = await supabase.rpc("presskit_de", { p_dj: (data as any).id });
+      if (!pk.error) (data as any).presskit_url = pk.data ?? null;
+    }
   }
   if (error) registrar("djs", "no se pudo cargar el perfil del DJ", error);
   return (data as any) ?? null;
@@ -650,17 +669,26 @@ export function falloPorColumna(e: { code?: string; message?: string } | null | 
 
 /** Lista pública de DJs (no ocultos), ordenados por reputación. */
 async function leerDjsPublicos(): Promise<any[]> {
-  const { data } = await supabase
-    .from("djs")
-    .select("id,nombre_artistico,estilos,avatar_url,verificado,reputacion_score,destacado_orden")
-    .eq("oculto", false)
-    // Los destacados mandan y en el orden que fijó el admin (1, 2, 3…).
-    // nullsFirst: false deja detrás a los que no lo están; entre ellos sigue
-    // decidiendo la reputación de siempre.
-    .order("destacado_orden", { ascending: true, nullsFirst: false })
-    .order("verificado", { ascending: false })
-    .order("reputacion_score", { ascending: false });
-  return data ?? [];
+  // Por bloques de 1.000 (tope de PostgREST): antes el DJ 1.001 no salía nunca.
+  const data: any[] = [];
+  for (let desde = 0; desde < 20000; desde += 1000) {
+    const r = await supabase
+      .from("djs")
+      .select("id,nombre_artistico,estilos,avatar_url,verificado,reputacion_score,destacado_orden")
+      .eq("oculto", false)
+      // Los destacados mandan y en el orden que fijó el admin (1, 2, 3…).
+      // nullsFirst: false deja detrás a los que no lo están; entre ellos sigue
+      // decidiendo la reputación de siempre. `id` desempata entre bloques.
+      .order("destacado_orden", { ascending: true, nullsFirst: false })
+      .order("verificado", { ascending: false })
+      .order("reputacion_score", { ascending: false })
+      .order("id", { ascending: true })
+      .range(desde, desde + 999);
+    if (r.error) { registrar("djs", "no se pudo cargar la lista de DJs", r.error); break; }
+    data.push(...(r.data ?? []));
+    if ((r.data ?? []).length < 1000) break;
+  }
+  return data;
 }
 
 /**
@@ -678,7 +706,15 @@ export async function getDjById(id: string): Promise<any | null> {
   let { data, error } = await pedir(`${BASE},presskit_url`);
   // Sin el lote 47 pegado `presskit_url` no existe y la consulta entera
   // fallaría: la ficha pública daría 404. Se reintenta sin esa columna.
-  if (error && falloPorColumna(error, "presskit_url")) ({ data, error } = await pedir(BASE));
+  // Con el lote 65 la columna está cerrada (42501): se pide aparte con
+  // `presskit_de`, que solo la da a profesionales.
+  if (error && (falloPorColumna(error, "presskit_url") || error.code === "42501")) {
+    ({ data, error } = await pedir(BASE));
+    if (data) {
+      const pk = await supabase.rpc("presskit_de", { p_dj: id });
+      if (!pk.error) (data as any).presskit_url = pk.data ?? null;
+    }
+  }
   if (!data) return null;
   const { profile_id, ...resto } = data as unknown as Record<string, unknown>;
   return { ...resto, sinDueno: profile_id == null };
@@ -816,8 +852,15 @@ export async function vincularDjsPorNombre(tardeoIds: string | string[], nombres
   // La tabla de DJs se lee UNA vez para toda la serie. Antes se llamaba a esta
   // función por cada fecha (hasta 52 en una serie semanal de un año) y cada
   // llamada se bajaba la tabla entera otra vez.
-  const { data } = await supabase.from("djs").select("id,nombre_artistico");
-  const fichados = (data ?? []).map((d: any) => ({ ...d, clave: clave(d.nombre_artistico || "") }));
+  // Solo id y nombre, y por bloques de 1.000: con más DJs que el tope de
+  // PostgREST, los de más allá no casaban nunca.
+  const data: any[] = [];
+  for (let desde = 0; desde < 50000; desde += 1000) {
+    const r = await supabase.from("djs").select("id,nombre_artistico").order("id").range(desde, desde + 999);
+    data.push(...(r.data ?? []));
+    if (r.error || (r.data ?? []).length < 1000) break;
+  }
+  const fichados = data.map((d: any) => ({ ...d, clave: clave(d.nombre_artistico || "") }));
 
   const enlazados: string[] = [];
   const sinFicha: string[] = [];
@@ -877,9 +920,15 @@ export async function setDjsDeTardeo(tardeoId: string, nombres: string[]): Promi
   const enlazados = seQuedan.map((v) => v.nombre);
   const sinFicha: string[] = [];
   if (nuevos.length) {
-    const { data: fichas, error: eF } = await supabase.from("djs").select("id,nombre_artistico");
-    if (eF) throw new Error(`No se pudo buscar a los DJs: ${eF.message}`);
-    const fichados = (fichas ?? []).map((d) => ({ id: d.id as string, clave: clave(d.nombre_artistico || "") }));
+    // Por bloques de 1.000 (tope de PostgREST), como en vincularDjsPorNombre.
+    const fichas: { id: string; nombre_artistico: string | null }[] = [];
+    for (let desde = 0; desde < 50000; desde += 1000) {
+      const { data: bloque, error: eF } = await supabase.from("djs").select("id,nombre_artistico").order("id").range(desde, desde + 999);
+      if (eF) throw new Error(`No se pudo buscar a los DJs: ${eF.message}`);
+      fichas.push(...((bloque ?? []) as { id: string; nombre_artistico: string | null }[]));
+      if ((bloque ?? []).length < 1000) break;
+    }
+    const fichados = fichas.map((d) => ({ id: d.id as string, clave: clave(d.nombre_artistico || "") }));
     const ids: string[] = [];
     for (const n of nuevos) {
       const dj = fichados.find((d) => d.clave && d.clave === clave(n));
@@ -1091,4 +1140,80 @@ export function invalidarCacheListas() {
   memoLocalesPublicos.invalidar();
   memoDjsPublicos.invalidar();
   memoLocalesDestacados.invalidar();
+}
+
+// ---------------------------------------------------------------------------
+// Lote 68 (equipo E): duplicados, DJ provisional. Solo funciones nuevas.
+// ---------------------------------------------------------------------------
+
+/** Un tardeo que podría ser el mismo que se va a crear. */
+export type PosibleDuplicado = {
+  id: string; titulo: string; fecha: string; hora_inicio: string | null;
+  estado: string; local_nombre: string; mismo_local: boolean;
+};
+
+/** ¿Falta el lote 68? (función o tabla inexistente). */
+export const faltaLote68 = (e: { code?: string } | null | undefined) =>
+  !!e && ["PGRST202", "PGRST205", "42883", "42P01"].includes(e.code ?? "");
+
+/**
+ * Busca tardeos parecidos (mismo local o a pocos metros, misma fecha, título
+ * parecido) ANTES de crear. Si el lote 68 no está, devuelve vacío: no se
+ * bloquea la publicación por no poder comprobarlo.
+ */
+export async function buscarDuplicados(p: {
+  localId: string; fechas: string[]; titulo: string; lat?: number | null; lng?: number | null; excluir?: string | null;
+}): Promise<{ filas: PosibleDuplicado[]; falta: boolean }> {
+  if (!p.titulo.trim() || p.fechas.length === 0) return { filas: [], falta: false };
+  const { data, error } = await supabase.rpc("posibles_duplicados", {
+    p_local: p.localId, p_fechas: p.fechas, p_titulo: p.titulo,
+    p_lat: p.lat ?? null, p_lng: p.lng ?? null, p_excluir: p.excluir ?? null,
+  });
+  if (error) {
+    if (!faltaLote68(error)) registrar("tardeos", "no se pudieron buscar duplicados", error);
+    return { filas: [], falta: faltaLote68(error) };
+  }
+  return { filas: (data ?? []) as PosibleDuplicado[], falta: false };
+}
+
+/**
+ * Crea (o reutiliza si ya existe con ese nombre) la ficha PROVISIONAL de un DJ
+ * que no está en el directorio. Queda para revisión del equipo.
+ */
+export async function crearDjProvisional(nombre: string): Promise<{ id: string | null; error: string | null }> {
+  const { data, error } = await supabase.rpc("crear_dj_provisional", { p_nombre: nombre });
+  if (error) return { id: null, error: faltaLote68(error) ? "Falta el lote 68 para crear DJs nuevos desde aquí." : error.message };
+  return { id: data as string, error: null };
+}
+
+// ---------- Próxima Parada (v2, equipo A) ----------
+export type PlanGuardado = { tardeo: Tardeo; guardado: boolean; estado: "apuntado" | "espera" | null };
+
+/**
+ * Guardados + Asistiré (confirmado o en espera) de una persona, sin repetir.
+ * Lanza si falla: una lista vacía por error parecería "no tienes planes".
+ */
+export async function getProximaParada(uid: string): Promise<PlanGuardado[]> {
+  const [fav, ins] = await Promise.all([
+    supabase.from("favoritos").select(`tardeos(${SELECT})`).eq("profile_id", uid),
+    supabase.from("inscripciones").select(`estado, tardeos(${SELECT})`).eq("profile_id", uid).in("estado", ["apuntado", "espera"]),
+  ]);
+  // Sin el lote 64 'espera' no existe: el filtro sigue valiendo.
+  if (fav.error) throw fav.error;
+  if (ins.error) throw ins.error;
+  const mapa = new Map<string, PlanGuardado>();
+  for (const r of (fav.data ?? []) as any[]) {
+    if (!r.tardeos) continue;
+    const t = mapRow(r.tardeos);
+    mapa.set(t.id, { tardeo: t, guardado: true, estado: null });
+  }
+  for (const r of (ins.data ?? []) as any[]) {
+    if (!r.tardeos) continue;
+    const t = mapRow(r.tardeos);
+    const previo = mapa.get(t.id);
+    mapa.set(t.id, { tardeo: previo?.tardeo ?? t, guardado: Boolean(previo), estado: r.estado });
+  }
+  const conPlan = await conReglasDePlan([...mapa.values()].map((p) => p.tardeo));
+  return [...mapa.values()].map((p, i) => ({ ...p, tardeo: conPlan[i] }))
+    .sort((a, b) => a.tardeo.fecha.localeCompare(b.tardeo.fecha));
 }

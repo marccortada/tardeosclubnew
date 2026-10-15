@@ -90,3 +90,18 @@ export function altoDelReproductor(url: string): string {
   if (/open\.spotify\.com\/(?:intl-[a-z]+\/)?(playlist|album|artist)/.test(u)) return "h-[380px]";
   return "h-[166px]";
 }
+
+/**
+ * Ficha pública de un DJ para /djs/[id] (v2). Sin `presskit_url`: desde el
+ * lote 65 esa columna no se lee por la tabla (solo con presskit_de()). Si el
+ * lote 65 aún no está, se reintenta sin banner/ciudad/seguidores.
+ */
+export async function getDjPublico(id: string): Promise<Record<string, any> | null> {
+  const BASE = "id,nombre_artistico,bio,estilos,redes,verificado,reputacion_score,avatar_url,playlist_url,zonas,profile_id";
+  const pedir = (cols: string) => supabase.from("djs").select(cols).eq("id", id).maybeSingle();
+  let { data, error } = await pedir(`${BASE},banner_url,ciudad,seguidores`);
+  if (error) ({ data, error } = await pedir(BASE));
+  if (error || !data) return null;
+  const { profile_id, ...resto } = data as unknown as Record<string, any>;
+  return { ...resto, sinDueno: profile_id == null };
+}

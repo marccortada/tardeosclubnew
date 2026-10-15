@@ -22,12 +22,13 @@ import { Download, Users, CheckCircle2, XCircle, Clock, X } from "lucide-react";
  * CSV, en cambio, exporta TODO lo filtrado pidiéndolo por lotes de 1000.
  */
 type Asist = "pendiente" | "asistio" | "no_asistio";
-type Estado = "todos" | "apuntado" | "cancelado";
+type Estado = "todos" | "apuntado" | "espera" | "cancelado";
+type EstadoIns = "apuntado" | "espera" | "cancelado";
 type Periodo = "todos" | "proximos" | "pasados";
 type BuscarEn = "persona" | "tardeo";
 
 type Bruta = {
-  id: string; estado: "apuntado" | "cancelado"; asistencia?: Asist | null; created_at: string;
+  id: string; tardeo_id: string; estado: EstadoIns; asistencia?: Asist | null; created_at: string;
   profiles: { display_name: string | null; email: string | null } | null;
   tardeos: { titulo: string | null; fecha: string | null; hora_inicio: string | null; locales: { nombre: string | null } | null } | null;
 };
@@ -54,7 +55,7 @@ function consulta(f: Filtro, contar: boolean) {
   const porPersona = !!f.busca && f.buscaEn === "persona";
   const porTardeo = (!!f.busca && f.buscaEn === "tardeo") || f.periodo !== "todos" || !!f.dia;
   const cols = [
-    "id,estado,created_at",
+    "id,tardeo_id,estado,created_at",
     f.sinAsistencia ? "" : "asistencia",
     `profiles${porPersona ? "!inner" : ""}(display_name,email)`,
     `tardeos${porTardeo ? "!inner" : ""}(titulo,fecha,hora_inicio,locales(nombre))`,
@@ -143,6 +144,31 @@ export default function Registro() {
     contar();
   };
 
+  const mover = async (f: Bruta, estadoNuevo: EstadoIns) => {
+    if (f.estado === estadoNuevo) return;
+    setObrando(f.id); setError(""); setOk("");
+    const { error: e } = await supabase.rpc("admin_mover_inscripcion", { p_inscripcion: f.id, p_estado: estadoNuevo });
+    setObrando(null);
+    if (e) {
+      const c = (e as { code?: string }).code;
+      setError(c === "PGRST202" || c === "42883" ? "Falta el lote 69 para mover inscripciones." : "No se pudo mover: " + e.message);
+      return;
+    }
+    p.cambiar((x) => x.id === f.id, { estado: estadoNuevo });
+    setOk("Inscripción movida. Queda en la auditoría.");
+    contar();
+  };
+
+  const promover = async (f: Bruta) => {
+    setObrando(f.id); setError(""); setOk("");
+    const { data, error: e } = await supabase.rpc("admin_promover_espera", { p_tardeo: f.tardeo_id });
+    setObrando(null);
+    if (e) { setError("No se pudo promover: " + e.message); return; }
+    setOk(data ? "Promovido el primero de la lista de espera." : "No había nadie en espera.");
+    p.recargar();
+    contar();
+  };
+
   const exportarCsv = async () => {
     setExportando(0); setError(""); setOk("");
     const todas: Bruta[] = [];
@@ -160,7 +186,7 @@ export default function Registro() {
       f.profiles?.display_name || "Tardícola", f.profiles?.email || "",
       f.tardeos?.titulo || "(tardeo borrado)", f.tardeos?.fecha || "", (f.tardeos?.hora_inicio || "").slice(0, 5),
       f.tardeos?.locales?.nombre || "",
-      f.estado === "apuntado" ? "Apuntado" : "Cancelado",
+      f.estado === "apuntado" ? "Apuntado" : f.estado === "espera" ? "En espera" : "Cancelado",
       f.asistencia ? nombreAsist[f.asistencia] : "", new Date(f.created_at).toLocaleString("es-ES"),
     ].map(celda).join(";"));
     // BOM + punto y coma: Excel en español lo abre con acentos y columnas bien.
@@ -230,6 +256,7 @@ export default function Registro() {
           onCambiar={setEstado}
           opciones={[
             { clave: "apuntado", label: "Apuntados" },
+            { clave: "espera", label: "En espera" },
             { clave: "cancelado", label: "Cancelados" },
             { clave: "todos", label: "Todos" },
           ]}
@@ -302,7 +329,21 @@ export default function Registro() {
                     </p>
                   </td>
                   <td className="md:px-4 md:py-3">
-                    <Etiqueta tono={f.estado === "apuntado" ? "ok" : "neutro"}>{f.estado === "apuntado" ? "Apuntado" : "Cancelado"}</Etiqueta>
+                    {/* Mover entre confirmado / espera / cancelado (lote 69, con rastro y
+                        respetando el aforo). El admin de zona solo puede en su zona. */}
+                    <select value={f.estado} disabled={obrando === f.id} onChange={(e) => mover(f, e.target.value as EstadoIns)}
+                      aria-label="Estado de la inscripción"
+                      className={`min-h-[44px] rounded-lg border px-2 text-sm font-semibold ${f.estado === "apuntado" ? "border-ok text-ok" : "border-linea-fuerte"}`}>
+                      <option value="apuntado">Apuntado</option>
+                      <option value="espera">En espera</option>
+                      <option value="cancelado">Cancelado</option>
+                    </select>
+                    {f.estado === "espera" && (
+                      <button type="button" onClick={() => promover(f)} disabled={obrando === f.id}
+                        className="mt-1 block min-h-[40px] text-sm font-semibold text-magenta-700 underline">
+                        Promover al primero de la espera
+                      </button>
+                    )}
                   </td>
                   <td className="md:px-4 md:py-3">
                     {f.estado === "apuntado" && !sinAsistencia ? (

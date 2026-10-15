@@ -14,8 +14,9 @@ import { supabase } from "@/lib/supabase";
 import { hoyISO } from "@/lib/tardeos";
 import { formatFecha } from "@/lib/formato";
 import { useDj, consultaTardeosDj, type TardeoDj } from "../contexto";
+import SolicitudesDj from "./Solicitudes";
 
-type Filtro = "proximos" | "pasados" | "invitaciones";
+type Filtro = "proximos" | "pasados" | "invitaciones" | "solicitudes";
 
 const ESTADOS: Record<string, { texto: string; tono: "ok" | "aviso" | "neutro" | "error" }> = {
   publicado: { texto: "Publicado", tono: "ok" },
@@ -118,6 +119,7 @@ export default function MisTardeosDj() {
             { clave: "proximos", label: "Próximos", n: cuentas.proximos },
             { clave: "pasados", label: "Pasados", n: cuentas.pasados },
             { clave: "invitaciones", label: "Invitaciones", n: cuentas.invitaciones },
+            { clave: "solicitudes", label: "Vincularme / proponer" },
           ]}
         />
       </div>
@@ -133,7 +135,9 @@ export default function MisTardeosDj() {
         </div>
       )}
 
-      {filtro === "invitaciones" ? (
+      {filtro === "solicitudes" ? (
+        <SolicitudesDj djId={dj.id} />
+      ) : filtro === "invitaciones" ? (
         <Invitaciones djId={dj.id} modoAdmin={modoAdmin} onCambio={() => setVersion((v) => v + 1)} />
       ) : (
         <>

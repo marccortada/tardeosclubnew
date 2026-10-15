@@ -4,7 +4,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
-import { Home, CalendarDays, MapPin, Disc3, Heart, Radio, ArrowUpRight } from "lucide-react";
+import { Home, CalendarDays, Headphones, Bookmark, Radio, ArrowUpRight, Users } from "lucide-react";
+import { useRoles } from "@/lib/permisos";
+import { Campana } from "@/components/CabeceraApp";
 import { esRutaPanel, esRutaPanelConSesion } from "@/lib/rutasPanel";
 import { usePortal } from "@/components/cuenta/usePortal";
 
@@ -13,13 +15,15 @@ import { usePortal } from "@/components/cuenta/usePortal";
  * planes» solo con sesión: sin ella lleva a un login que no dice para qué.
  * Nexo Radio es externa y se abre aparte.
  */
-const links: { href: string; label: string; icono: typeof Home; externo?: boolean; conSesion?: boolean }[] = [
+// Las mismas pestañas que la barra de la app (v2), más Nexo Radio, que ya es
+// una sección propia (/nexo, equipo B).
+const links: { href: string; label: string; icono: typeof Home; externo?: boolean; conSesion?: boolean; pro?: boolean; tardicola?: boolean }[] = [
   { href: "/", label: "Inicio", icono: Home },
-  { href: "/tardeos", label: "Tardeos", icono: CalendarDays },
-  { href: "/mapa", label: "Mapa", icono: MapPin },
-  { href: "/colaboradores", label: "Locales y DJs", icono: Disc3 },
-  { href: "/favoritos", label: "Mis planes", icono: Heart, conSesion: true },
-  { href: "https://nexoradio.es/", label: "Nexo Radio", icono: Radio, externo: true },
+  { href: "/eventos", label: "Eventos", icono: CalendarDays },
+  { href: "/djs", label: "DJs", icono: Headphones },
+  { href: "/proxima-parada", label: "Próxima Parada", icono: Bookmark, conSesion: true, tardicola: true },
+  { href: "/entre-beats", label: "Entre Beats", icono: Users, pro: true },
+  { href: "/nexo", label: "Nexo Radio", icono: Radio },
 ];
 
 /** El botón de entrar, rosa neón → oro como el de la web de siempre. La sombra
@@ -32,11 +36,12 @@ export default function SiteNav() {
   const { user, loading } = useAuth();
   // Con sesión, el botón lleva al portal de cada cuenta (admin, local, DJ…).
   const portal = usePortal(user?.id);
+  const { esProfesional } = useRoles();
 
   if (esRutaPanel(pathname) || (user && esRutaPanelConSesion(pathname))) return null;
 
   return (
-    <header className="sticky top-0 z-[900] hidden border-b border-linea bg-white/95 backdrop-blur-md md:block">
+    <header className="sticky top-0 z-[900] hidden border-b border-linea bg-superficie/95 backdrop-blur-md md:block">
       <div className="mx-auto flex h-[76px] max-w-6xl items-center justify-between gap-4 px-6 lg:px-8">
         {/* Logo redondo, como en la web de siempre. */}
         <Link href="/" aria-label="TardeosClub, inicio" className="shrink-0">
@@ -46,7 +51,7 @@ export default function SiteNav() {
         </Link>
 
         <nav aria-label="Principal" className="flex items-center gap-1">
-          {links.filter((l) => !l.conSesion || user).map(({ href, label, icono: Icono, externo }) => {
+          {links.filter((l) => (!l.conSesion || user) && (!l.pro || esProfesional) && (!l.tardicola || !esProfesional)).map(({ href, label, icono: Icono, externo }) => {
             const active = !externo && (href === "/" ? pathname === "/" : pathname.startsWith(href));
             // Activa en píldora oro: se ve de lejos dónde estás.
             const cls = `inline-flex min-h-[44px] items-center gap-1.5 rounded-md px-3 text-[15px] font-medium transition lg:px-3.5 ${
@@ -78,7 +83,8 @@ export default function SiteNav() {
           })}
         </nav>
 
-        <div className="flex shrink-0 items-center">
+        <div className="flex shrink-0 items-center gap-2">
+          {user && <Campana />}
           {/*
             El botón cambia según haya sesión o no.
             `useAuth` ya se pedía aquí desde el principio y no se usaba: el

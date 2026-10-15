@@ -10,7 +10,7 @@ export default function ContenidoPagina() {
   return (
     <SeccionPanel
       titulo="Sesiones y fotos"
-      descripcion="Lo que se ve en tu ficha: tus mixes, vídeos, flyers y fotos de cabina."
+      descripcion="Flyers y fotos de cabina para tu ficha. Tus sesiones y mixes van ahora en «Publicar set» (/dj/sets)."
       ancho="estrecho"
     >
       <ContenidoDj djId={dj.id} />

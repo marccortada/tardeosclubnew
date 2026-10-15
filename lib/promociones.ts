@@ -126,3 +126,40 @@ export async function borrarPromo(id: string) {
   // da error, borra cero y responde que todo bien.
   return supabase.from("promociones").delete().eq("id", id).select("id");
 }
+
+/**
+ * Canje real de una promoción (lote 68, `canjear_promocion`): la base bloquea
+ * la fila, comprueba fechas, código y límite, suma `usos` y deja el canje en
+ * `promo_canjes` (una vez por persona). Dos canjes a la vez no pasan del límite.
+ */
+export async function canjearPromocion(promoId: string, codigo?: string | null): Promise<{ ok: boolean; error: string | null }> {
+  const { error } = await supabase.rpc("canjear_promocion", { p_promo: promoId, p_codigo: codigo ?? null });
+  if (error) {
+    const falta = ["PGRST202", "42883"].includes(error.code ?? "");
+    return { ok: false, error: falta ? "El canje llegará en breve (falta el lote 68)." : error.message };
+  }
+  return { ok: true, error: null };
+}
+
+/**
+ * ¿Se puede enseñar este contenido PATROCINADO a esta persona? (dossier pág. 14)
+ * Pagar no convierte un evento en afín: solo se muestra (con la etiqueta
+ * «Patrocinado») si coincide de verdad con su ADN. Regla explicable: al menos
+ * un estilo de música en común Y (sin zona en el ADN o misma zona). Sin ADN no
+ * se presupone afinidad. Para el equipo A (Inicio, Eventos, pop-ups).
+ */
+export function patrocinadoAfin(
+  contenido: { musica?: string[] | null; zona?: string | null },
+  adn: { musica?: string[] | null; zonas?: string[] | null } | null | undefined,
+): boolean {
+  if (!adn) return false;
+  const norm = (x: string) => x.trim().toLowerCase();
+  const gustos = new Set((adn.musica ?? []).map(norm));
+  const musica = (contenido.musica ?? []).map(norm);
+  if (gustos.size === 0 || !musica.some((m) => gustos.has(m))) return false;
+  const zonas = (adn.zonas ?? []).map(norm);
+  return zonas.length === 0 || (!!contenido.zona && zonas.includes(norm(contenido.zona)));
+}
+
+/** Etiqueta que acompaña SIEMPRE a lo patrocinado. */
+export const ETIQUETA_PATROCINADO = "Patrocinado";

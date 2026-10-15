@@ -30,7 +30,10 @@ export type TipoMetrica =
    * Un tipo y no seis: añadir un canal nuevo no debe obligar a tocar la
    * restricción de la base ni las consultas que agrupan por tipo.
    */
-  | "clic_contacto";
+  | "clic_contacto"
+  // Dossier pág. 16 (lote 69): acciones del recorrido nuevo
+  | "seguir" | "play" | "asistire" | "espera" | "meet_entrar" | "clic_externo"
+  | "sorteo_participar" | "aviso_abierto";
 
 /** Los canales que se miden dentro de `clic_contacto`. */
 export type Canal = "whatsapp" | "instagram" | "web" | "reservas" | "mapa" | "taxi";
@@ -52,6 +55,35 @@ function sesion(): string {
     // Sin sessionStorage (modo privado, cookies bloqueadas) se mide igual, solo
     // que sin poder agrupar las visitas de esa persona.
     return "";
+  }
+}
+
+/**
+ * Origen de campaña (Ruta del Tardeo, WhatsApp, IG, QR…): se lee de la URL al
+ * entrar (`utm_source|medium|campaign` o el corto `?o=`) y se guarda en la
+ * pestaña, así todos los eventos de esa visita llevan el mismo origen. Solo
+ * etiquetas de campaña: nunca datos personales en la URL. Primer toque gana:
+ * navegar dentro de la web no lo pisa.
+ */
+type Origen = { origen: string | null; medio: string | null; campana: string | null };
+const ETIQUETA = /^[a-z0-9._-]{1,60}$/i;
+export function origenDeVisita(): Origen {
+  const vacio: Origen = { origen: null, medio: null, campana: null };
+  try {
+    const CLAVE = "tc-origen";
+    const guardado = sessionStorage.getItem(CLAVE);
+    if (guardado) return JSON.parse(guardado) as Origen;
+    const q = new URLSearchParams(window.location.search);
+    const limpio = (v: string | null) => (v && ETIQUETA.test(v.trim()) ? v.trim().toLowerCase() : null);
+    const o: Origen = {
+      origen: limpio(q.get("utm_source")) ?? limpio(q.get("o")),
+      medio: limpio(q.get("utm_medium")),
+      campana: limpio(q.get("utm_campaign")),
+    };
+    if (o.origen || o.campana) sessionStorage.setItem(CLAVE, JSON.stringify(o));
+    return o.origen || o.campana ? o : vacio;
+  } catch {
+    return vacio;
   }
 }
 
@@ -91,6 +123,18 @@ export async function medir(
     const clave = `${tipo}-${refs.tardeoId ?? refs.localId ?? refs.djId ?? ""}`;
     if (opciones.unaVezPorSesion && yaContado(clave)) return;
 
+    const o = origenDeVisita();
+    const detalle = refs.detalle ? refs.detalle.trim().toLowerCase().slice(0, 80) : null;
+    // Lote 69: el servidor deduplica (pestaña + tipo + objeto + día) y marca
+    // al equipo. Si el lote aún no está, se inserta como antes.
+    const r = await supabase.rpc("medir_evento", {
+      p_tipo: tipo, p_tardeo: refs.tardeoId ?? null, p_local: refs.localId ?? null, p_dj: refs.djId ?? null,
+      p_sesion: sesion(), p_destino: refs.destino ?? null, p_detalle: detalle,
+      p_origen: o.origen, p_medio: o.medio, p_campana: o.campana,
+    });
+    const code = (r.error as { code?: string } | null)?.code;
+    if (!r.error || (code !== "PGRST202" && code !== "42883")) return;
+
     const { data: { session } } = await supabase.auth.getSession();
     await supabase.from("eventos_metrica").insert({
       tipo,
@@ -100,7 +144,7 @@ export async function medir(
       profile_id: session?.user?.id ?? null,
       sesion: sesion(),
       destino: refs.destino ?? null,
-      detalle: refs.detalle ? refs.detalle.trim().toLowerCase().slice(0, 80) : null,
+      detalle,
     });
   } catch {
     /* medir nunca puede romper la página */

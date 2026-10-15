@@ -36,7 +36,8 @@ export type Popup = {
 const TOPE_POR_DEFECTO = 3;
 
 /** El botón de siempre: es lo que llevaban todos los pop-ups antes del lote 49. */
-export const CTA_POR_DEFECTO = { texto: "Ver tardeos", url: "/tardeos" };
+// v2 (vídeo 0:00): "Ver plan" por defecto.
+export const CTA_POR_DEFECTO = { texto: "Ver plan", url: "/eventos" };
 
 /**
  * ¿Es un destino válido para el botón?
@@ -88,8 +89,10 @@ const segmentado = (p: Popup) =>
  * para que lo que se ve al montarlo sea exactamente lo que verá el cliente.
  */
 export function TarjetaPopup({
-  popup, onCerrar, onCta, idTitulo, refCerrar, previa = false,
+  popup, onCerrar, onCta, idTitulo, refCerrar, previa = false, etiqueta,
 }: {
+  /** "Patrocinado · Afín a tu ADN" cuando aplica (dossier pág. 3). */
+  etiqueta?: string;
   popup: Pick<Popup, "titulo" | "mensaje" | "tipo" | "cta_texto" | "cta_url" | "imagen_url">;
   onCerrar?: () => void;
   onCta?: () => void;
@@ -105,7 +108,7 @@ export function TarjetaPopup({
     "flex min-h-tacto w-full items-center justify-center gap-2 rounded-xl bg-magenta px-5 py-3 text-[17px] font-bold text-white transition-colors hover:bg-magenta-600";
 
   return (
-    <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-linea bg-white text-tinta shadow-elevada">
+    <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-linea bg-superficie text-tinta shadow-elevada">
       {popup.imagen_url && (
         // eslint-disable-next-line @next/next/no-img-element -- la imagen puede venir de cualquier host https
         <img src={popup.imagen_url} alt="" className="aspect-[16/9] w-full bg-marfil-100 object-cover" />
@@ -121,6 +124,7 @@ export function TarjetaPopup({
         <X size={24} aria-hidden />
       </button>
       <div className="p-5 pt-4">
+        {etiqueta && <p className="text-[13px] font-medium text-tinta-suave">{etiqueta}</p>}
         {popup.tipo && (
           <span className="inline-flex rounded-full bg-magenta-50 px-2.5 py-0.5 text-[13px] font-semibold text-magenta-700">{popup.tipo}</span>
         )}
@@ -151,6 +155,7 @@ export function TarjetaPopup({
 export default function PopupCliente() {
   const { user, loading } = useAuth();
   const [popup, setPopup] = useState<Popup | null>(null);
+  const [etiqueta, setEtiqueta] = useState("");
   const idTitulo = useId();
   const refCaja = useRef<HTMLDivElement>(null);
   const refCerrar = useRef<HTMLButtonElement>(null);
@@ -173,8 +178,15 @@ export default function PopupCliente() {
           .order("created_at", { ascending: false });
         if (cancel || error || !data?.length) return;
 
+        // "Una vez por usuario y campaña" (lote 64): con sesión manda la base,
+        // que vale en todos sus dispositivos. Sin la tabla, solo el navegador.
+        let vistos = new Set<string>();
+        if (user) {
+          const v = await supabase.from("popups_vistos").select("popup_id").eq("profile_id", user.id);
+          if (!v.error) vistos = new Set((v.data ?? []).map((x: { popup_id: string }) => x.popup_id));
+        }
         // Primero lo barato: fechas y frecuencia se resuelven sin consultar nada.
-        const candidatos = (data as Popup[]).filter((p) => enVentana(p) && tocaEnsenar(p));
+        const candidatos = (data as Popup[]).filter((p) => enVentana(p) && tocaEnsenar(p) && !vistos.has(p.id));
         if (!candidatos.length) return;
 
         // Saber si es local o DJ cuesta dos consultas, así que solo se
@@ -209,6 +221,7 @@ export default function PopupCliente() {
         });
         if (elegido) {
           apuntarImpacto();
+          setEtiqueta(segmentado(elegido) && adn ? "Patrocinado · Afín a tu ADN" : "Patrocinado");
           setPopup(elegido);
         }
       } catch {
@@ -223,8 +236,10 @@ export default function PopupCliente() {
     if (!popup) return;
     // La hora, no un "1": es lo que permite volver a enseñarlo pasado el plazo.
     try { localStorage.setItem(CLAVE(popup.id), String(Date.now())); } catch { /* modo privado */ }
+    // Con sesión, también en la base (lote 64). Si falta la tabla, no pasa nada.
+    if (user) void supabase.from("popups_vistos").insert({ profile_id: user.id, popup_id: popup.id }).then(() => {});
     setPopup(null);
-  }, [popup]);
+  }, [popup, user]);
 
   // Escape cierra, el foco entra en el diálogo y no se escapa con Tab, y al
   // cerrar vuelve a donde estaba. Sin esto, con teclado o lector de pantalla
@@ -252,7 +267,7 @@ export default function PopupCliente() {
     <div className="fixed inset-0 z-[1100] flex items-end justify-center p-4 sm:items-center">
       <div className="absolute inset-0 bg-tinta/50" onClick={cerrar} aria-hidden />
       <div ref={refCaja} role="dialog" aria-modal="true" aria-labelledby={idTitulo} className="relative flex w-full justify-center">
-        <TarjetaPopup popup={popup} onCerrar={cerrar} onCta={cerrar} idTitulo={idTitulo} refCerrar={refCerrar} />
+        <TarjetaPopup popup={popup} onCerrar={cerrar} onCta={cerrar} idTitulo={idTitulo} refCerrar={refCerrar} etiqueta={etiqueta} />
       </div>
     </div>
   );

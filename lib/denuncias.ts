@@ -117,3 +117,37 @@ export async function resolverDenuncia(
   if (!data?.length) return { ok: false, error: "No se guardó. ¿Tu cuenta es admin?" };
   return { ok: true };
 }
+
+// ---------------------------------------------------------------------------
+// Denuncias GENÉRICAS (lote 63, tabla `denuncias`) para la comunidad: Meet
+// Zone, mensajes con DJs y Entre Beats (lote 66). La cola es /admin/denuncias.
+// ---------------------------------------------------------------------------
+
+export type TipoObjeto = "meet_mensaje" | "mensaje_dj" | "eb_hilo" | "eb_respuesta" | "eb_anuncio" | "set_comentario" | "perfil" | "otro";
+
+export const MOTIVOS_COMUNIDAD = [
+  { k: "spam", label: "Spam o publicidad" },
+  { k: "ofensivo", label: "Ofensivo o inapropiado" },
+  { k: "datos_personales", label: "Comparte datos personales" },
+  { k: "acoso", label: "Acoso" },
+  { k: "otro", label: "Otra cosa" },
+] as const;
+
+export type MotivoComunidad = (typeof MOTIVOS_COMUNIDAD)[number]["k"];
+
+export const NOMBRE_TIPO: Record<TipoObjeto, string> = {
+  meet_mensaje: "Meet Zone", mensaje_dj: "Mensaje a DJ", eb_hilo: "Hilo", eb_respuesta: "Respuesta",
+  eb_anuncio: "Anuncio", set_comentario: "Comentario de set", perfil: "Perfil", otro: "Otro",
+};
+
+export async function denunciarContenido(tipo: TipoObjeto, objetoId: string, motivo: MotivoComunidad, mensaje: string) {
+  const { data: s } = await supabase.auth.getUser();
+  if (!s.user) return { error: "Entra en tu cuenta para denunciar." };
+  const { error } = await supabase.from("denuncias").insert({
+    denunciante: s.user.id, tipo_objeto: tipo, objeto_id: objetoId, motivo,
+    mensaje: mensaje.trim() || null,
+  });
+  if (error?.code === "23505") return { error: "Ya lo habías denunciado. El equipo lo está revisando." };
+  if (error) return { error: error.code === "42P01" || error.code === "PGRST205" ? "Falta el lote 63 en la base." : error.message };
+  return { error: null };
+}

@@ -14,6 +14,9 @@ import type { Config } from "tailwindcss";
  * tocar cien ficheros: cambia el valor, no el nombre.
  */
 const config: Config = {
+  // Modo oscuro por clase: la pone el script de app/layout.tsx antes de pintar
+  // (sin parpadeo) según la preferencia guardada.
+  darkMode: "class",
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -38,11 +41,20 @@ const config: Config = {
         },
         naranja: { DEFAULT: "#F97316", 400: "#FB923C" },
         // Texto: casi negro cálido y un gris legible (≥7:1 sobre el fondo).
-        tinta: { DEFAULT: "#1A1A1A", suave: "#555555" },
+        // Los neutros van por variables CSS (app/globals.css): claro y oscuro
+        // en un solo sitio. En claro valen lo mismo que antes.
+        tinta: { DEFAULT: "rgb(var(--c-tinta) / <alpha-value>)", suave: "rgb(var(--c-tinta-suave) / <alpha-value>)" },
         // Fondos: `marfil` ahora es un neutro casi blanco, no crema.
-        marfil: { DEFAULT: "#FAFAFA", 100: "#F4F4F5", 200: "#E9E9EC" },
+        marfil: {
+          DEFAULT: "rgb(var(--c-marfil) / <alpha-value>)",
+          100: "rgb(var(--c-marfil-100) / <alpha-value>)",
+          200: "rgb(var(--c-marfil-200) / <alpha-value>)",
+        },
+        // Tarjetas y página (v2). Usar estos y no bg-white en lo nuevo.
+        superficie: "rgb(var(--c-superficie) / <alpha-value>)",
+        fondo: "rgb(var(--c-fondo) / <alpha-value>)",
         // Bordes y separadores.
-        linea: { DEFAULT: "#E5E5E5", fuerte: "#D4D4D8" },
+        linea: { DEFAULT: "rgb(var(--c-linea) / <alpha-value>)", fuerte: "rgb(var(--c-linea-fuerte) / <alpha-value>)" },
         ok: { DEFAULT: "#15803D", fondo: "#E8F6EE" },
         aviso: { DEFAULT: "#8A5A00", fondo: "#FFF4D6" },
         error: { DEFAULT: "#B91C3C", fondo: "#FDECEF" },

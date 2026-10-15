@@ -149,8 +149,10 @@ export async function revisarSalud(): Promise<{ pruebas: Prueba[]; datos: Record
     }),
 
     comprobar("PressKit de DJs (lote 47)", "Pega supabase/47_presskit_y_arreglos.sql", async () => {
+      // Con el lote 65 la columna ya no se lee directamente (42501): eso
+      // también prueba que existe.
       const { error } = await supabase.from("djs").select("presskit_url").limit(0);
-      return { error };
+      return { error: error?.code === "42501" ? null : error };
     }),
 
     comprobar("Planes caídos (lote 47)", "Pega supabase/47_presskit_y_arreglos.sql", async () => {
@@ -165,6 +167,64 @@ export async function revisarSalud(): Promise<{ pruebas: Prueba[]; datos: Record
         supabase.rpc("plazas_de_tardeo", { p_tardeo: "00000000-0000-0000-0000-000000000000" }),
       ]);
       return { error: t.error ?? i.error ?? existeFuncion(r.error) };
+    }),
+
+    // Versión 2.0 (dossier 14‑oct): una comprobación por lote con lo que el
+    // código usa de él. Leer con limit(0) no trae datos; las RPC se llaman
+    // con argumentos que no escriben.
+    comprobar("Base 2.0: zonas, avisos, auditoría, denuncias (lote 63)", "Pega supabase/63_base_v2.sql", async () => {
+      const [z, a, d, p] = await Promise.all([
+        supabase.from("zonas").select("slug,zona_madre").limit(0),
+        supabase.from("auditoria").select("id").limit(0),
+        supabase.from("denuncias").select("id").limit(0),
+        supabase.rpc("es_profesional"),
+      ]);
+      return { error: z.error ?? a.error ?? d.error ?? existeFuncion(p.error) };
+    }),
+    comprobar("Asistiré y lista de espera (lote 64)", "Pega supabase/64_asistire_espera.sql", async () => {
+      const [i, v] = await Promise.all([
+        supabase.from("inscripciones").select("espera_desde").limit(0),
+        supabase.from("popups_vistos").select("*").limit(0),
+      ]);
+      return { error: i.error ?? v.error };
+    }),
+    comprobar("Música: sets y seguidores (lote 65)", "Pega supabase/65_musica.sql", async () => {
+      const [a, b] = await Promise.all([
+        supabase.from("sets").select("id").limit(0),
+        supabase.from("seguidores_dj").select("dj_id").limit(0),
+      ]);
+      return { error: a.error ?? b.error };
+    }),
+    comprobar("Comunidad: Meet Zone y mensajes (lote 66)", "Pega supabase/66_comunidad.sql", async () => {
+      const [a, b] = await Promise.all([
+        supabase.from("meet_mensajes").select("id").limit(0),
+        supabase.from("solicitudes_mensaje").select("id").limit(0),
+      ]);
+      return { error: a.error ?? b.error };
+    }),
+    comprobar("Retorno: encuestas y sorteos (lote 67)", "Pega supabase/67_retorno.sql", async () => {
+      const [a, b] = await Promise.all([
+        supabase.from("encuestas").select("id").limit(0),
+        supabase.from("sorteos").select("id").limit(0),
+      ]);
+      return { error: a.error ?? b.error };
+    }),
+    comprobar("Profesional: Coins y solicitudes de DJ (lote 68)", "Pega supabase/68_profesional_negocio.sql", async () => {
+      const [a, b] = await Promise.all([
+        supabase.from("coins_reservas").select("id").limit(0),
+        supabase.from("dj_solicitudes").select("id").limit(0),
+      ]);
+      return { error: a.error ?? b.error };
+    }),
+    comprobar("Admin por zonas, colas y medición (lote 69)", "Pega supabase/69_admin_zonas.sql", async () => {
+      const [r, l, m, g, c] = await Promise.all([
+        supabase.from("admin_roles").select("id").limit(0),
+        supabase.from("locales").select("zona_slug").limit(0),
+        supabase.from("eventos_metrica").select("origen,es_equipo,dia").limit(0),
+        supabase.rpc("es_admin_global"),
+        supabase.rpc("cohortes_retorno", { p_semanas: 1 }),
+      ]);
+      return { error: r.error ?? l.error ?? m.error ?? existeFuncion(g.error) ?? existeFuncion(c.error) };
     }),
   ]);
 

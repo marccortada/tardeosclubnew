@@ -1,0 +1,140 @@
+"use client";
+
+import Image from "next/image";
+import { useCallback, useEffect, useState } from "react";
+import { ArrowUp, ArrowDown, Star, Trash2, MessageCircle, Heart, Bookmark, Loader2, Plus } from "lucide-react";
+import { SeccionPanel } from "@/components/panel/PanelShell";
+import { BotonPlay, HojaComentarios } from "@/components/musica/piezas";
+import { useDj } from "../contexto";
+import {
+  getSetsDeDj, crearSet, destacarSet, actualizarSet, borrarSet, plataformaDe, portadaDe, type SetDj,
+} from "@/lib/sets";
+
+const NOMBRE_PLATAFORMA: Record<string, string> = {
+  soundcloud: "SoundCloud", youtube: "YouTube", mixcloud: "Mixcloud", audio: "Audio directo", otra: "Enlace externo",
+};
+
+/**
+ * Publicar y gestionar sets (dossier pág. 7): publicar, destacar (uno), ordenar,
+ * borrar, y ver/responder los comentarios de cada set. Los sets se escuchan,
+ * no se descargan (aplazado por el cliente).
+ */
+export default function SetsDj() {
+  const { dj } = useDj();
+  const [sets, setSets] = useState<SetDj[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [titulo, setTitulo] = useState("");
+  const [url, setUrl] = useState("");
+  const [portada, setPortada] = useState("");
+  const [estilos, setEstilos] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [comentando, setComentando] = useState<SetDj | null>(null);
+
+  const cargar = useCallback(async () => {
+    const r = await getSetsDeDj(dj.id);
+    setSets(r.data); setError(r.error);
+  }, [dj.id]);
+  useEffect(() => { void cargar(); }, [cargar]);
+
+  async function publicar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!/^https?:\/\//.test(url.trim())) { setError("Pega el enlace completo (https://…)."); return; }
+    setGuardando(true); setError(null);
+    const err = await crearSet(dj.id, {
+      titulo, url, portada: portada || null,
+      estilos: estilos.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 6),
+      destacado: !sets?.length, orden: (sets?.length ?? 0),
+    });
+    setGuardando(false);
+    if (err) { setError(err); return; }
+    setTitulo(""); setUrl(""); setPortada(""); setEstilos("");
+    await cargar();
+  }
+
+  async function mover(i: number, d: -1 | 1) {
+    if (!sets) return;
+    const j = i + d;
+    if (j < 0 || j >= sets.length) return;
+    const a = sets[i], b = sets[j];
+    // Se reescriben ambos con su posición en la lista: así el orden queda
+    // estable aunque hubiera números repetidos.
+    const e1 = await actualizarSet(a.id, { orden: j });
+    const e2 = await actualizarSet(b.id, { orden: i });
+    if (e1 || e2) setError(e1 || e2);
+    await cargar();
+  }
+
+  const plat = url ? plataformaDe(url) : null;
+  const campo = "min-h-tacto w-full rounded-xl border border-linea bg-superficie px-4 text-[16px]";
+
+  return (
+    <SeccionPanel titulo="Publicar set" descripcion="Tus sesiones de SoundCloud, YouTube, Mixcloud o un enlace de audio. Se escuchan en la app; no se descargan." ancho="estrecho">
+      <form onSubmit={publicar} className="flex flex-col gap-3 rounded-2xl border border-linea bg-superficie p-4">
+        <input required maxLength={140} value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título · p. ej. Sunset Session" aria-label="Título del set" className={campo} />
+        <input required type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Enlace (SoundCloud, YouTube, Mixcloud…)" aria-label="Enlace del set" className={campo} />
+        {plat && <p className="text-[14px] text-tinta-suave">Detectado: {NOMBRE_PLATAFORMA[plat]}{plat === "otra" ? " — se abrirá fuera de la app" : ""}</p>}
+        <input type="url" value={portada} onChange={(e) => setPortada(e.target.value)} placeholder="Portada (enlace a imagen, opcional)" aria-label="Portada" className={campo} />
+        <input value={estilos} onChange={(e) => setEstilos(e.target.value)} placeholder="Estilos, separados por comas: House, Disco" aria-label="Estilos" className={campo} />
+        <button type="submit" disabled={guardando} className="inline-flex min-h-tacto items-center justify-center gap-2 rounded-xl bg-magenta font-bold text-white disabled:opacity-50">
+          {guardando ? <Loader2 size={20} className="animate-spin" aria-hidden /> : <Plus size={20} aria-hidden />} Publicar set
+        </button>
+      </form>
+
+      {error && <p role="alert" className="mt-3 rounded-xl bg-error-fondo p-3 text-[15px] text-error">{error}</p>}
+
+      <h2 className="mt-6 text-[18px] font-bold">Mis sets</h2>
+      {sets === null ? <p className="mt-2 text-tinta-suave">Cargando…</p>
+        : sets.length === 0 ? <p className="mt-2 text-[15px] text-tinta-suave">Aún no has publicado ninguno.</p>
+        : (
+          <ul className="mt-2 flex flex-col gap-2">
+            {sets.map((s, i) => (
+              <li key={s.id} className="rounded-2xl border border-linea bg-superficie p-3">
+                <div className="flex items-center gap-3">
+                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[linear-gradient(135deg,#2B0A26,#D61AA8)]">
+                    {portadaDe(s) && <Image src={portadaDe(s)!} alt="" fill sizes="56px" unoptimized className="object-cover" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[16px] font-bold">{s.titulo}</p>
+                    <p className="text-[14px] text-tinta-suave">
+                      {NOMBRE_PLATAFORMA[s.plataforma]}{s.destacado ? " · Destacado" : ""}{s.oculto ? " · Oculto por moderación" : ""}
+                    </p>
+                    <p className="mt-0.5 flex gap-3 text-[14px] text-tinta-suave">
+                      <span className="inline-flex items-center gap-1"><Heart size={14} aria-hidden /> {s.likes}</span>
+                      <span className="inline-flex items-center gap-1"><MessageCircle size={14} aria-hidden /> {s.comentarios}</span>
+                      <span className="inline-flex items-center gap-1"><Bookmark size={14} aria-hidden /> {s.guardados}</span>
+                    </p>
+                  </div>
+                  <BotonPlay set={s} autor={dj.nombre_artistico} className="border-2 border-magenta text-magenta" />
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  <Mini onClick={async () => { const e = await destacarSet(dj.id, s.id); if (e) setError(e); await cargar(); }} activo={s.destacado}>
+                    <Star size={16} className={s.destacado ? "fill-current" : ""} aria-hidden /> {s.destacado ? "Destacado" : "Destacar"}
+                  </Mini>
+                  <Mini onClick={() => setComentando(s)}><MessageCircle size={16} aria-hidden /> Comentarios</Mini>
+                  <Mini onClick={() => void mover(i, -1)} disabled={i === 0} etiqueta="Subir"><ArrowUp size={16} aria-hidden /></Mini>
+                  <Mini onClick={() => void mover(i, 1)} disabled={i === sets.length - 1} etiqueta="Bajar"><ArrowDown size={16} aria-hidden /></Mini>
+                  <Mini onClick={async () => {
+                    if (!confirm(`¿Borrar «${s.titulo}»? Se perderán sus ♥ y comentarios.`)) return;
+                    const e = await borrarSet(s.id); if (e) setError(e); await cargar();
+                  }} etiqueta="Borrar"><Trash2 size={16} aria-hidden /></Mini>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+      <HojaComentarios setId={comentando?.id ?? null} titulo={comentando?.titulo ?? ""} abierta={!!comentando}
+        onCerrar={() => { setComentando(null); void cargar(); }} soyDj nombreDj={dj.nombre_artistico} />
+    </SeccionPanel>
+  );
+}
+
+function Mini({ children, onClick, disabled, etiqueta, activo }: { children: React.ReactNode; onClick: () => void; disabled?: boolean; etiqueta?: string; activo?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} aria-label={etiqueta}
+      className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-xl border px-3 text-[14px] font-bold disabled:opacity-40 ${
+        activo ? "border-magenta bg-magenta-50 text-magenta" : "border-linea text-tinta"}`}>
+      {children}
+    </button>
+  );
+}

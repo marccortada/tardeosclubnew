@@ -46,13 +46,52 @@ export type Cuota = {
   destacadosMes: number;
 };
 
+/**
+ * Dossier 2.0 (pág. 12), vigente desde el 14‑oct‑2026: eventos POR CICLO
+ * (mensual desde el alta) Basic 1 · Pro 2 · Premium ilimitado; promociones
+ * Basic 0 · Pro 2 a la vez · Premium una por evento. Fundador = Premium.
+ * El contador de verdad está en la base (`cupo_local`, lote 68), que es la
+ * que bloquea al publicar SOLO si `planes_activos` está encendido.
+ * `eventosMes` conserva el nombre por compatibilidad, pero significa «por ciclo».
+ */
 export const CUOTAS: Record<Plan, Cuota> = {
-  basic:    { eventosMes: 4,    promosSimultaneas: 0,    popupsMes: 0, destacadosMes: 0 },
-  pro:      { eventosMes: null, promosSimultaneas: 2,    popupsMes: 0, destacadosMes: 0 },
-  premium:  { eventosMes: null, promosSimultaneas: null, popupsMes: 1, destacadosMes: 1 },
-  // Fundador es Premium con uno más de cada durante su periodo.
-  fundador: { eventosMes: null, promosSimultaneas: null, popupsMes: 2, destacadosMes: 2 },
+  basic:    { eventosMes: 1,    promosSimultaneas: 0,    popupsMes: 0, destacadosMes: 0 },
+  pro:      { eventosMes: 2,    promosSimultaneas: 2,    popupsMes: 0, destacadosMes: 0 },
+  // Premium: una promoción por evento (no un número fijo a la vez).
+  premium:  { eventosMes: null, promosSimultaneas: null, popupsMes: 0, destacadosMes: 0 },
+  fundador: { eventosMes: null, promosSimultaneas: null, popupsMes: 0, destacadosMes: 0 },
 };
+
+/** Coins promocionales incluidos por ciclo (pág. 12): solo Premium/Fundador. */
+export const COINS_INCLUIDOS: Record<Plan, number> = { basic: 0, pro: 0, premium: 10, fundador: 10 };
+
+/** Texto corto de cada prestación, para la tabla de planes. */
+export const PRESTACIONES: Record<Plan, { eventos: string; promos: string; estadisticas: string; coins: string }> = {
+  basic:    { eventos: "1 evento por ciclo", promos: "Sin promociones", estadisticas: "Vistas de perfil", coins: "Sin Coins incluidos" },
+  pro:      { eventos: "2 eventos por ciclo", promos: "2 promociones activas a la vez", estadisticas: "Vistas y clics por evento y promoción", coins: "Sin Coins incluidos" },
+  premium:  { eventos: "Programación propia sin límite", promos: "Una promoción por evento", estadisticas: "Pro + resultados promocionales", coins: "10 Coins promocionales por ciclo" },
+  fundador: { eventos: "Como Premium", promos: "Como Premium", estadisticas: "Como Premium", coins: "10 por ciclo + 10 Coins extra una vez" },
+};
+
+/** Lo que devuelve `cupo_local` (lote 68). */
+export type CupoCiclo = {
+  plan: string; plan_estado: string; planes_activos: boolean;
+  ciclo_inicio: string; ciclo_fin: string;
+  incluidos: number | null; extra: number; usados: number; restantes: number | null; bloquea: boolean;
+};
+
+/**
+ * Cupo del ciclo calculado en la base. `null` si el lote 68 aún no está
+ * aplicado (se degrada: la pantalla dice «Falta el lote 68», no se rompe).
+ */
+export async function cupoDelCiclo(localId: string): Promise<{ cupo: CupoCiclo | null; falta: boolean; error: string | null }> {
+  const { data, error } = await supabase.rpc("cupo_local", { p_local: localId });
+  if (error) {
+    const falta = ["PGRST202", "42883", "42P01"].includes(error.code ?? "");
+    return { cupo: null, falta, error: falta ? null : error.message };
+  }
+  return { cupo: data as CupoCiclo, falta: false, error: null };
+}
 
 /** Lo que se cobra por cada unidad de más, en euros. */
 export const PRECIO_EXTRA = {

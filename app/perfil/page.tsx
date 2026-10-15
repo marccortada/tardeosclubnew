@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { rutaDeInicio } from "@/lib/inicio";
 import { CargandoCuenta, useDatosCuenta } from "@/components/panel/CuentaNav";
 import HojaContrasena from "@/components/cuenta/HojaContrasena";
-import InicioCuenta from "@/components/cuenta/InicioCuenta";
+import PerfilTardicola from "@/components/tardicola/PerfilTardicola";
 // Sin sesión: entrar o crear cuenta (con "quiero ofertas" pendiente de aplicar).
 import Acceso, { CLAVE_OFERTAS } from "@/components/cuenta/Acceso";
 
@@ -16,7 +16,7 @@ const trasLogin = () =>
   typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tras") === "login";
 
 export default function Perfil() {
-  const { user, loading, datos } = useDatosCuenta();
+  const { user, loading } = useDatosCuenta();
   const router = useRouter();
   // La contraseña nueva: se abre sola al volver del email de recuperación.
   const [hojaClave, setHojaClave] = useState(false);
@@ -57,7 +57,7 @@ export default function Perfil() {
   return (
     <>
       {user
-        ? <InicioCuenta datos={datos} email={user.email ?? ""} uid={user.id} />
+        ? <PerfilTardicola uid={user.id} />
         : <Acceso />}
       <HojaContrasena abierta={hojaClave} onCerrar={() => setHojaClave(false)} />
     </>

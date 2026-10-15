@@ -156,6 +156,7 @@ export default function EstadisticasLocal({ localId, enlace = (r: string) => r }
         </>
       )}
 
+      <Canales localId={localId} dias={dias} />
       <TablaPorTardeo datos={porTardeo} dias={dias} enlace={enlace} />
     </section>
   );
@@ -226,6 +227,49 @@ function TablaPorTardeo({ datos, dias, enlace }: {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/** Canales de clic separados (dossier pág. 16). Orden fijo para comparar periodos. */
+const CANALES: { k: string; t: string }[] = [
+  { k: "entrada", t: "Entradas" }, { k: "lista", t: "Lista" }, { k: "whatsapp", t: "WhatsApp" },
+  { k: "instagram", t: "Instagram" }, { k: "web", t: "Web" }, { k: "reservas", t: "Reservas" }, { k: "mapa", t: "Cómo llegar" },
+];
+
+/**
+ * Clics por canal en el periodo elegido (lote 68, `metricas_canales_local`).
+ * «No disponible» NO es 0: si la función aún no existe o falla, no se sabe, y
+ * se dice así. Un 0 solo sale cuando se mide y no ha habido clics.
+ */
+function Canales({ localId, dias }: { localId: string; dias: number }) {
+  const [datos, setDatos] = useState<Record<string, number> | null | "nd">(null);
+  useEffect(() => {
+    let vivo = true;
+    setDatos(null);
+    supabase.rpc("metricas_canales_local", { p_local: localId, p_dias: dias }).then(({ data, error }) => {
+      if (!vivo) return;
+      if (error) { setDatos("nd"); return; }
+      setDatos(Object.fromEntries(((data ?? []) as { canal: string; total: number }[]).map((r) => [r.canal, Number(r.total)])));
+    });
+    return () => { vivo = false; };
+  }, [localId, dias]);
+  return (
+    <div className="mt-6">
+      <h3 className="mb-3 flex items-center gap-2 text-lg font-bold"><MousePointerClick size={18} className="text-magenta" aria-hidden /> Clics por canal</h3>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {CANALES.map(({ k, t }) => (
+          <div key={k} className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta">
+            <p className="text-[24px] font-bold leading-none">
+              {datos === null ? <span className="inline-block h-6 w-8 animate-pulse rounded bg-marfil-100" />
+                : datos === "nd" ? <span className="text-[15px] font-semibold text-tinta-suave">No disponible</span>
+                : (datos[k] ?? 0).toLocaleString("es-ES")}
+            </p>
+            <p className="mt-1.5 text-[15px] font-semibold text-tinta-suave">{t}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-sm text-tinta-suave">Un clic no es una venta: es alguien que ha pulsado para ir. Las ventas solo si la ticketera las comparte.</p>
     </div>
   );
 }

@@ -27,16 +27,26 @@ self.addEventListener("push", (event) => {
     // Android enseña como una silueta de 24 píxeles en la barra de estado.
     icon: "/branding/icon-192.png",
     badge: "/branding/badge-96.png",
-    // La URL que se abre al tocarla viaja dentro de la notificación.
-    data: { url: datos.url || "/" },
+    // La URL que se abre al tocarla viaja dentro de la notificación. Si es un
+    // aviso de la bandeja (cron /api/avisos), también su id: al tocarla se pasa
+    // por /avisos/abrir, que lo marca como leído y lleva al destino.
+    data: { url: datos.url || "/", aviso: datos.aviso || null },
   };
+  // Mismo aviso dos veces (reintento): sustituye a la anterior, no se apila.
+  if (datos.tag) opciones.tag = String(datos.tag);
 
   event.waitUntil(self.registration.showNotification(titulo, opciones));
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || "/";
+  const datos = event.notification.data || {};
+  // Solo rutas internas ("/…", nunca "//otra-web"): una notificación nuestra
+  // no debe abrir una web ajena aunque el payload viniera mal.
+  const interna = typeof datos.url === "string" && datos.url.startsWith("/") && !datos.url.startsWith("//") ? datos.url : "/";
+  const url = datos.aviso && /^[0-9a-f-]{36}$/i.test(datos.aviso)
+    ? `/avisos/abrir?id=${datos.aviso}&u=${encodeURIComponent(interna)}`
+    : interna;
 
   // Si ya hay una pestaña de la app abierta, la reutilizamos y navegamos en
   // ella; si no, se abre una nueva. Es lo que hace WhatsApp Web.

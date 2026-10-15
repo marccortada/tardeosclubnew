@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SeccionPanel } from "@/components/panel/PanelShell";
 import { usePanelLocal } from "../_panel/PanelLocal";
-import { vincularDjsPorNombre, invalidarCacheTardeos, falloPorColumna, getTardeoRow, getTardeoById } from "@/lib/tardeos";
-import CampoDjs from "../_panel/CampoDjs";
+import { vincularDjsPorNombre, invalidarCacheTardeos, falloPorColumna, getTardeoRow, getTardeoById, buscarDuplicados, type PosibleDuplicado } from "@/lib/tardeos";
+import DjsCartel from "../_panel/DjsCartel";
+import VistaPrevia from "../_panel/VistaPrevia";
+import AyudaBorrador from "../_panel/AyudaBorrador";
 import { leerFlyerConIA, subirFlyer } from "../_panel/leerFlyer";
 import { supabase } from "@/lib/supabase";
 import SelectorAdn from "@/components/SelectorAdn";
@@ -22,7 +24,7 @@ import SubirFlyer from "@/components/SubirFlyer";
 import Boton, { claseBoton } from "@/components/Boton";
 import Campo, { claseCampo } from "@/components/ui/Campo";
 import {
-  Sparkles, Loader2, Check, AlertTriangle, MapPin, ArrowRight, ArrowLeft, Store, Repeat, Copy, Clock,
+  Sparkles, Loader2, Check, AlertTriangle, MapPin, ArrowRight, ArrowLeft, Store, Repeat, Copy, Clock, Eye,
 } from "lucide-react";
 
 /** Los mismos tres del admin antiguo, para que nadie tenga que reaprender. */
@@ -105,6 +107,11 @@ export default function CrearTardeo() {
   // borra la dirección copiada.
   const [listaAdmin, setListaAdmin] = useState(false);
   const conservarDir = useRef(false);
+  // Dossier pág. 11: vista previa, duplicados y «Necesito ayuda» sin perder lo escrito.
+  const [vista, setVista] = useState(false);
+  const [duplicados, setDuplicados] = useState<PosibleDuplicado[] | null>(null);
+  const [recuperado, setRecuperado] = useState(false);
+  const borradorListo = useRef(false);
 
   useEffect(() => {
     if (!esAdmin) {
@@ -197,6 +204,32 @@ export default function CrearTardeo() {
     // Solo una vez, cuando ya se sabe el local (y la lista, en el admin).
   }, [esAdmin ? listaAdmin : !!localId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Borrador en este navegador: si se cierra la pestaña, se pide ayuda o se
+   * va la conexión, lo escrito no se pierde. Solo el formulario nuevo (no al
+   * duplicar, que ya trae sus datos). El flyer no se guarda: es un archivo.
+   */
+  const CLAVE_BORRADOR = "tc-borrador-crear";
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("desde")) { borradorListo.current = true; return; }
+    try {
+      const b = JSON.parse(localStorage.getItem(CLAVE_BORRADOR) ?? "null");
+      if (b?.form?.titulo || b?.form?.descripcion) {
+        setForm((f) => ({ ...f, ...b.form, ubicacion: f.ubicacion, zona: f.zona }));
+        if (b.precio) setPrecio(b.precio);
+        if (b.periodicidad) setPeriodicidad(b.periodicidad);
+        if (typeof b.aforo === "string") setAforo(b.aforo);
+        setRecuperado(true);
+      }
+    } catch { /* sin almacenamiento: no pasa nada */ }
+    borradorListo.current = true;
+  }, []);
+  useEffect(() => {
+    if (!borradorListo.current || estado !== "revisar") return;
+    try { localStorage.setItem(CLAVE_BORRADOR, JSON.stringify({ form, precio, periodicidad, aforo })); } catch { /* sin almacenamiento */ }
+  }, [form, precio, periodicidad, aforo, estado]);
+  const borrarBorrador = () => { try { localStorage.removeItem(CLAVE_BORRADOR); } catch { /* nada */ } };
+
   const set = (k: keyof typeof form, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
   // Vía "ya tengo el flyer": Claude LEE la imagen (IA real). La lectura, la
@@ -277,7 +310,7 @@ export default function CrearTardeo() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const publicar = async () => {
+  const publicar = async (aunqueParezcaDuplicado = false) => {
     if (!user || !local) {
       setError(
         esAdmin
@@ -297,6 +330,18 @@ export default function CrearTardeo() {
     if (ec) { setErrorCuando(ec); setError(""); return; }
 
     setPublicando(true); setError("");
+
+    // Duplicados (dossier pág. 11): mismo local o sitio, misma fecha y nombre
+    // parecido. Se avisa con enlace al existente; publicar igualmente es una
+    // decisión explícita. Si no se puede comprobar (lote 68), no se bloquea.
+    if (!aunqueParezcaDuplicado) {
+      const dup = await buscarDuplicados({
+        localId: local.id, fechas: fechasDeSerie(form.fecha, periodicidad), titulo: form.titulo,
+        lat: dirTardeo?.lat ?? local.lat, lng: dirTardeo?.lng ?? local.lng,
+      });
+      if (dup.filas.length) { setDuplicados(dup.filas); setPublicando(false); return; }
+    }
+    setDuplicados(null);
 
     // Guardar el flyer en Supabase Storage
     let flyer_url = flyerOriginal ?? "/flyers/placeholder.jpg";
@@ -382,6 +427,7 @@ export default function CrearTardeo() {
 
     if (error) { setPublicando(false); setError(error.message); return; }
     setAvisos(notas);
+    borrarBorrador();
 
     // Vincular los DJs (por nombre) en TODAS las fechas: si solo se enlazara la
     // primera, el DJ vería un tardeo suyo de cinco en su perfil. Una sola
@@ -419,6 +465,9 @@ export default function CrearTardeo() {
    */
   const fechasSerie = fechasDeSerie(form.fecha, periodicidad);
   const enSerie = periodicidad.cada !== "una" && fechasSerie.length > 1;
+  // La imagen elegida (aún sin subir) para la vista previa.
+  const urlFlyer = useMemo(() => (archivoSubido ? URL.createObjectURL(archivoSubido) : flyerOriginal), [archivoSubido, flyerOriginal]);
+  useEffect(() => () => { if (archivoSubido && urlFlyer) URL.revokeObjectURL(urlFlyer); }, [archivoSubido, urlFlyer]);
 
   const empezarOtro = () => {
     setForm({ ...EXTRAIDO, ubicacion: local?.direccion ?? "", zona: local?.zona ?? "" });
@@ -426,7 +475,8 @@ export default function CrearTardeo() {
     setTipoEvento(""); setAmbiente([]); setPublico([]); setDressCode("");
     setArchivoSubido(null); setFlyerDecidido(false); setRellenoIA(false); setRevisar(new Set());
     setDjsSinFicha([]); setDirTardeo(null); setPaso(0); setCuando({ estado: "publicado", publicarEn: "" }); setErrorCuando("");
-    setFlyerOriginal(null); setDuplicando(null); setAvisos([]);
+    setFlyerOriginal(null); setDuplicando(null); setAvisos([]); setDuplicados(null); setRecuperado(false);
+    borrarBorrador();
     setEstado("revisar");
   };
 
@@ -583,6 +633,12 @@ export default function CrearTardeo() {
                       se puede publicar sin él —se guarda un marcador— y se
                       puede añadir después de haber escrito medio formulario,
                       que es como pasa de verdad cuando el diseño llega tarde. */}
+                  {recuperado && (
+                    <p className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-marfil-100 p-3 text-[15px]">
+                      <span>Hemos recuperado lo que estabas escribiendo.</span>
+                      <button type="button" onClick={empezarOtro} className="min-h-[44px] font-bold text-magenta-700">Empezar de cero</button>
+                    </p>
+                  )}
                   {duplicando && (
                     <p className="flex items-start gap-2 rounded-xl bg-magenta-50 p-3 text-[15px] font-semibold text-magenta-700">
                       <Copy size={18} className="mt-0.5 shrink-0" aria-hidden />
@@ -639,7 +695,7 @@ export default function CrearTardeo() {
                         className={claseRevisar(revisar.has("horaFin"))} />
                     </Campo>
                   </div>
-                  <CampoDjs valor={form.dj} onCambio={(v) => set("dj", v)} clase={claseRevisar(revisar.has("dj"))} />
+                  <DjsCartel valor={form.dj} onCambio={(v) => set("dj", v)} revisar={revisar.has("dj")} />
                   <Campo etiqueta="Descripción (opcional)" htmlFor="desc">
                     <textarea id="desc" value={form.descripcion} onChange={(e) => set("descripcion", e.target.value)} rows={3}
                       placeholder="Qué se va a encontrar quien venga." className={`${claseCampo} resize-y`} />
@@ -736,6 +792,28 @@ export default function CrearTardeo() {
 
               {error && <p role="alert" className="rounded-xl border border-error/20 bg-error-fondo p-3 text-[15px] font-semibold text-error">{error}</p>}
 
+              {duplicados && duplicados.length > 0 && (
+                <div role="alert" className="rounded-xl border border-aviso/25 bg-aviso-fondo p-4">
+                  <p className="flex items-center gap-2 text-[16px] font-bold"><AlertTriangle size={18} className="text-aviso" aria-hidden /> Puede que ya exista</p>
+                  <p className="mt-1 text-[15px]">Hay {duplicados.length === 1 ? "un evento parecido" : `${duplicados.length} eventos parecidos`} el mismo día y en el mismo sitio:</p>
+                  <ul className="mt-2 flex flex-col gap-1.5">
+                    {duplicados.map((d) => (
+                      <li key={d.id}>
+                        <Link href={d.mismo_local ? enlace(`/local/tardeos/${d.id}/editar`) : `/tardeos/${d.id}`} target="_blank"
+                          className="text-[15px] font-semibold text-magenta-700 underline underline-offset-2">
+                          {d.titulo}
+                        </Link>
+                        <span className="text-[15px] text-tinta-suave"> · {fechaCorta(d.fecha)}{d.hora_inicio ? ` ${d.hora_inicio.slice(0, 5)}` : ""} · {d.local_nombre}{d.estado === "borrador" ? " (borrador)" : ""}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <Boton variante="contorno" tamano="pequeno" onClick={() => setDuplicados(null)}>Revisar mis datos</Boton>
+                    <Boton tamano="pequeno" onClick={() => publicar(true)} cargando={publicando}>Es otro evento: publicar igualmente</Boton>
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-2 border-t border-linea pt-4">
                 <Boton
                   variante="contorno"
@@ -748,14 +826,32 @@ export default function CrearTardeo() {
                     Siguiente <ArrowRight size={20} aria-hidden />
                   </Boton>
                 ) : (
-                  <Boton ancho onClick={publicar} cargando={publicando}>
+                  <Boton ancho onClick={() => publicar()} cargando={publicando}>
                     {!publicando && <Check size={20} aria-hidden />}
                     {cuando.estado === "programado" ? "Programar" : cuando.estado === "borrador" ? "Guardar borrador" : "Publicar"}
                     {enSerie && ` ${fechasSerie.length} tardeos`}
                   </Boton>
                 )}
               </div>
+              {/* Como en el vídeo: «Ver vista previa» y «Necesito ayuda» en
+                  cualquier paso, sin perder lo escrito. */}
+              <div className="flex flex-col items-center gap-1 sm:flex-row sm:justify-between">
+                <Boton variante="suave" onClick={() => setVista(true)}><Eye size={18} aria-hidden /> Ver vista previa</Boton>
+                {user && (
+                  <AyudaBorrador userId={user.id} referencia={`borrador:${local?.id ?? "sin-local"}`}
+                    borrador={{ ...form, fechas: fechasSerie, precio, aforo, local: local?.nombre ?? null }} />
+                )}
+              </div>
             </section>
+            <VistaPrevia abierta={vista} onCerrar={() => setVista(false)}
+              d={{
+                titulo: form.titulo, descripcion: form.descripcion, fecha: form.fecha, horaInicio: form.horaInicio, horaFin: form.horaFin,
+                lugar: dirTardeo?.display ?? form.ubicacion, zona: dirTardeo?.zona ?? form.zona,
+                djs: form.dj.split(/[,·&]|\sy\s/i).map((x) => x.trim()).filter(Boolean),
+                precio, flyer: urlFlyer, fechas: fechasSerie,
+              }}
+              onPublicar={paso === PASOS.length - 1 ? () => { setVista(false); void publicar(); } : undefined}
+              textoPublicar={cuando.estado === "programado" ? "Programar" : cuando.estado === "borrador" ? "Guardar borrador" : "Publicar"} />
           </>
         )}
       </div>

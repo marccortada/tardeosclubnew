@@ -4,12 +4,40 @@
 
 :root {
   color-scheme: light;
+  /* Neutros en "R G B" para que Tailwind pueda aplicar opacidad (bg-tinta/50).
+     En claro son exactamente los de antes. */
+  --c-tinta: 26 26 26;
+  --c-tinta-suave: 85 85 85;
+  --c-marfil: 250 250 250;
+  --c-marfil-100: 244 244 245;
+  --c-marfil-200: 233 233 236;
+  --c-linea: 229 229 229;
+  --c-linea-fuerte: 212 212 216;
+  --c-superficie: 255 255 255;
+  --c-fondo: 250 250 250;
 }
+/* Modo oscuro (dossier pág. 9): opcional, la preferencia se guarda. */
+:root.dark,
+:root[data-tema="oscuro"] {
+  color-scheme: dark;
+  --c-tinta: 240 240 243;
+  --c-tinta-suave: 172 172 182;
+  --c-marfil: 18 18 22;
+  --c-marfil-100: 32 32 38;
+  --c-marfil-200: 46 46 54;
+  --c-linea: 48 48 56;
+  --c-linea-fuerte: 70 70 80;
+  --c-superficie: 27 27 33;
+  --c-fondo: 18 18 22;
+}
+/* Lo antiguo que usa bg-white a pelo: en oscuro pasa a superficie. */
+.dark .bg-white { background-color: rgb(var(--c-superficie)); }
+.dark .bg-white\/95 { background-color: rgb(var(--c-superficie) / 0.95); }
 
 html,
 body {
-  background: theme("colors.marfil.DEFAULT");
-  color: theme("colors.tinta.DEFAULT");
+  background: rgb(var(--c-fondo));
+  color: rgb(var(--c-tinta));
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -131,8 +159,8 @@ h1, h2, h3 {
 .legal .pendiente {
   display: inline-block;
   border-radius: 9999px;
-  background: theme("colors.marfil.100");
-  color: theme("colors.tinta.suave");
+  background: rgb(var(--c-marfil-100));
+  color: rgb(var(--c-tinta-suave));
   padding: 0 0.6rem;
   font-size: 0.9em;
   font-weight: 600;
@@ -145,13 +173,13 @@ h1, h2, h3 {
 }
 .legal th,
 .legal td {
-  border: 1px solid theme("colors.linea.DEFAULT");
+  border: 1px solid rgb(var(--c-linea));
   padding: 0.5rem 0.6rem;
   text-align: left;
   vertical-align: top;
 }
 .legal th {
-  background: theme("colors.marfil.100");
+  background: rgb(var(--c-marfil-100));
   font-weight: 700;
 }
 /* Las tablas no rompen el ancho en móvil */

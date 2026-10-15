@@ -60,9 +60,8 @@ const nextConfig = {
       // Invitaciones ya repartidas: el testigo pasa de la ruta a la consulta.
       { source: "/onboarding/:token", destination: "/reclamar?token=:token", permanent: true },
 
-      // Esta no existía en la web actual: se deja porque es lo que teclea
-      // cualquiera en castellano y no cuesta nada.
-      r("/eventos", "/tardeos"),
+      // (v2) /eventos es ya la pantalla de Eventos y /tardeos redirige a
+      // ella: la redirección antigua /eventos → /tardeos haría un bucle.
     ];
   },
 

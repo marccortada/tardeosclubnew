@@ -1,168 +1,176 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Tardeo } from "@/lib/types";
+import { Check, Heart, ExternalLink, Loader2, Clock, MessageCircle } from "lucide-react";
+import type { Tardeo } from "@/lib/types";
 import { useAuth } from "@/lib/useAuth";
-import { esFavorito, setFavorito, estaInscrito, inscribir, cancelarInscripcion, getPlazasTardeo, type Plazas } from "@/lib/tardeos";
-import { Ticket, ListChecks, Check, Heart, ExternalLink, Loader2 } from "lucide-react";
+import { esFavorito, setFavorito } from "@/lib/tardeos";
+import { asistire, retirarAsistencia, getMiAsistencia, getQuienesVan, type MiAsistencia, type QuienesVan } from "@/lib/tardicola";
 import { medir } from "@/lib/metricas";
 
-export default function AccionTardeo({ tardeo }: { tardeo: Tardeo }) {
+/**
+ * Quiénes van + Meet Zone + Asistiré / Guardar / Comprar (dossier pág. 5).
+ *
+ * Asistiré vale para TODOS los eventos: confirma al momento si hay plaza o
+ * deja en lista de espera (lo decide la base, lote 64). Comprar abre el
+ * enlace autorizado: un clic no es una venta ni una confirmación. Guardar es
+ * interés privado (Próxima Parada) y no confirma nada.
+ */
+export default function AccionTardeo({ tardeo, activo = true }: { tardeo: Tardeo; activo?: boolean }) {
   const { user } = useAuth();
   const router = useRouter();
-  const [apuntado, setApuntado] = useState(false);
+  const [mia, setMia] = useState<MiAsistencia>({ estado: null, puesto: null });
   const [fav, setFav] = useState(false);
   const [ocupado, setOcupado] = useState(false);
-  const [plazas, setPlazas] = useState<Plazas | null>(null);
-  // Se enseña cuando la base no ha aceptado el cambio, para que la pantalla no
-  // diga «Apuntado» o «Favorito» de algo que no se guardó.
   const [aviso, setAviso] = useState("");
+  const [van, setVan] = useState<QuienesVan | null>(null);
+  const [verLista, setVerLista] = useState(false);
 
   useEffect(() => {
-    if (!user) { setFav(false); setApuntado(false); return; }
+    if (!user) { setFav(false); setMia({ estado: null, puesto: null }); return; }
     esFavorito(user.id, tardeo.id).then(setFav);
-    if (tardeo.tipoEntrada === "gratis") estaInscrito(user.id, tardeo.id).then(setApuntado);
-  }, [user, tardeo.id, tardeo.tipoEntrada]);
+    getMiAsistencia(user.id, tardeo.id).then(setMia);
+  }, [user, tardeo.id]);
+  useEffect(() => { getQuienesVan(tardeo.id).then(setVan); }, [tardeo.id]);
 
-  // Las plazas las ve todo el mundo, con o sin sesión.
-  useEffect(() => {
-    if (tardeo.tipoEntrada === "gratis") getPlazasTardeo(tardeo.id).then(setPlazas);
-  }, [tardeo.id, tardeo.tipoEntrada]);
+  // Tras pedir cuenta se vuelve a esta ficha (la intención no se pierde).
+  const pedirLogin = () => router.push(`/perfil?volver=${encodeURIComponent(`/tardeos/${tardeo.id}`)}`);
+  const confirmado = mia.estado === "apuntado";
+  const enEspera = mia.estado === "espera";
 
-  const pedirLogin = () => router.push("/perfil");
-
-  const toggleFav = async () => {
+  const pulsarAsistire = async () => {
     if (!user) return pedirLogin();
-    const nuevo = !fav;
-    setAviso("");
-    setFav(nuevo);
-    const { error } = await setFavorito(user.id, tardeo.id, nuevo);
-    if (error) {
-      setFav(!nuevo);
-      setAviso(nuevo ? "No se pudo guardar en tus favoritos. Inténtalo otra vez." : "No se pudo quitar de tus favoritos. Inténtalo otra vez.");
-      return;
-    }
-    // Solo al guardar, no al quitar: lo que interesa medir es el interés.
-    if (nuevo) medir("favorito", { tardeoId: tardeo.id });
-  };
-
-  const toggleApuntar = async () => {
-    if (!user) return pedirLogin();
-    setOcupado(true);
-    setAviso("");
-    if (apuntado) {
-      const { error } = await cancelarInscripcion(user.id, tardeo.id);
-      if (error) setAviso("No se pudo cancelar tu plaza. Inténtalo otra vez.");
-      else { setApuntado(false); getPlazasTardeo(tardeo.id).then(setPlazas); }
-    } else {
-      const { error } = await inscribir(user.id, tardeo.id);
-      if (error?.message === "AFORO_COMPLETO") {
-        setAviso("Se han acabado las plazas de este tardeo.");
-        getPlazasTardeo(tardeo.id).then(setPlazas);
-      } else if (error) setAviso("No te hemos podido apuntar. Inténtalo otra vez.");
-      else {
-        setApuntado(true);
-        getPlazasTardeo(tardeo.id).then(setPlazas);
-        medir("inscripcion", { tardeoId: tardeo.id });
-      }
+    if (confirmado || enEspera) return;
+    setOcupado(true); setAviso("");
+    const { r, error } = await asistire(user.id, tardeo.id);
+    if (error) setAviso(error === "Lista llena. La lista de espera llega con el lote 64." ? error : "No se pudo guardar tu Asistiré. Inténtalo otra vez.");
+    else if (r) {
+      setMia(r);
+      medir("inscripcion", { tardeoId: tardeo.id, detalle: r.estado ?? undefined });
+      getQuienesVan(tardeo.id).then(setVan);
     }
     setOcupado(false);
   };
 
-  /**
-   * Al sitio donde se compra. Esto ERA UN `alert` que decía "(demo)": el botón
-   * principal de todo tardeo de pago no llevaba a ninguna parte, teniendo el
-   * enlace guardado en la base.
-   *
-   * Se apunta el clic ANTES de abrir. Al revés se perdería la mitad: en el
-   * móvil, cuando el navegador cambia de página, lo que quede a medias se
-   * cancela. Y no se espera a que termine de guardarse, que sería hacer esperar
-   * a alguien que quiere comprar.
-   */
-  const irAEntradas = () => {
+  const retirar = async () => {
+    if (!user) return;
+    setOcupado(true); setAviso("");
+    const { error } = await retirarAsistencia(user.id, tardeo.id);
+    if (error) setAviso("No se pudo retirar. Inténtalo otra vez.");
+    else { setMia({ estado: "cancelado", puesto: null }); getQuienesVan(tardeo.id).then(setVan); }
+    setOcupado(false);
+  };
+
+  const toggleFav = async () => {
+    if (!user) return pedirLogin();
+    const n = !fav;
+    setFav(n); setAviso("");
+    const { error } = await setFavorito(user.id, tardeo.id, n);
+    if (error) { setFav(!n); setAviso("No se pudo guardar. Inténtalo otra vez."); return; }
+    if (n) medir("favorito", { tardeoId: tardeo.id });
+  };
+
+  const comprar = () => {
     if (!tardeo.urlEntradas) return;
-    medir(tardeo.tipoEntrada === "lista" ? "clic_lista" : "clic_entrada",
-      { tardeoId: tardeo.id, destino: tardeo.urlEntradas });
+    medir(tardeo.tipoEntrada === "lista" ? "clic_lista" : "clic_entrada", { tardeoId: tardeo.id, destino: tardeo.urlEntradas });
     window.open(tardeo.urlEntradas, "_blank", "noopener,noreferrer");
   };
 
-  const completo = plazas?.libres === 0;
-  const textoEntrada = tardeo.tipoEntrada === "lista"
-    ? "Apuntarse a la lista"
-    : `Comprar entradas${tardeo.precio ? ` · ${tardeo.precio} €` : ""}`;
-
-  /*
-   * En el móvil es una barra fija encima de la de navegación: la acción
-   * principal siempre al alcance del pulgar. En escritorio deja de ser fija y
-   * se queda en la columna de datos, debajo del título: ahí es donde se mira.
-   */
   return (
-    // 65 px es la barra de navegación inferior; más la zona segura del iPhone,
-    // que si no la tapaba a medias.
-    <div className="fixed bottom-[calc(65px+env(safe-area-inset-bottom))] left-0 right-0 z-[900] border-t border-linea bg-white/95 shadow-[0_-6px_20px_-8px_rgba(0,0,0,0.15)] backdrop-blur md:static md:z-auto md:mt-4 md:border-0 md:bg-transparent md:shadow-none md:backdrop-blur-0">
-      {aviso && (
-        <p role="alert" className="mx-auto max-w-md bg-error-fondo px-4 py-2 text-center text-[15px] font-semibold text-error md:mb-3 md:max-w-none md:rounded-xl md:text-left">
-          {aviso}
-        </p>
-      )}
-      {tardeo.tipoEntrada === "gratis" && plazas?.aforo != null && (
-        <p className="mx-auto max-w-md px-4 pt-2 text-center text-[15px] font-bold text-tinta md:max-w-none md:px-0 md:pb-2 md:pt-0 md:text-left">
-          {plazas.libres === 0 ? "Plazas agotadas" : `Quedan ${plazas.libres} de ${plazas.aforo} plazas`}
-        </p>
-      )}
-      <div className="mx-auto flex max-w-md items-center gap-3 p-3 md:max-w-none md:p-0">
-        <button
-          onClick={toggleFav}
-          aria-label={fav ? "Quitar de mis planes" : "Guardar en mis planes"}
-          aria-pressed={fav}
-          className={`grid h-14 w-14 shrink-0 place-items-center rounded-xl border transition ${
-            fav ? "border-magenta bg-magenta text-white" : "border-linea-fuerte bg-white text-magenta hover:bg-marfil"
-          }`}
-        >
-          <Heart size={26} fill={fav ? "currentColor" : "none"} aria-hidden />
-        </button>
-
-        {tardeo.tipoEntrada === "gratis" ? (
-          <button
-            onClick={toggleApuntar}
-            disabled={ocupado || (completo && !apuntado)}
-            className={`flex min-h-[56px] flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-[17px] font-bold transition active:scale-[0.98] disabled:opacity-60 ${
-              apuntado ? "bg-ok text-white" : completo ? "bg-marfil-200 text-tinta" : "bg-oro text-tinta shadow-plastilina-oro hover:bg-oro-400"
-            }`}
-          >
-            {ocupado ? <Loader2 size={22} className="animate-spin" aria-hidden /> : apuntado ? (<><Check size={22} aria-hidden /> Apuntado · toca para cancelar</>) : completo ? "Completo" : "Apuntarme gratis"}
-          </button>
-        ) : tardeo.urlEntradas ? (
-          <button
-            onClick={irAEntradas}
-            className="flex min-h-[56px] flex-1 items-center justify-center gap-2 rounded-xl bg-oro px-4 py-3 text-[17px] font-bold text-tinta shadow-plastilina-oro transition hover:bg-oro-400 active:scale-[0.98]"
-          >
-            {tardeo.tipoEntrada === "lista" ? <ListChecks size={22} aria-hidden /> : <Ticket size={22} aria-hidden />}
-            {textoEntrada}
-            <ExternalLink size={16} className="shrink-0 opacity-70" aria-hidden />
-          </button>
-        ) : (
-          /* Sin enlace de venta no hay botón, y es a propósito: un botón que
-             promete "Comprar entrada" y no hace nada es peor que no tenerlo, y
-             ensucia la medición con clics que no llevan a ninguna venta. */
-          <div className="flex min-h-[56px] flex-1 flex-col items-center justify-center rounded-xl bg-marfil-100 px-5 py-2 text-center">
-            <span className="text-[17px] font-bold text-tinta">
-              {tardeo.tipoEntrada === "lista" ? "Con lista" : tardeo.precio ? `Entrada ${tardeo.precio} €` : "Con entrada"}
-            </span>
-            <span className="text-[13px] font-medium text-tinta-suave">Consulta en el local</span>
+    <div className="flex flex-col gap-4">
+      {/* Quiénes van: solo alias y foto (perfil_publico). */}
+      {van && !van.falta && (
+        <section aria-labelledby="quienes">
+          <div className="flex items-center justify-between">
+            <h2 id="quienes" className="text-[22px] font-bold text-tinta">Quiénes van</h2>
+            {van.total > 0 && (
+              <button type="button" onClick={() => setVerLista((v) => !v)} className="min-h-[44px] px-1 text-[15px] font-semibold text-magenta-700">
+                {verLista ? "Ocultar" : "Ver lista"}
+              </button>
+            )}
           </div>
+          <div className="mt-1 flex items-center gap-3">
+            {van.perfiles.length > 0 && (
+              <div className="flex -space-x-2">
+                {van.perfiles.slice(0, 3).map((p, i) => <Avatar key={i} alias={p.alias} url={p.avatar_url} />)}
+              </div>
+            )}
+            <p className="text-[15px] text-tinta-suave">
+              {van.total === 0 ? "Aún no hay nadie confirmado. ¡Sé el primero!" : `${van.total} ${van.total === 1 ? "persona confirmada" : "personas confirmadas"}`}
+            </p>
+          </div>
+          {verLista && (
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {van.perfiles.map((p, i) => (
+                <li key={i} className="inline-flex items-center gap-2 rounded-full bg-marfil-100 py-1 pl-1 pr-3 text-[15px] text-tinta">
+                  <Avatar alias={p.alias} url={p.avatar_url} /> {p.alias}
+                </li>
+              ))}
+              {van.total > van.perfiles.length && <li className="self-center text-[15px] text-tinta-suave">y {van.total - van.perfiles.length} más</li>}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {/* Meet Zone (equipo C): solo con Asistiré confirmado. La espera no la abre. */}
+      <section className="rounded-3xl border border-linea bg-superficie p-4">
+        <p className="flex items-center gap-2 text-[17px] font-bold text-tinta"><MessageCircle size={19} className="text-magenta" aria-hidden /> Meet Zone</p>
+        <p className="text-[15px] text-tinta-suave">Conecta con quienes van a este plan</p>
+        {confirmado ? (
+          <Link href={`/tardeos/${tardeo.id}/meet`} className="mt-3 flex min-h-[48px] items-center justify-center rounded-2xl border border-linea-fuerte bg-superficie text-[16px] font-bold text-tinta hover:bg-marfil-100">
+            Entrar a Meet Zone
+          </Link>
+        ) : (
+          <p className="mt-3 flex min-h-[48px] items-center justify-center rounded-2xl border border-dashed border-linea-fuerte text-center text-[15px] font-semibold text-tinta-suave">
+            {enEspera ? "Se abre cuando pases a confirmado" : "Confirma Asistiré para entrar"}
+          </p>
         )}
-      </div>
-      {/* Gratis pero con web propia (reservas, lista de la discoteca…): se
-          ofrece también, en segundo plano, sin quitar el "Apuntarme". */}
-      {tardeo.tipoEntrada === "gratis" && tardeo.urlEntradas && (
-        <div className="mx-auto max-w-md px-3 pb-3 md:max-w-none md:px-0 md:pb-0 md:pt-3">
-          <button onClick={irAEntradas} className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-linea-fuerte bg-white px-4 text-[15px] font-bold text-tinta hover:bg-marfil">
-            <Ticket size={18} aria-hidden /> Reservar en la web del evento <ExternalLink size={14} aria-hidden />
-          </button>
-        </div>
+      </section>
+
+      {aviso && <p role="alert" className="rounded-xl bg-error-fondo px-3 py-2 text-[15px] font-semibold text-error">{aviso}</p>}
+
+      {activo && (
+        <>
+          <div className="grid grid-cols-[1.4fr_1fr] gap-3">
+            <button type="button" onClick={pulsarAsistire} disabled={ocupado} aria-pressed={confirmado || enEspera}
+              className={`flex min-h-[52px] items-center justify-center gap-2 rounded-2xl px-3 text-[16px] font-bold transition active:scale-[0.98] disabled:opacity-70 ${
+                enEspera ? "border border-aviso/40 bg-aviso-fondo text-aviso" : "bg-magenta text-white"}`}>
+              {ocupado ? <Loader2 size={20} className="animate-spin" aria-hidden />
+                : confirmado ? <><Check size={19} aria-hidden /> Asistiré · Confirmado</>
+                : enEspera ? <><Clock size={18} aria-hidden /> En lista de espera{mia.puesto ? ` (puesto ${mia.puesto})` : ""}</>
+                : "Asistiré"}
+            </button>
+            <button type="button" onClick={toggleFav} aria-pressed={fav}
+              className={`flex min-h-[52px] items-center justify-center gap-2 rounded-2xl border text-[16px] font-bold transition ${fav ? "border-magenta bg-magenta-50 text-magenta-700" : "border-linea-fuerte bg-superficie text-tinta"}`}>
+              <Heart size={18} fill={fav ? "currentColor" : "none"} aria-hidden /> {fav ? "Guardado" : "Guardar"}
+            </button>
+          </div>
+          {(confirmado || enEspera) && (
+            <button type="button" onClick={retirar} disabled={ocupado} className="-mt-2 min-h-[44px] self-center text-[15px] font-semibold text-tinta-suave underline underline-offset-2">
+              {confirmado ? "Ya no puedo ir: retirar mi Asistiré" : "Salir de la lista de espera"}
+            </button>
+          )}
+          {tardeo.urlEntradas && (
+            <button type="button" onClick={comprar}
+              className="flex min-h-[52px] items-center justify-center gap-2 rounded-2xl border border-linea-fuerte bg-superficie text-[16px] font-bold text-tinta hover:bg-marfil-100">
+              {tardeo.tipoEntrada === "lista" ? "Apuntarme a la lista" : "Comprar entrada"} <ExternalLink size={16} aria-hidden />
+            </button>
+          )}
+        </>
       )}
     </div>
+  );
+}
+
+function Avatar({ alias, url }: { alias: string; url: string | null }) {
+  return url ? (
+    <Image src={url} alt={alias} width={36} height={36} className="h-9 w-9 rounded-full border-2 border-superficie object-cover" />
+  ) : (
+    <span aria-label={alias} className="grid h-9 w-9 place-items-center rounded-full border-2 border-superficie bg-magenta-100 text-[14px] font-bold text-magenta-700">
+      {alias.charAt(0).toUpperCase()}
+    </span>
   );
 }

@@ -13,13 +13,15 @@ import { Music2, Video, ExternalLink } from "lucide-react";
  * Si no ha subido nada no se pinta la sección: un apartado vacío en una ficha
  * pública hace parecer que al DJ le falta algo.
  */
-export default async function ContenidoPublicoDj({ djId }: { djId: string }) {
+// `soloImagenes`: en el perfil v2 las sesiones y vídeos ya salen como sets
+// (lote 65 los copió), así que aquí solo van fotos y flyers.
+export default async function ContenidoPublicoDj({ djId, soloImagenes = false }: { djId: string; soloImagenes?: boolean }) {
   // En la ficha pública un fallo de lectura no se anuncia: se omite la sección
   // igual que si no hubiera nada (ya queda registrado en getContenidos).
   const { data: todo } = await getContenidos(djId);
   if (!todo.length) return null;
 
-  const medios = todo.filter((c) => (c.tipo === "sesion" || c.tipo === "video") && (urlIncrustada(c.url) || urlSegura(c.url)));
+  const medios = soloImagenes ? [] : todo.filter((c) => (c.tipo === "sesion" || c.tipo === "video") && (urlIncrustada(c.url) || urlSegura(c.url)));
   // Solo las que tienen una dirección válida: antes las demás salían con un
   // enlace a "#" que no llevaba a ninguna parte.
   const imagenes = todo.filter((c) => (c.tipo === "foto" || c.tipo === "flyer") && urlSegura(c.url));

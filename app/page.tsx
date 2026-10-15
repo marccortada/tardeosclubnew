@@ -2,6 +2,7 @@ import TopBar from "@/components/TopBar";
 import CtaLocalDj from "@/components/CtaLocalDj";
 import Footer from "@/components/Footer";
 import PopupCliente from "@/components/PopupCliente";
+import { InicioSegunSesion } from "@/components/tardicola/InicioApp";
 import ParaTi from "@/components/ParaTi";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import MapaClient from "@/components/MapaClient";
@@ -71,7 +72,8 @@ export default async function Inicio() {
   const nFinde = tardeos.filter((t) => finde.has(t.fecha)).length;
   const paraTi = tardeos.filter((t) => !proximos.some((p) => p.id === t.id));
 
-  return (
+  // Con sesión, Inicio de la app (v2); sin ella, esta landing.
+  const landing = (
     <main className="bg-white">
       <RegistrarPantalla pantalla="home" />
       <DatosEstructurados datos={jsonLdSitio()} />
@@ -328,9 +330,14 @@ export default async function Inicio() {
         <MessageCircle size={26} aria-hidden />
       </a>
 
-      <PopupCliente />
       <Revelar />
     </main>
+  );
+  return (
+    <>
+      <InicioSegunSesion landing={landing} tardeos={[...tardeos, ...masAdelante]} />
+      <PopupCliente />
+    </>
   );
 }
 

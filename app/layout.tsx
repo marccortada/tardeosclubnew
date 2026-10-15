@@ -1,3 +1,4 @@
+import { ReproductorProvider, MiniReproductor } from "@/components/musica/Reproductor";
 import type { Metadata, Viewport } from "next";
 import { Manrope, Dancing_Script } from "next/font/google";
 import "./globals.css";
@@ -53,6 +54,8 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image" },
 };
 
+const TEMA_SCRIPT = `try{if(localStorage.getItem("tc_tema")==="oscuro")document.documentElement.classList.add("dark")}catch(e){}`;
+
 export const viewport: Viewport = {
   themeColor: "#D61AA8",
   width: "device-width",
@@ -61,18 +64,26 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${manrope.variable} ${dancing.variable}`}>
-      <body className="font-sans min-h-screen bg-marfil text-tinta antialiased">
+    <html lang="es" className={`${manrope.variable} ${dancing.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Tema claro/oscuro ANTES de pintar (equipo A): sin esto la página
+            sale en claro y salta a oscuro, un parpadeo en cada carga. */}
+        <script dangerouslySetInnerHTML={{ __html: TEMA_SCRIPT }} />
+      </head>
+      <body className="font-sans min-h-screen bg-fondo text-tinta antialiased">
         <RegistrarSW />
         {/* Errores del navegador → /admin/errores (lote 57). No pinta nada. */}
         <CapturaErrores />
-        <SiteNav />
-        <div className="min-h-screen">{children}</div>
-        <BottomNav />
+        <ReproductorProvider>
+          <SiteNav />
+          <div className="min-h-screen">{children}</div>
+          <MiniReproductor />
+          <BottomNav />
         {/* El aviso de instalar. Va DESPUÉS de la barra de abajo para quedar
             por encima de ella, y se pinta solo en móvil, una vez, y pasados
             unos segundos: ver el porqué de cada condición en el componente. */}
         <InstalarApp />
+        </ReproductorProvider>
       </body>
     </html>
   );

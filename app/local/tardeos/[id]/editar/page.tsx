@@ -13,7 +13,7 @@ import {
 } from "@/lib/tardeos";
 import { supabase } from "@/lib/supabase";
 import SubirFlyer from "@/components/SubirFlyer";
-import CampoDjs from "../../../_panel/CampoDjs";
+import DjsCartel from "../../../_panel/DjsCartel";
 import { leerFlyerConIA, subirFlyer } from "../../../_panel/leerFlyer";
 import PasarLista from "../../../_panel/PasarLista";
 import InvitarDj from "../../../_panel/InvitarDj";
@@ -489,7 +489,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
               <input id="fin" type="time" value={horaFin} onChange={(e) => setHoraFin(e.target.value)} className={claseCampo} />
             </Campo>
           </div>
-          <CampoDjs valor={dj} onCambio={setDj} clase={claseCampo} />
+          <DjsCartel valor={dj} onCambio={setDj} />
           <Campo etiqueta="Descripción (opcional)" htmlFor="desc">
             <textarea id="desc" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={3}
               placeholder="Qué se va a encontrar quien venga." className={`${claseCampo} resize-y`} />

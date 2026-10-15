@@ -21,6 +21,8 @@ export type Resumen = {
   busquedas: { texto: string; total: number; sin_resultados: number }[];
   filtros: { filtro: string; total: number }[];
   ticketeras: { dominio: string; total: number }[];
+  /** Lote 69: de dónde llega la gente (utm / ?o=). Sin equipo ni pruebas. */
+  origenes?: { origen: string; campana: string | null; personas: number; eventos: number }[];
 };
 
 export const RESUMEN_VACIO: Resumen = {
@@ -45,6 +47,15 @@ export const NOMBRES: Record<string, string> = {
   inscripcion: "Apuntados",
   clic_entrada: "Clic a comprar",
   clic_lista: "Clic a lista",
+  seguir: "Seguir DJ",
+  play: "Play",
+  asistire: "Asistiré",
+  espera: "Lista de espera",
+  meet_entrar: "Entradas a Meet Zone",
+  clic_externo: "Clic externo",
+  sorteo_participar: "Participaciones en sorteos",
+  aviso_abierto: "Avisos abiertos",
+  clic_contacto: "Contacto con el local",
 };
 
 /** El orden del embudo: de cómo entran a lo que acaban haciendo. */
@@ -97,4 +108,18 @@ export function tasaCompra(r: Resumen): number | null {
   const t = (k: string) => r.por_tipo.find((x) => x.tipo === k)?.total ?? 0;
   const fichas = t("vista_tardeo");
   return fichas > 0 ? Math.round(((t("clic_entrada") + t("clic_lista")) / fichas) * 100) : null;
+}
+
+/** Cohorte semanal de cuentas nuevas y cuántas vuelven con una acción útil (lote 69). */
+export type Cohorte = {
+  semana: string; cuentas: number; volvieron_7: number; volvieron_28: number; madura_7: boolean; madura_28: boolean;
+};
+
+export async function cargarCohortes(semanas = 12): Promise<{ filas: Cohorte[]; error: string | null }> {
+  const { data, error } = await supabase.rpc("cohortes_retorno", { p_semanas: semanas });
+  if (error) {
+    const falta = error.code === "42883" || error.code === "PGRST202";
+    return { filas: [], error: falta ? "Falta pegar el lote 69 (supabase/69_admin_zonas.sql)." : error.message };
+  }
+  return { filas: (data ?? []) as Cohorte[], error: null };
 }

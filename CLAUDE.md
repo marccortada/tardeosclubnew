@@ -68,7 +68,9 @@ Claves en `.env.local` (no se sube). La de la vieja: `OLD_SUPABASE_*`, solo para
    se enseñe una suscripción, debe verse "Desactivado / próximamente".
 2. **Nada de borrar datos importantes** sin enseñar antes cuántas filas y tener
    un "sí" explícito.
-3. Aplazado por el cliente, **no desarrollar**: Meet Zone, créditos, tablón.
+3. **Dossier 2.0 (14‑oct‑2026) manda**: Meet Zone, Coins (créditos) y Entre Beats
+   (hilos + anuncios) ya NO están aplazados: se construyen. Aplazados: pedir taxi y
+   descargar sets. Ver `PLAN_DOSSIER_2.0.md` y `docs/v2/CONTRATOS.md`.
 4. Accesibilidad 30+: botones ≥ 44–48 px, texto ≥ 15–16 px, alto contraste.
    Español de España, frases cortas.
 5. Comentarios del código en español y explicando el **porqué**.
@@ -276,6 +278,20 @@ Al copiar SQL al portapapeles en macOS usar
 | `push/enviar` | envía notificaciones push por segmento (admin) |
 | `enviar-oferta` | email de oferta comercial (Resend) |
 | `recordatorios`, `revalidar` | cron, protegidos con `x-cron-secret` |
+| `avisos` | cron **cada 10 min** (lote 67): aviso 1 h antes con propuesta musical, "¿Qué tal ha ido?" + vuelta segura al acabar, cambios de hora y cancelaciones; bandeja `avisos` + push. Idempotente (clave por aviso). Probar con fecha simulada: `?ahora=2026-10-24T14:10:00Z` |
+
+Cron a programar en el servidor (no está programado; lo hace quien despliega):
+
+```cron
+*/10 * * * * curl -fsS -m 55 -X POST -H "x-cron-secret: $CRON_SECRET" https://crm.gnerai.com/api/avisos >/dev/null
+0 10 * * *   curl -fsS -m 55 -X POST -H "x-cron-secret: $CRON_SECRET" https://crm.gnerai.com/api/recordatorios >/dev/null
+```
+
+Retorno (lote 67): encuesta `/tardeos/[id]/encuesta` (solo confirmados, hasta fin + 72 h, lo
+valida la base), bandeja `/avisos` (+ preferencias), `/sorteos`, `/admin/sorteos`,
+`/admin/encuestas`. Lógica pura de horas y avisos en `lib/avisos.ts` (misma regla que
+`public.tardeo_fin`). El ajuste `avisos_1h_guardados` = 'true' manda el aviso de 1 h también a
+guardados (por defecto solo "Asistiré").
 | `errores` | recibe errores del navegador (límite por IP y global) |
 | `borrar-cuenta` | el usuario borra su cuenta y datos |
 | `admin/usuario/[id]` | acciones de admin sobre un usuario |

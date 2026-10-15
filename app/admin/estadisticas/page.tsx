@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SeccionPanel } from "@/components/panel/PanelShell";
+import Cohortes from "@/components/admin/Cohortes";
 import { Filtros } from "@/components/panel/Paginacion";
 import Aviso from "@/components/admin/Aviso";
 import {
@@ -139,6 +140,13 @@ export default function AdminEstadisticas() {
               </Bloque>
             )}
 
+            {(datos.origenes ?? []).length > 0 && (
+              <Bloque titulo="De dónde llegan (campañas)" icon={Activity}
+                pie="Personas por origen de la visita (utm o ?o= en el enlace). Sin equipo ni cuentas de prueba.">
+                <Barras filas={(datos.origenes ?? []).map((x) => ({ etiqueta: x.campana ? `${x.origen} · ${x.campana}` : x.origen, valor: x.personas }))} />
+              </Bloque>
+            )}
+
             {datos.top_tardeos.length > 0 && (
               <Bloque titulo="Tardeos más vistos" icon={Activity}>
                 <Barras filas={datos.top_tardeos.map((x) => ({ etiqueta: x.titulo, valor: x.total }))} />
@@ -159,6 +167,7 @@ export default function AdminEstadisticas() {
           </div>
         </div>
       )}
+      <Cohortes />
     </SeccionPanel>
   );
 }

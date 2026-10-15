@@ -101,3 +101,119 @@ export async function guardarAdn(profileId: string, adn: AdnTardicola) {
     .eq("id", profileId)
     .select("id");
 }
+
+// ---------- Asistiré y lista de espera (lote 64) ----------
+
+/** Falta el lote en la base: la pantalla degrada en vez de romperse. */
+export const faltaLote = (e: { code?: string } | null | undefined) =>
+  e?.code === "42883" || e?.code === "PGRST202" || e?.code === "42P01" || e?.code === "PGRST205";
+
+export type MiAsistencia = { estado: "apuntado" | "espera" | "cancelado" | null; puesto: number | null };
+
+function filaAsistencia(data: unknown): MiAsistencia {
+  const f = (Array.isArray(data) ? data[0] : data) as { estado?: string; puesto?: number | null } | undefined;
+  if (!f?.estado) return { estado: null, puesto: null };
+  return { estado: f.estado as MiAsistencia["estado"], puesto: f.puesto ?? null };
+}
+
+/** Estado de quien mira. Sin el lote 64, cae a la consulta antigua (solo 'apuntado'). */
+export async function getMiAsistencia(uid: string, tardeoId: string): Promise<MiAsistencia> {
+  const { data, error } = await supabase.rpc("mi_asistencia", { p_tardeo: tardeoId });
+  if (!error) return filaAsistencia(data);
+  if (!faltaLote(error)) registrar("asistire", "no se pudo leer la asistencia", error);
+  const r = await supabase.from("inscripciones").select("estado").eq("profile_id", uid).eq("tardeo_id", tardeoId).maybeSingle();
+  return { estado: (r.data?.estado as MiAsistencia["estado"]) ?? null, puesto: null };
+}
+
+/**
+ * Pulsar «Asistiré». La base decide confirmado o espera de forma atómica.
+ * Sin el lote 64 se apunta como antes (y si está lleno, lo dice).
+ */
+export async function asistire(uid: string, tardeoId: string): Promise<{ r: MiAsistencia | null; error: string | null }> {
+  const { data, error } = await supabase.rpc("asistire", { p_tardeo: tardeoId });
+  if (!error) return { r: filaAsistencia(data), error: null };
+  if (!faltaLote(error)) return { r: null, error: error.message };
+  const v = await supabase.from("inscripciones").upsert({ profile_id: uid, tardeo_id: tardeoId, estado: "apuntado" }, { onConflict: "tardeo_id,profile_id" });
+  if (v.error && /aforo completo/i.test(v.error.message)) return { r: null, error: "Lista llena. La lista de espera llega con el lote 64." };
+  if (v.error) return { r: null, error: v.error.message };
+  return { r: { estado: "apuntado", puesto: null }, error: null };
+}
+
+/** Retirar el Asistiré (o salir de la espera). La espera sube sola en la base. */
+export async function retirarAsistencia(uid: string, tardeoId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc("retirar_asistencia", { p_tardeo: tardeoId });
+  if (!error) return { error: null };
+  if (!faltaLote(error)) return { error: error.message };
+  const v = await supabase.from("inscripciones").update({ estado: "cancelado" })
+    .eq("profile_id", uid).eq("tardeo_id", tardeoId).select("id");
+  return { error: v.error?.message ?? null };
+}
+
+export type QuienesVan = { total: number; perfiles: { alias: string; avatar_url: string | null }[]; falta: boolean };
+
+/** Nº de confirmados y hasta 8 alias/fotos. Nunca email ni teléfono. */
+export async function getQuienesVan(tardeoId: string): Promise<QuienesVan> {
+  const { data, error } = await supabase.rpc("quienes_van", { p_tardeo: tardeoId });
+  if (error) {
+    if (!faltaLote(error)) registrar("asistire", "no se pudo leer quiénes van", error);
+    return { total: 0, perfiles: [], falta: true };
+  }
+  const f = (Array.isArray(data) ? data[0] : data) as { total?: number; perfiles?: QuienesVan["perfiles"] } | undefined;
+  return { total: Number(f?.total ?? 0), perfiles: f?.perfiles ?? [], falta: false };
+}
+
+// ---------- Zona elegida (cabecera) ----------
+export const CLAVE_ZONA = "tc_zona";
+export function leerZona(): string {
+  try { return localStorage.getItem(CLAVE_ZONA) ?? ""; } catch { return ""; }
+}
+export function guardarZona(z: string) {
+  try { localStorage.setItem(CLAVE_ZONA, z); } catch { /* sin almacenamiento */ }
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("tc-zona", { detail: z }));
+}
+
+export type Zona = { slug: string; nombre: string; zona_madre: string; marca: string | null };
+/** Catálogo de zonas (lote 63). Sin él, las de siempre. */
+export async function getZonas(): Promise<Zona[]> {
+  const { data, error } = await supabase.from("zonas").select("slug,nombre,zona_madre,marca").order("orden");
+  if (error || !data?.length) {
+    return ["Barcelona", "Maresme", "Costa Brava", "Girona", "Costa Daurada", "Tarragona"].map((n) => ({
+      slug: n.toLowerCase().replace(/ /g, "-"), nombre: n, zona_madre: "barcelona", marca: null,
+    }));
+  }
+  return data as Zona[];
+}
+
+// ---------- Tema claro / oscuro ----------
+export type Tema = "claro" | "oscuro";
+export function aplicarTema(t: Tema) {
+  try { localStorage.setItem("tc_tema", t); } catch { /* nada */ }
+  document.documentElement.classList.toggle("dark", t === "oscuro");
+}
+export function temaActual(): Tema {
+  return typeof document !== "undefined" && document.documentElement.classList.contains("dark") ? "oscuro" : "claro";
+}
+/** Guarda la preferencia en el perfil (lote 63). Si falta la columna, queda en el navegador. */
+export async function guardarTema(uid: string | null, t: Tema) {
+  aplicarTema(t);
+  if (uid) await supabase.from("profiles").update({ tema: t }).eq("id", uid);
+}
+/** Con sesión manda lo guardado en la cuenta (vale en otro móvil). */
+export async function sincronizarTema(uid: string) {
+  const { data, error } = await supabase.from("profiles").select("tema").eq("id", uid).maybeSingle();
+  if (!error && (data?.tema === "oscuro" || data?.tema === "claro")) aplicarTema(data.tema);
+}
+
+/** Avisos sin leer de la campana (lote 63). 0 si falta la tabla. */
+export async function contarAvisosSinLeer(uid: string): Promise<number> {
+  const { count, error } = await supabase.from("avisos").select("id", { count: "exact", head: true })
+    .eq("profile_id", uid).is("leido_en", null);
+  return error ? 0 : count ?? 0;
+}
+
+/** Precio en píldora (dossier pág. 5): GRATIS solo si no cuesta; X € si hay importe. */
+export function precioCorto(t: { tipoEntrada: string; precio?: number }): string {
+  if (t.tipoEntrada === "gratis") return "GRATIS";
+  if (t.precio != null) return `${t.precio} €`;
+  return t.tipoEntrada === "lista" ? "Lista" : "Entrada";
+}

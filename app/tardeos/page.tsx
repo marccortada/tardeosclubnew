@@ -1,36 +1,12 @@
-import ListaTardeos from "@/components/ListaTardeos";
-import { getTardeosPublicados, getTardeosMasAdelante } from "@/lib/tardeos";
-import RegistrarPantalla from "@/components/RegistrarPantalla";
-import TopBar from "@/components/TopBar";
-import Footer from "@/components/Footer";
+import { redirect } from "next/navigation";
 
-// Se pinta en cada visita, no por ISR: ver el porqué en app/page.tsx.
-export const dynamic = "force-dynamic";
-
-/**
- * El listado. La consulta se hace en el servidor y los filtros siguen en el
- * cliente.
- *
- * Antes la página entera era de cliente y pedía los tardeos al montarse: su
- * HTML salía con el título, los filtros y un "Cargando tardeos…", sin una sola
- * ficha. Google indexaba una página vacía justo en la que más debería traer
- * gente, y quien entraba veía un spinner antes que el contenido.
- *
- * «Más adelante» va aparte: la ventana de 30 días sigue mandando en el
- * listado, pero un mes flojo no puede dejar la página vacía teniendo fiestas
- * ya anunciadas.
- */
-export default async function Tardeos() {
-  const [tardeos, masAdelante] = await Promise.all([getTardeosPublicados(), getTardeosMasAdelante(24)]);
-  return (
-    <>
-      <RegistrarPantalla pantalla="listado" />
-      {/* En escritorio la cabecera es SiteNav; en el móvil, la de la portada. */}
-      <div className="md:hidden">
-        <TopBar />
-      </div>
-      <ListaTardeos todos={tardeos} masAdelante={masAdelante} />
-      <Footer />
-    </>
-  );
+/** /tardeos pasa a /eventos (v2) conservando los parámetros (?q, ?zona, ?cuando…). */
+export default async function Tardeos({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = await searchParams;
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) if (typeof v === "string") p.set(k, v);
+  if (p.get("cuando") === "semana") p.delete("cuando");
+  if (p.has("filtros")) p.delete("filtros");
+  const qs = p.toString();
+  redirect(`/eventos${qs ? `?${qs}` : ""}`);
 }

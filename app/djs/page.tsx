@@ -1,12 +1,15 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import FeedDjs from "./FeedDjs";
+
+export const metadata: Metadata = {
+  title: "DJs · TardeosClub",
+  description: "Descubre DJs y sus sets, síguelos y mira dónde pinchan.",
+};
 
 /**
- * El directorio de DJs se fundió con el de locales y promotores en
- * /colaboradores. Esta ruta se queda como redirección porque /djs puede estar
- * compartido por WhatsApp o enlazado desde fuera, y romperlo no aporta nada.
- *
- * Las fichas individuales (/djs/[id]) siguen donde estaban.
+ * Pestaña DJs (dossier pág. 7): feed vertical a pantalla completa. El
+ * directorio de DJs (rejilla) vive ahora en /directorio (equipo A).
  */
-export default function DjsRedirect() {
-  redirect("/colaboradores?ver=djs");
+export default function PaginaDjs() {
+  return <FeedDjs />;
 }

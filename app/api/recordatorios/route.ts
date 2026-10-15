@@ -65,6 +65,14 @@ async function handler(req: Request) {
       if (r.profile_id && email && !porPerfil.has(r.profile_id)) porPerfil.set(r.profile_id, email);
     }
 
+    // Quien apagó los recordatorios en /avisos (lote 67) no recibe el email.
+    // Si la tabla aún no existe, se envía a todos como siempre.
+    if (porPerfil.size) {
+      const { data: apagados, error: eP } = await admin.from("preferencias_avisos").select("profile_id")
+        .eq("recordatorios", false).in("profile_id", Array.from(porPerfil.keys()));
+      if (!eP) for (const a of apagados ?? []) porPerfil.delete(a.profile_id as string);
+    }
+
     // Idempotencia: se "reserva" cada (tardeo, persona) con on conflict do
     // nothing; solo se envía a quien se acaba de insertar. Los que ya constaban
     // se saltan. Si el envío falla se libera la reserva para poder reintentar.

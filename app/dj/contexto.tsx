@@ -4,7 +4,7 @@ import { entrarYVolver } from "@/lib/volver";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
-import { LayoutDashboard, UserRound, Images, FileText, CalendarDays, ExternalLink, Disc3, Loader2, ShieldCheck, Star, LifeBuoy } from "lucide-react";
+import { LayoutDashboard, UserRound, Images, FileText, CalendarDays, ExternalLink, Disc3, Loader2, ShieldCheck, Star, LifeBuoy, Headphones, Radio, MessageCircle, SunMoon, Bell } from "lucide-react";
 import PanelShell, { type GrupoPanel } from "@/components/panel/PanelShell";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
@@ -72,9 +72,18 @@ async function leerFicha(campo: "id" | "profile_id", valor: string) {
       .order("created_at", { ascending: true }).limit(1).maybeSingle();
   let { data, error } = await pedir(`${COLUMNAS},presskit_url`);
   let sinColumna = false;
-  if (error && falloPorColumna(error, "presskit_url")) {
-    sinColumna = true;
+  // Desde el lote 65 `presskit_url` no se lee por la tabla (press kit solo
+  // para profesionales): la base responde 42501. Se lee sin ella y la URL se
+  // pide a presskit_de(), que al dueño sí se la da.
+  const sinPermiso = error?.code === "42501";
+  if (error && (sinPermiso || falloPorColumna(error, "presskit_url"))) {
+    sinColumna = !sinPermiso;
     ({ data, error } = await pedir(COLUMNAS));
+    if (!error && data && sinPermiso) {
+      const f = data as unknown as FichaDj;
+      const pk = await supabase.rpc("presskit_de", { p_dj: f.id });
+      f.presskit_url = typeof pk.data === "string" ? pk.data : null;
+    }
   }
   return { ficha: (data as unknown as FichaDj | null) ?? null, error, sinColumna };
 }
@@ -117,7 +126,7 @@ type Estado =
  * contexto. (Lo correcto es añadirlas también allí para ocultar la cabecera
  * pública; esto es la red mientras tanto.)
  */
-const SECCIONES_NUEVAS = ["/dj/resenas", "/dj/ayuda"];
+const SECCIONES_NUEVAS = ["/dj/resenas", "/dj/ayuda", "/dj/sets", "/dj/nexo"];
 
 export default function PanelDj({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -219,22 +228,35 @@ export default function PanelDj({ children }: { children: ReactNode }) {
   const { dj, modoAdmin, sinColumna } = estado;
   const ruta = (href: string) => (modoAdmin ? `${href}?id=${dj.id}` : href);
 
+  // Menú del profesional según el vídeo (2:55): Mis eventos, Publicar set,
+  // Mi press kit, Enviar sesión a Nexo, Solicitudes de mensaje, Modo claro,
+  // Notificaciones, Necesito ayuda.
   const grupos: GrupoPanel[] = [
     {
       items: [
         { href: ruta("/dj"), label: "Resumen", icon: LayoutDashboard, exacto: true },
-        { href: ruta("/dj/perfil"), label: "Mi perfil", icon: UserRound },
-        { href: ruta("/dj/contenido"), label: "Sesiones y fotos", icon: Images },
-        { href: ruta("/dj/presskit"), label: "PressKit", icon: FileText, nota: dj.presskit_url ? undefined : "Sin subir" },
-        { href: ruta("/dj/tardeos"), label: "Mis tardeos", icon: CalendarDays },
-        { href: ruta("/dj/resenas"), label: "Reseñas", icon: Star },
+        { href: ruta("/dj/tardeos"), label: "Mis eventos", icon: CalendarDays },
+        { href: ruta("/dj/sets"), label: "Publicar set", icon: Headphones },
+        { href: ruta("/dj/presskit"), label: "Mi press kit", icon: FileText, nota: dj.presskit_url ? undefined : "Sin subir" },
+        { href: ruta("/dj/nexo"), label: "Enviar sesión a Nexo", icon: Radio },
+        { href: ruta("/dj/mensajes"), label: "Solicitudes de mensaje", icon: MessageCircle },
       ],
     },
     {
       titulo: "Tu ficha",
       items: [
+        { href: ruta("/dj/perfil"), label: "Mi perfil", icon: UserRound },
+        { href: ruta("/dj/contenido"), label: "Fotos y flyers", icon: Images },
+        { href: ruta("/dj/resenas"), label: "Reseñas", icon: Star },
         { href: `/djs/${dj.id}`, label: "Ver mi ficha pública", icon: ExternalLink },
-        { href: ruta("/dj/ayuda"), label: "Ayuda", icon: LifeBuoy },
+      ],
+    },
+    {
+      titulo: "Cuenta",
+      items: [
+        { href: "/perfil/ajustes", label: "Modo claro", icon: SunMoon },
+        { href: "/perfil/notificaciones", label: "Notificaciones", icon: Bell },
+        { href: ruta("/dj/ayuda"), label: "Necesito ayuda", icon: LifeBuoy },
       ],
     },
   ];
