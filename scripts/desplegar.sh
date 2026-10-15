@@ -62,6 +62,9 @@ rsync -az --delete --exclude '.DS_Store' public/ "$SERVIDOR:$DESTINO/public/"
 echo "▸ Reponiendo sharp de Linux"
 ssh "$SERVIDOR" 'S=/root/sharp-linux/node_modules
   for D in /var/www/tardeosclub/node_modules /var/www/tardeosclub/node_modules/next/node_modules; do
+    # Next 16 ya no crea next/node_modules en el standalone: si no existe, no
+    # hay sharp anidado que reponer (y cp llenaba la salida de errores falsos).
+    [ -d "$D" ] || continue
     for P in $(ls "$S" | grep -v "^\."); do rm -rf "$D/$P"; cp -R "$S/$P" "$D/$P"; done
   done
   # La caché guarda lo ya servido: si quedó de una vez sin sharp, seguiría
