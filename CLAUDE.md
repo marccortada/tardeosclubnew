@@ -312,7 +312,7 @@ veces sin romper nada). Se aplican en orden desde Supabase → SQL Editor.
 - `70` Índices duplicados que dejó el paquete. `71` `feed_djs` enseña todos los DJs.
 - `72` Borrar: sorteos en **borrador** (solo admin) y hilos/respuestas/anuncios de
   Entre Beats (su autor o un admin).
-- `73` Arreglos de la auditoría del 17‑oct (`PEGAR_73.sql`, **pendiente de pegar**):
+- `73` Arreglos de la auditoría del 17‑oct (`PEGAR_73.sql`, **aplicado en producción el 17‑oct‑2026**):
   sorteo al azar sin pgcrypto (en Supabase vive en `extensions`), tardeos cancelados y
   finalizados visibles (solo de locales activos), programados vencidos = publicados en
   avisos, no apuntarse a tardeos cerrados ni valorar sin haber ido
@@ -327,7 +327,7 @@ veces sin romper nada). Se aplican en orden desde Supabase → SQL Editor.
 
 Paquetes para pegar de una vez: `PEGAR_45_a_62.sql`, `PEGAR_63_a_69.sql`,
 `PEGAR_70_71.sql`, `PEGAR_72.sql` — **todos aplicados en producción el 15‑oct‑2026**.
-- `74` Permisos por columna de verdad (`PEGAR_74.sql`, **pendiente de pegar**, después del
+- `74` Permisos por columna de verdad (`PEGAR_74.sql`, **aplicado en producción el 17‑oct‑2026**, después del
   73): `nexo_envios` (el envío nace «pendiente»), `djs.seguidores/provisional/creado_por`
   (disparador), `sets` (contadores), `eb_anuncios` (solo `estado`), `encuestas` (solo
   `comentario_oculto`), `sorteos` (insert con las columnas del formulario). Probado en
