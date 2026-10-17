@@ -3,10 +3,11 @@
 -- Cada copia (sin origen_id) tiene un gemelo bueno (origen_id = su id). Las copias traen la
 -- hora desplazada 2 h, sin zona y publicadas aunque estuvieran ocultas, PERO guardan tipo
 -- de evento, ambiente, público y dress code que el gemelo no tiene: se pasan ANTES.
--- Lo único que cuelga hoy de las copias son MÉTRICAS (visitas, clics): se pasan al gemelo.
+-- De las copias cuelgan MÉTRICAS (visitas, clics) y, desde el 16-oct, 1 inscripción real
+-- (alguien se apuntó a la copia publicada de «Fiesta Sevillanas»): todo pasa al gemelo.
 -- Las que el gemelo ya tiene de la misma visita (misma sesión, tipo y día) se quitan:
 -- contarían doble y además chocarían con el índice que evita duplicados.
--- Cualquier OTRA cosa que colgara (favoritos, asistentes, Meet Zone, sorteos…) PARA todo.
+-- Cualquier OTRA cosa que colgara (favoritos, Meet Zone, sorteos…) PARA todo.
 -- Ejecutar DESPUÉS de L0. Todo o nada: si algo falla, no cambia nada.
 
 begin;
@@ -20,7 +21,8 @@ select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 -- Lo que va a pasar (léelo antes de seguir):
 select (select count(*) from public.tardeos d join public.tardeos g on g.origen_id = d.id where d.origen_id is null) as tardeos_a_borrar,
        (select count(*) from public.eventos_metrica where tardeo_id in (select d.id from public.tardeos d join public.tardeos g on g.origen_id = d.id where d.origen_id is null)) as metricas_a_reasignar,
-       (select count(*) from public.metricas_tardeo where tardeo_id in (select d.id from public.tardeos d join public.tardeos g on g.origen_id = d.id where d.origen_id is null)) as contadores_a_sumar;
+       (select count(*) from public.metricas_tardeo where tardeo_id in (select d.id from public.tardeos d join public.tardeos g on g.origen_id = d.id where d.origen_id is null)) as contadores_a_sumar,
+       (select count(*) from public.inscripciones where tardeo_id in (select d.id from public.tardeos d join public.tardeos g on g.origen_id = d.id where d.origen_id is null)) as inscripciones_a_mover;
 
 -- 1) Lo que solo tiene la copia pasa al gemelo bueno
 update public.tardeos g set
@@ -54,6 +56,15 @@ on conflict (tardeo_id) do update
   set visitas = mt.visitas + excluded.visitas,
       updated_at = greatest(mt.updated_at, excluded.updated_at);
 delete from public.metricas_tardeo where tardeo_id in (select d.id from public.tardeos d join public.tardeos g on g.origen_id = d.id where d.origen_id is null);
+
+-- 3b) Inscripciones: pasan al gemelo con su estado y su fecha (es la misma fiesta). Si la
+-- persona ya estuviera apuntada también al gemelo, la de la copia se queda y la guarda de
+-- abajo lo para todo: que lo decida una persona, no el script. Va con la marca de servidor
+-- de arriba porque el lote 48 impide "mudar" una inscripción si no eres admin.
+update public.inscripciones i set tardeo_id = g.id
+from public.tardeos d, public.tardeos g
+where d.origen_id is null and g.origen_id = d.id and i.tardeo_id = d.id
+  and not exists (select 1 from public.inscripciones x where x.tardeo_id = g.id and x.profile_id = i.profile_id);
 
 -- 4) Guarda: si cuelga cualquier otra cosa de una copia, se para TODO (nada se pierde)
 do $g$

@@ -203,3 +203,16 @@ silencio estado y orden de destacados). L8 oculta las 3 fichas de prueba.
   updates que no comprobaban si se guardaron (anuncios, sets), funciones muertas fuera.
 - **Para probar Entre Beats usar admin@**: dj@ y local@ tienen la ficha oculta/sin
   aprobar y, desde el 73, no cuentan como profesionales.
+
+---
+
+## 17‑oct‑2026 (noche, 2) · "Sí" a la limpieza
+
+- El usuario da el **sí** a la limpieza. Recuento fresco: 794 tardeos, 59 locales y 30 DJs
+  duplicados; de las copias cuelgan 31 métricas y **1 inscripción real** (16‑oct, a la copia
+  publicada de «Fiesta Sevillanas»), que habría parado L1. L1 ahora pasa las inscripciones
+  al gemelo. Probado en local: 25/25 y `PEGAR_LIMPIEZA.sql` (L0‑L8) dos veces seguidas.
+- **Datos mal:** «Fiesta Sevillanas» estaba inactiva en la antigua (fechas rotas): la
+  limpieza la deja en borrador. «Tardeo House» (Mataró vs Café Royale) ya pasó: se pregunta
+  al organizador. Apuntado en CLAUDE.md §11.
+- Lo demás (marca, enlaces, Nexo, privacidad, Fatima Kahlo duplicada) queda guardado en §11.

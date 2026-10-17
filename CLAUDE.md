@@ -349,8 +349,8 @@ authenticated` y luego `grant insert/update (cols) on t to authenticated` (patr�
 lotes 73-74). Columna nueva en `nexo_envios`, `sets`, `eb_anuncios`, `encuestas` o
 `sorteos` que escriba el navegador = darle su grant de columna, o fallará con
 «permission denied».
-`supabase/limpieza/` = limpieza de duplicados de la migración (**no aplicada**:
-necesita "sí"; recuentos con `node --env-file=.env.local scripts/limpieza-recuentos.mjs`,
+`supabase/limpieza/` = limpieza de duplicados de la migración (**"sí" del cliente el 17‑oct,
+pendiente de pegar `PEGAR_LIMPIEZA.sql`**; recuentos con `node --env-file=.env.local scripts/limpieza-recuentos.mjs`,
 solo lectura). Orden, efecto y garantías en `supabase/limpieza/LEEME.md`. Revisada el
 17‑oct contra los lotes 01‑72: reasigna las métricas en vez de abortar y marca cada
 transacción como escritura del servidor.
@@ -507,8 +507,16 @@ salvo `.env.example`.
   `instagram.com/tardeosclub`, supuesto).
 - Email de Sergi → `/admin/equipo`: tarea Zona, zona Tarragona (+ su local).
   Nombre del responsable de Girona.
-- "Sí" a la limpieza de duplicados (17‑oct: 794 tardeos, 59 locales, 30 DJs; de las copias
-  cuelgan 26 métricas, que los scripts reasignan). Ver `supabase/limpieza/LEEME.md`.
+- Limpieza de duplicados: **"sí" dado el 17‑oct**; `supabase/limpieza/PEGAR_LIMPIEZA.sql`
+  listo para pegar (794 tardeos, 59 locales, 30 DJs; reasigna 31 métricas y 1 inscripción).
+  Cuando esté pegado, marcarlo aquí y en §8. Queda fuera: «Fatima Kahlo» tiene dos fichas
+  de DJ (una con cuenta) que no son copia por origen: decidir cuál se queda.
+- «Fiesta Sevillanas» (Granollers): en la antigua estaba inactiva y con fechas rotas; tras
+  la limpieza queda en borrador. Si es real (el flyer dice 21 feb), que el local la publique
+  con la fecha buena. 1 persona apuntada (se conserva).
+- «Tardeo House + Tardeo Hits» (17‑oct, ya pasado): ficha en Discoteca Miracle (Mataró),
+  flyer en Café Royale (Barcelona). Preguntar al organizador (cuenta de EL REENCUENTRO)
+  dónde fue y avisarle de que revise la dirección al publicar.
 - Decidir: aviso de 1 h también a guardados (hoy no); valorar si el local te marcó
   "no vino" (hoy no); acceso sin cuenta / corte de 5 minutos.
 - Cargar oferta real: hoy solo hay 1 tardeo próximo.
@@ -519,8 +527,8 @@ salvo `.env.example`.
   confirme el pago → `coins_movimientos` tipo compra / alta de plan) y encender
   `planes_activos` / `coins_activos`. Hasta entonces la UI dice "Próximamente".
 - Borrar las cuentas `@prueba.tardeosclub.com` al lanzar; dejar un solo admin global.
-- Ocultar fichas de prueba (gnerai, Interdesign, localp): `supabase/limpieza/L8_*.sql`,
-  pendiente de pegar. "oletu" (sin dueño, 0 tardeos) sin confirmar si es prueba.
+- Ocultar fichas de prueba (gnerai, Interdesign, localp): `L8`, va dentro de
+  `PEGAR_LIMPIEZA.sql`. "oletu" (sin dueño, 0 tardeos) sin confirmar si es prueba.
 - Claves VAPID: la del historial público del repo NO es la de producción (comprobado el
   17‑oct por huella); no hace falta rotar. Hasta el 17‑oct el build desplegado no llevaba
   la clave pública y no se podían activar notificaciones (arreglado en `desplegar.sh`).
