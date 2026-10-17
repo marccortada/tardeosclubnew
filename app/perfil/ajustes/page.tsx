@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { entrarYVolver } from "@/lib/volver";
@@ -10,7 +10,8 @@ import Hoja from "@/components/ui/Hoja";
 import HojaContrasena from "@/components/cuenta/HojaContrasena";
 import { traducirAuth } from "@/components/cuenta/traducirAuth";
 import { MarcoCuenta, CargandoCuenta, useDatosCuenta, useCerrarSesion, invalidarDatosCuenta } from "@/components/panel/CuentaNav";
-import { Check, ChevronDown, KeyRound, LogOut, Mail, Trash2, UserRound } from "lucide-react";
+import { Check, ChevronDown, KeyRound, LogOut, Mail, SunMoon, Trash2, UserRound } from "lucide-react";
+import { guardarTema, preferenciaTema, type PreferenciaTema } from "@/lib/tardicola";
 
 /**
  * Ajustes de la cuenta: nombre, email, contraseña, salir y borrar la cuenta.
@@ -66,6 +67,10 @@ export default function Ajustes() {
           <Boton variante="contorno" tamano="pequeno" onClick={() => setHojaClave(true)} className="mt-3">Crear o cambiar contraseña</Boton>
         </Bloque>
 
+        <Bloque icono={SunMoon} titulo="Apariencia">
+          <SelectorTema uid={user.id} />
+        </Bloque>
+
         <Bloque icono={LogOut} titulo="Cerrar sesión">
           <p className="text-[15px] text-tinta-suave">Tus planes y gustos se quedan guardados.</p>
           <Boton variante="contorno" tamano="pequeno" onClick={salir} cargando={saliendo} className="mt-3">
@@ -104,6 +109,42 @@ function Bloque({ icono: Icono, titulo, children }: { icono: typeof Mail; titulo
         <div className="mt-1">{children}</div>
       </div>
     </section>
+  );
+}
+
+const OPCIONES_TEMA: { valor: PreferenciaTema; texto: string }[] = [
+  { valor: "sistema", texto: "Como el móvil" },
+  { valor: "claro", texto: "Claro" },
+  { valor: "oscuro", texto: "Oscuro" },
+];
+
+function oirOtrasPestanas(cb: () => void) {
+  window.addEventListener("storage", cb);
+  return () => window.removeEventListener("storage", cb);
+}
+
+/** Claro, oscuro o como el sistema. «Como el móvil» es lo de fábrica: así
+ *  quien tiene el teléfono en oscuro no se encuentra la web en blanco. */
+function SelectorTema({ uid }: { uid: string }) {
+  // La preferencia vive en el navegador (en el servidor no hay localStorage:
+  // null = aún sin leer, ningún botón marcado). Lo elegido aquí manda al momento.
+  const leida = useSyncExternalStore(oirOtrasPestanas, preferenciaTema, () => null);
+  const [elegida, setPref] = useState<PreferenciaTema | null>(null);
+  const pref = elegida ?? leida;
+  return (
+    <div role="radiogroup" aria-label="Apariencia" className="mt-2 grid grid-cols-3 gap-2">
+      {OPCIONES_TEMA.map((o) => {
+        const on = pref === o.valor;
+        return (
+          <button key={o.valor} type="button" role="radio" aria-checked={on}
+            onClick={() => { setPref(o.valor); void guardarTema(uid, o.valor); }}
+            className={`min-h-[48px] rounded-xl border-2 px-2 text-[15px] font-semibold transition ${
+              on ? "border-magenta bg-magenta-50 text-tinta" : "border-linea-fuerte bg-superficie text-tinta hover:border-tinta/50"}`}>
+            {o.texto}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

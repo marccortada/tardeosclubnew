@@ -6,11 +6,11 @@ const COLUMNAS: { titulo: string; enlaces: { href: string; label: string; extern
   {
     titulo: "Descubre",
     enlaces: [
-      { href: "/tardeos", label: "Todos los tardeos" },
-      { href: "/tardeos?cuando=hoy", label: "Tardeos de hoy" },
-      { href: "/tardeos?cuando=finde", label: "Este finde" },
-      { href: "/mapa", label: "Mapa" },
-      { href: "/colaboradores", label: "Locales y DJs" },
+      { href: "/eventos", label: "Todos los tardeos" },
+      { href: "/eventos?cuando=hoy", label: "Tardeos de hoy" },
+      { href: "/eventos?cuando=finde", label: "Este finde" },
+      { href: "/eventos?vista=mapa", label: "Mapa" },
+      { href: "/directorio", label: "Locales y DJs" },
       { href: "https://chat.whatsapp.com/KMAxRPoj36w6cOSGGwnZhi?mode=ems_wa_c", label: "Comunidad de WhatsApp", externo: true },
     ],
   },
@@ -37,18 +37,22 @@ const COLUMNAS: { titulo: string; enlaces: { href: string; label: string; extern
  * Pie de la web pública. Oscuro, como el de tardeosclub.com: cierra la página
  * con peso y separa claramente el contenido de la letra pequeña.
  *
+ * Va sobre `bg-noche` (fijo) y no `bg-tinta`: tinta se aclara en modo oscuro
+ * y el pie quedaba blanco con letra blanca. Por lo mismo las placas blancas
+ * del logo son `bg-[#fff]`: `.dark .bg-white` las volvería oscuras.
+ *
  * El relleno de abajo en el móvil deja sitio a la barra de navegación fija,
  * que si no tapaba los enlaces legales.
  */
 export default function Footer() {
   return (
-    <footer className="mt-16 bg-tinta text-white">
+    <footer className="mt-16 bg-noche text-white">
       <div className="mx-auto max-w-6xl px-4 pb-28 pt-12 md:px-8 md:pb-10">
         <div className="grid gap-8 md:grid-cols-[1.2fr_2fr]">
           <div className="max-w-xs">
             {/* El logo va sobre una placa blanca: tiene partes oscuras que
                 sobre el fondo negro se perderían. */}
-            <span className="inline-block rounded-2xl bg-white px-3 py-2">
+            <span className="inline-block rounded-2xl bg-[#fff] px-3 py-2">
               <Image src="/branding/logo-transp.png" alt="TardeosClub" width={150} height={90} className="h-11 w-auto" />
             </span>
             <p className="mt-4 font-display text-[22px] font-bold leading-snug">
@@ -89,7 +93,7 @@ export default function Footer() {
             <ReportarProblema etiqueta="Avisar de un problema" className="min-h-[44px] content-center text-left transition hover:text-white" />
             <a href="https://gnerai.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 transition hover:opacity-70">
               <span className="text-[13px] font-semibold uppercase tracking-wide">Powered by</span>
-              <Image src="/branding/gnerailogo.png" alt="Gnerai" width={28} height={28} className="h-7 w-7 rounded bg-white p-0.5" />
+              <Image src="/branding/gnerailogo.png" alt="Gnerai" width={28} height={28} className="h-7 w-7 rounded bg-[#fff] p-0.5" />
             </a>
           </div>
         </div>

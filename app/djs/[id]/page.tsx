@@ -3,7 +3,8 @@ import { getTardeosPublicadosDeDj } from "@/lib/tardeos";
 import { getDjPublico } from "@/lib/djs";
 import { getSetsDeDj } from "@/lib/sets";
 import { estilosDe } from "@/components/DjCard";
-import { urlAbsoluta, jsonLdDj } from "@/lib/seo";
+import { urlAbsoluta, jsonLdDj, descripcionMeta, OG_POR_DEFECTO } from "@/lib/seo";
+import { notFound } from "next/navigation";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import RegistrarVista from "@/components/RegistrarVista";
 import PerfilDj from "./PerfilDj";
@@ -15,18 +16,20 @@ import Playlist from "@/components/Playlist";
 
 export const dynamic = "force-dynamic";
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const dj = await getDjPublico(id);
   // Sin ficha pública (no existe u oculta): que no se indexe esta URL.
   if (!dj) return { title: "DJ no encontrado · TardeosClub", robots: { index: false } };
   const estilos = estilosDe(dj.estilos);
-  const desc = `${dj.nombre_artistico}${estilos.length ? ` · ${estilos.join(", ")}` : ""}. Escucha sus sets y mira dónde pincha en TardeosClub.`;
+  const desc = descripcionMeta(`${dj.nombre_artistico}${estilos.length ? ` · ${estilos.join(", ")}` : ""}. Escucha sus sets y mira dónde pincha en TardeosClub.`);
   return {
     title: `${dj.nombre_artistico} · TardeosClub`,
     description: desc,
     alternates: { canonical: urlAbsoluta(`/djs/${id}`) },
-    openGraph: { title: dj.nombre_artistico, description: desc, images: dj.avatar_url ? [{ url: dj.avatar_url }] : undefined, url: urlAbsoluta(`/djs/${id}`), type: "website" },
+    openGraph: { title: dj.nombre_artistico, description: desc, images: [dj.avatar_url ? { url: dj.avatar_url } : OG_POR_DEFECTO], url: urlAbsoluta(`/djs/${id}`), type: "website" },
   };
 }
 
@@ -41,6 +44,9 @@ export default async function PaginaDj({
 }: { params: Promise<{ id: string }>; searchParams: Promise<{ desde?: string; pestana?: string }> }) {
   const { id } = await params;
   const { desde, pestana } = await searchParams;
+  // Un id que ni siquiera es un uuid no puede ser de nadie: 404 de verdad
+  // (con código 404), sin pasar por la comprobación con sesión de abajo.
+  if (!UUID.test(id)) notFound();
   const dj = await getDjPublico(id);
   // Solo rutas de evento propias: nada de redirecciones abiertas.
   const volver = typeof desde === "string" && /^\/tardeos\/[\w-]+$/.test(desde) ? desde : null;

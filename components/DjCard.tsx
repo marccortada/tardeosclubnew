@@ -103,7 +103,7 @@ export default function DjCard({ dj }: { dj: any }) {
       href={`/djs/${dj.id}`}
       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-linea bg-white shadow-tarjeta transition hover:-translate-y-0.5 hover:shadow-elevada focus-visible:outline focus-visible:outline-2 focus-visible:outline-magenta active:scale-[0.99]"
     >
-      <div className="relative aspect-square w-full overflow-hidden bg-tinta">
+      <div className="relative aspect-square w-full overflow-hidden bg-noche">
         <AvatarDj nombre={nombre} url={dj.avatar_url} sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px" textoClase="text-5xl md:text-6xl" />
         {tieneValoracion(dj.reputacion_score) && (
           <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[14px] font-bold text-tinta shadow-tarjeta">

@@ -56,14 +56,31 @@ export default function EntreBeats() {
       <div className="min-h-[60vh] bg-fondo">{cabecera}
         <div className="mx-auto max-w-md px-4 py-8 text-center">
           <span className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-magenta-50 text-magenta"><Lock size={24} aria-hidden /></span>
-          <h2 className="text-xl font-bold">Solo para profesionales</h2>
-          <p className="mt-2 text-[16px] text-tinta-suave">
-            Entre Beats es el espacio de trabajo de DJs, locales y organizadores: hilos de la comunidad y anuncios de colaboración.
-          </p>
-          <div className="mt-6 space-y-3">
-            {!user && <Boton href={entrarYVolver("/entre-beats")} ancho>Entrar con cuenta profesional</Boton>}
-            <Boton href="/unirse" variante="contorno" ancho>Soy DJ, local u organizador</Boton>
-          </div>
+          {/* Quien YA tiene ficha pero aún no cuenta como profesional (local sin
+              aprobar o ficha de DJ oculta, lote 73) no debe ver «date de alta»:
+              ya lo hizo, y le falta la aprobación del equipo. */}
+          {user && (roles.esLocal || roles.esPromotor || roles.esDj) ? (
+            <>
+              <h2 className="text-xl font-bold">Tu ficha está pendiente</h2>
+              <p className="mt-2 text-[16px] text-tinta-suave">
+                Entre Beats se abre en cuanto el equipo apruebe tu ficha y esté visible en la web. Si tienes dudas, escríbenos desde tu panel.
+              </p>
+              <div className="mt-6 space-y-3">
+                <Boton href={roles.esDj && !(roles.esLocal || roles.esPromotor) ? "/dj" : "/local"} ancho>Ir a mi panel</Boton>
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="text-xl font-bold">Solo para profesionales</h2>
+              <p className="mt-2 text-[16px] text-tinta-suave">
+                Entre Beats es el espacio de trabajo de DJs, locales y organizadores: hilos de la comunidad y anuncios de colaboración.
+              </p>
+              <div className="mt-6 space-y-3">
+                {!user && <Boton href={entrarYVolver("/entre-beats")} ancho>Entrar con cuenta profesional</Boton>}
+                <Boton href="/unirse" variante="contorno" ancho>Soy DJ, local u organizador</Boton>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -313,8 +330,12 @@ function Anuncios({ q, yo }: { q: string; yo: string }) {
 
   async function cambiarEstado(a: Anuncio) {
     const nuevo = a.estado === "abierto" ? "cerrado" : "abierto";
-    const { error } = await supabase.from("eb_anuncios").update({ estado: nuevo }).eq("id", a.id);
+    // Con `.select`: si la base no deja (p. ej. tu ficha ya no cuenta como
+    // profesional), el update no da error pero no cambia nada, y la pantalla
+    // no debe pintar «cerrado» sin estarlo.
+    const { data, error } = await supabase.from("eb_anuncios").update({ estado: nuevo }).eq("id", a.id).select("id");
     if (error) { setError(textoError(error)); return; }
+    if (!data?.length) { setError("No se ha podido cambiar el anuncio: no tienes permiso sobre él ahora mismo."); return; }
     cambiar((f) => f.id === a.id, { estado: nuevo });
   }
 

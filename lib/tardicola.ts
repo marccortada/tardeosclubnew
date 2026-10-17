@@ -185,23 +185,56 @@ export async function getZonas(): Promise<Zona[]> {
 }
 
 // ---------- Tema claro / oscuro ----------
+// Tres preferencias: claro, oscuro o «como el sistema» (la de siempre si no se
+// ha elegido nada). En el navegador va en localStorage `tc_tema`; el script de
+// app/layout.tsx la lee antes de pintar y, con «sistema», sigue a
+// prefers-color-scheme también cuando cambia (el móvil pasa a oscuro de noche).
+//
+// En la cuenta (profiles.tema, lote 63) solo caben 'claro' y 'oscuro', y
+// 'claro' es el valor por defecto de TODAS las filas: no distingue «lo eligió»
+// de «nunca tocó nada». Por eso 'oscuro' en la cuenta manda siempre, y 'claro'
+// se guarda tanto para «claro» como para «sistema» y no fuerza nada: si no, a
+// cualquiera con sesión se le apagaría el oscuro de su móvil.
 export type Tema = "claro" | "oscuro";
-export function aplicarTema(t: Tema) {
-  try { localStorage.setItem("tc_tema", t); } catch { /* nada */ }
-  document.documentElement.classList.toggle("dark", t === "oscuro");
+export type PreferenciaTema = Tema | "sistema";
+const CLAVE_TEMA = "tc_tema";
+
+function sistemaOscuro(): boolean {
+  try { return window.matchMedia("(prefers-color-scheme: dark)").matches; } catch { return false; }
 }
+/** Preferencia guardada en este navegador (sin nada = sistema). */
+export function preferenciaTema(): PreferenciaTema {
+  try {
+    const v = localStorage.getItem(CLAVE_TEMA);
+    if (v === "claro" || v === "oscuro") return v;
+  } catch { /* nada */ }
+  return "sistema";
+}
+export function aplicarTema(t: PreferenciaTema) {
+  try {
+    if (t === "sistema") localStorage.removeItem(CLAVE_TEMA);
+    else localStorage.setItem(CLAVE_TEMA, t);
+  } catch { /* nada */ }
+  const oscuro = t === "oscuro" || (t === "sistema" && sistemaOscuro());
+  document.documentElement.classList.toggle("dark", oscuro);
+}
+/** Lo que se ve ahora mismo (sea por elección o por el sistema). */
 export function temaActual(): Tema {
   return typeof document !== "undefined" && document.documentElement.classList.contains("dark") ? "oscuro" : "claro";
 }
 /** Guarda la preferencia en el perfil (lote 63). Si falta la columna, queda en el navegador. */
-export async function guardarTema(uid: string | null, t: Tema) {
+export async function guardarTema(uid: string | null, t: PreferenciaTema) {
   aplicarTema(t);
-  if (uid) await supabase.from("profiles").update({ tema: t }).eq("id", uid);
+  if (uid) await supabase.from("profiles").update({ tema: t === "oscuro" ? "oscuro" : "claro" }).eq("id", uid);
 }
-/** Con sesión manda lo guardado en la cuenta (vale en otro móvil). */
+/** Con sesión, la cuenta manda si dice 'oscuro' (vale en otro móvil). Si dice
+ *  'claro' y aquí estaba en oscuro, es que lo quitó en otro dispositivo: se
+ *  vuelve a «sistema» (no a claro forzado, ver arriba). */
 export async function sincronizarTema(uid: string) {
   const { data, error } = await supabase.from("profiles").select("tema").eq("id", uid).maybeSingle();
-  if (!error && (data?.tema === "oscuro" || data?.tema === "claro")) aplicarTema(data.tema);
+  if (error) return;
+  if (data?.tema === "oscuro") aplicarTema("oscuro");
+  else if (data?.tema === "claro" && preferenciaTema() === "oscuro") aplicarTema("sistema");
 }
 
 /** Avisos sin leer de la campana (lote 63). 0 si falta la tabla. */

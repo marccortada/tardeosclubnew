@@ -60,7 +60,7 @@ export default function VistaPrevia({ abierta, onCerrar, d, onPublicar, textoPub
             </p>
             <span className="shrink-0 rounded-full border border-linea px-3 py-1 text-sm">Cómo llegar</span>
           </div>
-          <p><span className="inline-block rounded-full bg-oro px-3 py-1 text-[15px] font-bold text-tinta">{precio}</span></p>
+          <p><span className="inline-block rounded-full bg-oro px-3 py-1 text-[15px] font-bold text-sobre-oro">{precio}</span></p>
           {d.descripcion && <p className="whitespace-pre-line text-[15px]">{d.descripcion}</p>}
           <div className="rounded-xl border border-linea p-3">
             <p className="font-bold">Entrada y condiciones</p>

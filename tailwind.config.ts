@@ -26,8 +26,10 @@ const config: Config = {
       colors: {
         magenta: {
           DEFAULT: "#D61AA8",
-          50: "#FFF0FB",
-          100: "#FFD9F4",
+          // 50 y 100 son fondos tintados: van por variable para que en oscuro
+          // sean un rosa hondo y no un rosa pastel con texto claro encima.
+          50: "rgb(var(--c-magenta-50) / <alpha-value>)",
+          100: "rgb(var(--c-magenta-100) / <alpha-value>)",
           400: "#FF3DCF",
           500: "#E520B5",
           600: "#BD1592",
@@ -50,6 +52,14 @@ const config: Config = {
           100: "rgb(var(--c-marfil-100) / <alpha-value>)",
           200: "rgb(var(--c-marfil-200) / <alpha-value>)",
         },
+        // Fijos, NO cambian con el tema:
+        // - `noche`: fondo oscuro de marca (pie, cabecera de ficha, huecos de
+        //   foto). Con bg-tinta, en oscuro se volvía casi blanco con texto blanco.
+        // - `sobre-oro`: el texto encima del oro. El oro es igual en los dos
+        //   temas, así que su texto ha de ser siempre oscuro (text-tinta se
+        //   aclaraba en oscuro: 1,4:1).
+        noche: "rgb(var(--c-noche) / <alpha-value>)",
+        "sobre-oro": "rgb(var(--c-sobre-oro) / <alpha-value>)",
         // Tarjetas y página (v2). Usar estos y no bg-white en lo nuevo.
         superficie: "rgb(var(--c-superficie) / <alpha-value>)",
         fondo: "rgb(var(--c-fondo) / <alpha-value>)",

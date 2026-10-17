@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
+import { metadataPublica } from "@/lib/seo";
 import PaginaLegal from "@/components/PaginaLegal";
 import { RESPONSABLE, SUBENCARGADOS } from "@/lib/legal";
 
-export const metadata: Metadata = {
-  title: "Política de privacidad — TardeosClub",
-  description: "Qué datos guardamos en TardeosClub, para qué, y cómo puedes borrarlos.",
-};
+// Con canónica e imagen al compartir (helper común de lib/seo.ts).
+export const metadata: Metadata = metadataPublica(
+  "Política de privacidad — TardeosClub",
+  "Qué datos guardamos en TardeosClub, para qué, y cómo puedes borrarlos.",
+  "/legal/privacidad"
+);
 
 export default function Privacidad() {
   const { nombreComercial, razonSocial, emailPrivacidad } = RESPONSABLE;

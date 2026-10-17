@@ -230,7 +230,7 @@ export default function AdminSuscripciones() {
           le quitaría el logo a fichas nuestras sin que nadie gane nada. */}
       {reglas !== null && (
         <section className={`mb-5 flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center ${reglas ? "border-oro/50 bg-oro/10" : "border-linea bg-white"}`}>
-          <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${reglas ? "bg-oro text-tinta" : "bg-marfil-100 text-tinta-suave"}`}>
+          <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${reglas ? "bg-oro text-sobre-oro" : "bg-marfil-100 text-tinta-suave"}`}>
             <Power size={20} aria-hidden />
           </span>
           <div className="min-w-0 flex-1">

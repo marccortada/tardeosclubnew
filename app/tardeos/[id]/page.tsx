@@ -15,7 +15,7 @@ import DenunciarFlyer from "@/components/DenunciarFlyer";
 import DatosEstructurados from "@/components/DatosEstructurados";
 import TarjetaPlan from "@/components/tardicola/TarjetaPlan";
 import { AfinAMi, LeerMas } from "@/components/tardicola/FichaPiezas";
-import { jsonLdEvento, urlAbsoluta } from "@/lib/seo";
+import { jsonLdEvento, urlAbsoluta, descripcionMeta } from "@/lib/seo";
 import { getPromosDeTardeo } from "@/lib/promociones";
 import { sinMarcas } from "@/lib/texto";
 import { instantesTardeo } from "@/lib/avisos";
@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const tardeo = await getTardeoById(id);
   if (!tardeo) return { title: "Tardeo no encontrado · TardeosClub" };
-  const desc = `${formatFecha(tardeo.fecha)} · ${tardeo.local.nombre} (${tardeo.zona})${tardeo.estilo ? ` · ${tardeo.estilo}` : ""}. Descúbrelo en TardeosClub.`;
+  const desc = descripcionMeta(`${formatFecha(tardeo.fecha)} · ${tardeo.local.nombre} (${tardeo.zona})${tardeo.estilo ? ` · ${tardeo.estilo}` : ""}. Descúbrelo en TardeosClub.`);
   const img = flyerSrc(tardeo);
   return {
     title: `${tardeo.titulo} · TardeosClub`,
@@ -123,7 +123,7 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
           <CompartirBtn titulo={tardeo.titulo} texto={textoCompartir}
             className="absolute right-3 top-3 grid h-11 w-11 place-items-center rounded-full bg-black/40 text-white backdrop-blur" />
           {tardeo.destacado && (
-            <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-oro px-3 py-1 text-[13px] font-bold text-[#1A1A1A]">
+            <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-oro px-3 py-1 text-[13px] font-bold text-sobre-oro">
               <Star size={13} fill="currentColor" aria-hidden /> Destacado
             </span>
           )}
@@ -148,7 +148,7 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
               </EnlaceExterno>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="rounded-lg bg-oro px-2.5 py-1 text-[15px] font-bold text-[#1A1A1A]">{precioCorto(tardeo)}</span>
+              <span className="rounded-lg bg-oro px-2.5 py-1 text-[15px] font-bold text-sobre-oro">{precioCorto(tardeo)}</span>
               <AfinAMi tardeo={tardeo} />
             </div>
           </div>

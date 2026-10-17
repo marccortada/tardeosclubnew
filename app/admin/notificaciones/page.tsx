@@ -147,7 +147,7 @@ export default function AdminNotificaciones() {
         <div className="flex flex-col gap-3 md:sticky md:top-4 md:self-start">
           {/* Vista previa, imitando una notificación del sistema */}
           <p className="text-[15px] font-semibold text-tinta-suave">Así se verá en el móvil</p>
-          <div className="flex items-start gap-3 rounded-2xl bg-tinta p-4 text-white shadow-tarjeta">
+          <div className="flex items-start gap-3 rounded-2xl bg-noche p-4 text-white shadow-tarjeta">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10">
               <BellRing size={20} aria-hidden />
             </span>

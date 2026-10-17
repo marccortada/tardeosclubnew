@@ -29,7 +29,7 @@ type Props = {
 
 const estilos: Record<Variante, string> = {
   primario: "bg-magenta text-white shadow-plastilina hover:bg-magenta-600 active:bg-magenta-700",
-  oro: "bg-oro-400 text-tinta shadow-plastilina-oro hover:bg-oro active:bg-oro-600",
+  oro: "bg-oro-400 text-sobre-oro shadow-plastilina-oro hover:bg-oro active:bg-oro-600",
   // El degradado rosa→naranja de la web de siempre ("Filtrar tardeos").
   fiesta: "bg-fiesta text-white shadow-plastilina hover:brightness-105 active:brightness-95",
   contorno: "bg-white text-tinta border border-linea-fuerte hover:border-tinta/40 hover:bg-marfil active:bg-marfil-100",

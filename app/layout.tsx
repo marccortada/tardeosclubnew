@@ -52,7 +52,10 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image" },
 };
 
-const TEMA_SCRIPT = `try{if(localStorage.getItem("tc_tema")==="oscuro")document.documentElement.classList.add("dark")}catch(e){}`;
+// Tema antes de pintar. tc_tema = "oscuro" | "claro" eligió el usuario y
+// manda; sin nada (o «sistema») sigue al sistema y escucha si cambia (el móvil
+// pasa a oscuro al anochecer). Misma regla que aplicarTema() de lib/tardicola.ts.
+const TEMA_SCRIPT = `try{var m=matchMedia("(prefers-color-scheme: dark)"),p=function(){var t=null;try{t=localStorage.getItem("tc_tema")}catch(e){}document.documentElement.classList.toggle("dark",t==="oscuro"||(t!=="claro"&&m.matches))};p();m.addEventListener("change",p)}catch(e){}`;
 
 export const viewport: Viewport = {
   themeColor: "#D61AA8",

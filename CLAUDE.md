@@ -147,7 +147,9 @@ Piezas clave:
   (decide la 4.ª pestaña, Entre Beats y press kit; la base lo protege con `es_profesional()`).
 - `lib/qr.ts` — generador de QR propio (sin dependencias), usado en `/local/qr`.
 - Modo claro/oscuro: colores como variables CSS (`app/globals.css`), `darkMode: "class"`,
-  preferencia en `profiles.tema` + navegador.
+  preferencia en `profiles.tema` + navegador (`tc_tema`: claro/oscuro; sin valor = sigue
+  al sistema y reacciona si cambia). En la cuenta solo 'oscuro' manda ('claro' es el valor
+  por defecto de todas las filas). Selector Claro/Oscuro/«Como el móvil» en `/perfil/ajustes`.
 - `lib/erroresApp.ts`, `components/CapturaErrores.tsx`, `/api/errores` — seguimiento de errores.
 
 ---
@@ -216,6 +218,11 @@ servidor local no está en el 3000.
 - Colores (tokens Tailwind): `magenta` #D61AA8 (neón `magenta-400` #FF3DCF),
   `oro` #FAC72E, `naranja`, `tinta` (texto), `tinta-suave`, `marfil` (fondos),
   `linea`/`linea-fuerte` (bordes). Estados `ok`, `aviso`, `error`.
+  Fijos en los dos temas: `noche` (fondos oscuros de marca: pie, cabecera de ficha,
+  huecos de foto; **no** `bg-tinta`, que en oscuro se aclara) y `sobre-oro` (texto
+  encima del oro, siempre oscuro). `magenta-50/100` van por variable (en oscuro,
+  rosa hondo) y `text-magenta-700`/`text-magenta` pasan al neón en oscuro desde
+  `globals.css`.
 - Tipografía: **Manrope** para todo; **Dancing Script** (`font-script`) solo
   como acento puntual en la web pública.
 - Portada pública (`app/page.tsx`, sin sesión), pensada para móvil: hero casi a

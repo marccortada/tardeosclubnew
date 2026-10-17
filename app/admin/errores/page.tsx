@@ -195,7 +195,7 @@ export default function AdminErrores() {
             {detalle.pila ? (
               <details>
                 <summary className="min-h-[44px] cursor-pointer content-center text-[15px] font-semibold">Ver la pila (para el programador)</summary>
-                <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-tinta p-3 font-mono text-[12px] leading-relaxed text-white">{detalle.pila}</pre>
+                <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-noche p-3 font-mono text-[12px] leading-relaxed text-white">{detalle.pila}</pre>
               </details>
             ) : (
               <p className="text-[15px] text-tinta-suave">Sin pila: el error no la traía.</p>

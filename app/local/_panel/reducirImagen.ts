@@ -8,7 +8,7 @@
  * Si algo falla (formato raro, navegador sin canvas…), devuelve el original:
  * mejor subir grande que no subir.
  */
-export async function reducirImagen(file: File, maxLado = 1600, calidad = 0.85): Promise<File> {
+export async function reducirImagen(file: File, maxLado = 1600, calidad = 0.85, forzar = false): Promise<File> {
   // GIF (puede ser animado) y SVG no se tocan; lo que no es imagen, tampoco.
   if (!file.type.startsWith("image/") || file.type === "image/gif" || file.type === "image/svg+xml") return file;
   if (typeof document === "undefined") return file;
@@ -41,11 +41,30 @@ export async function reducirImagen(file: File, maxLado = 1600, calidad = 0.85):
 
     const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", calidad));
     if (!blob) return file;
-    // Si ya era pequeña y el JPEG sale más pesado, se queda la original.
-    if (escala === 1 && blob.size >= file.size) return file;
+    // Si ya era pequeña y el JPEG sale más pesado, se queda la original
+    // (salvo `forzar`: un HEIC hay que convertirlo aunque pese más).
+    if (!forzar && escala === 1 && blob.size >= file.size) return file;
     const nombre = (file.name.replace(/\.[^.]+$/, "") || "imagen") + ".jpg";
     return new File([blob], nombre, { type: "image/jpeg", lastModified: Date.now() });
   } catch {
     return file;
   }
+}
+
+/** Tipos que admite el bucket `flyers` para imágenes (lote 73). */
+const ADMITIDOS = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+/**
+ * La imagen lista para subir, o un error que se puede enseñar tal cual.
+ *
+ * Desde el lote 73 el almacenamiento solo acepta JPG, PNG, WebP y GIF. Un iPhone
+ * da fotos HEIC por defecto y `accept="image/*"` las deja elegir: sin esto la
+ * subida fallaba con un error técnico. Si el navegador sabe leerla (Safari sí),
+ * se convierte a JPG; si no, se explica cómo sacarla en un formato que valga.
+ */
+export async function imagenParaSubir(file: File): Promise<File> {
+  if (ADMITIDOS.has(file.type)) return reducirImagen(file);
+  const convertida = await reducirImagen(file, 1600, 0.85, true);
+  if (ADMITIDOS.has(convertida.type)) return convertida;
+  throw new Error("Esa foto está en un formato que no se puede subir (por ejemplo HEIC del iPhone). Elige una JPG o PNG; en el iPhone: Ajustes › Cámara › Formatos › «Más compatible».");
 }

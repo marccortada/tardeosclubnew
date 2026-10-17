@@ -111,8 +111,10 @@ export default function AdminEstadisticas() {
               <Bloque titulo="Qué busca la gente" icon={Search}
                 pie="Las que no encuentran nada dicen qué cartelera falta.">
                 <ul className="flex flex-col gap-2">
-                  {datos.busquedas.map((b) => (
-                    <li key={b.texto} className="flex items-center gap-2 text-[15px]">
+                  {datos.busquedas.map((b, i) => (
+                    // Índice en la clave: dos búsquedas o nombres iguales (p. ej. dos fichas
+                    // que se llaman igual) daban claves repetidas en React.
+                    <li key={`${b.texto}-${i}`} className="flex items-center gap-2 text-[15px]">
                       <span className="flex-1 truncate">{b.texto}</span>
                       {b.sin_resultados > 0 && (
                         <span className="shrink-0 rounded-full bg-aviso-fondo px-2 py-0.5 text-[13px] font-semibold text-aviso">
@@ -207,8 +209,8 @@ function Barras({ filas }: { filas: { etiqueta: string; valor: number }[] }) {
   const max = Math.max(...filas.map((f) => f.valor), 1);
   return (
     <ul className="flex flex-col gap-2.5">
-      {filas.map((f) => (
-        <li key={f.etiqueta}>
+      {filas.map((f, i) => (
+        <li key={`${f.etiqueta}-${i}`}>
           <div className="flex items-baseline justify-between gap-2 text-[15px]">
             <span className="truncate">{f.etiqueta}</span>
             <span className="shrink-0 font-semibold tabular-nums text-tinta-suave">{f.valor.toLocaleString("es-ES")}</span>

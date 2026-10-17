@@ -40,7 +40,7 @@ export default function MapaSheet({ tardeo, onClose }: { tardeo: Tardeo; onClose
             <span className="block truncate text-[13px] text-tinta-suave">
               {fechaCorta(tardeo.fecha, tardeo.horaInicio)} · {tardeo.zona || tardeo.local.nombre}
             </span>
-            <span className="mt-1 inline-block rounded-lg bg-oro px-2 py-0.5 text-[14px] font-bold text-[#1A1A1A]">{precioCorto(tardeo)}</span>
+            <span className="mt-1 inline-block rounded-lg bg-oro px-2 py-0.5 text-[14px] font-bold text-sobre-oro">{precioCorto(tardeo)}</span>
           </span>
         </Link>
         <button onClick={onClose} aria-label="Cerrar" className="absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full text-tinta-suave hover:bg-marfil-100">

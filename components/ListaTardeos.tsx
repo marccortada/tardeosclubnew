@@ -139,7 +139,7 @@ function Pastilla({ activo, children, onClick, expandido }: {
       aria-pressed={expandido === undefined ? activo : undefined}
       aria-expanded={expandido}
       className={`inline-flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-[15px] font-bold transition active:scale-[0.98] ${
-        activo ? "bg-oro text-tinta shadow-tarjeta" : "border border-linea-fuerte bg-white text-tinta hover:border-tinta/40"
+        activo ? "bg-oro text-sobre-oro shadow-tarjeta" : "border border-linea-fuerte bg-white text-tinta hover:border-tinta/40"
       }`}
     >
       {children}

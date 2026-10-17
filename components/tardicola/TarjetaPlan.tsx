@@ -69,7 +69,7 @@ export default function TarjetaPlan({ t, afin, patrocinado, href, distancia }: {
         </div>
         <div className="mt-1 flex items-start justify-between gap-3">
           <h3 className="line-clamp-2 text-[18px] font-bold leading-snug text-tinta">{t.titulo}</h3>
-          <span className="shrink-0 rounded-lg bg-oro px-2.5 py-1 text-[14px] font-bold text-[#1A1A1A]">{precioCorto(t)}</span>
+          <span className="shrink-0 rounded-lg bg-oro px-2.5 py-1 text-[14px] font-bold text-sobre-oro">{precioCorto(t)}</span>
         </div>
         <p className="mt-1 truncate text-[15px] text-tinta-suave">
           {[t.local.nombre, t.zona].filter(Boolean).join(" · ")}{distancia ? ` · ${distancia}` : ""}

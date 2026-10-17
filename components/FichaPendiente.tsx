@@ -98,7 +98,7 @@ export default function FichaPendiente({
           {faltan > 0 && (
             <Link
               href={hrefEditar}
-              className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-tinta px-4 text-[15px] font-bold text-white hover:bg-tinta/90"
+              className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-noche px-4 text-[15px] font-bold text-white hover:bg-noche/90"
             >
               <Pencil size={16} aria-hidden /> Completar la ficha
             </Link>

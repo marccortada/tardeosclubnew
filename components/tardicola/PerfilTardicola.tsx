@@ -1,5 +1,7 @@
 "use client";
 
+import { imagenParaSubir } from "@/app/local/_panel/reducirImagen";
+
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -65,8 +67,10 @@ export default function PerfilTardicola({ uid }: { uid: string }) {
   };
 
   /** La foto va al bucket de siempre (flyers), carpeta avatars/. */
-  const subirFoto = async (f: File) => {
-    if (!f.type.startsWith("image/") || f.size > 5_000_000) { setMsg({ ok: false, t: "Elige una imagen de menos de 5 MB." }); return; }
+  const subirFoto = async (original: File) => {
+    if (!original.type.startsWith("image/") || original.size > 5_000_000) { setMsg({ ok: false, t: "Elige una imagen de menos de 5 MB." }); return; }
+    let f: File;
+    try { f = await imagenParaSubir(original); } catch (e) { setMsg({ ok: false, t: (e as Error).message }); return; }
     setSubiendo(true); setMsg(null);
     const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
     const ruta = `avatars/${uid}-${Date.now()}.${ext}`;

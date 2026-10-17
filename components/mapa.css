@@ -20,3 +20,23 @@
 .leaflet-touch .leaflet-control-zoom-out {
   font-size: 24px;
 }
+
+/* Modo oscuro: solo las teselas (.leaflet-tile-pane) se invierten y se les
+   devuelve el tono (hue-rotate 180°), así el mar sigue azul y las calles no
+   deslumbran. Las chinchetas y logos viven en marker-pane / overlay-pane y no
+   se tocan; tampoco los controles ni el fondo gris mientras cargan. */
+.dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.88) contrast(0.9) saturate(0.6);
+}
+.dark .leaflet-container {
+  background: rgb(var(--c-marfil-100));
+}
+.dark .leaflet-bar a,
+.dark .leaflet-control-attribution {
+  background-color: rgb(var(--c-superficie));
+  color: rgb(var(--c-tinta));
+  border-color: rgb(var(--c-linea));
+}
+.dark .leaflet-control-attribution a {
+  color: rgb(var(--c-tinta-suave));
+}

@@ -496,7 +496,7 @@ function PanelMarca() {
 function Ventaja({ icono, titulo, texto }: { icono: ReactNode; titulo: string; texto: string }) {
   return (
     <li className="flex items-start gap-3 rounded-2xl bg-white/10 p-3.5 backdrop-blur-sm ring-1 ring-white/20">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-oro-400 text-tinta">{icono}</span>
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-oro-400 text-sobre-oro">{icono}</span>
       <span>
         <span className="block text-[17px] font-bold leading-tight">{titulo}</span>
         <span className="mt-0.5 block text-[15px] leading-snug text-white/90">{texto}</span>

@@ -46,12 +46,15 @@ export default function NexoRadioPagina({ stream }: { stream: string | null }) {
 
   return (
     <main className="mx-auto max-w-2xl bg-fondo pb-8">
-      <div className="flex items-center gap-2 bg-superficie px-2 py-1">
+      {/* En móvil, barra de app (volver · título · compartir). En escritorio la
+          navegación ya la da SiteNav: la barra salía duplicada debajo, así que
+          queda solo como título de la página, sin flecha ni fondo. */}
+      <div className="flex items-center gap-2 bg-superficie px-2 py-1 md:bg-transparent md:px-4 md:pb-2 md:pt-8">
         <button type="button" onClick={() => (history.length > 1 ? router.back() : router.push("/"))} aria-label="Volver"
-          className="grid h-12 w-12 place-items-center rounded-full hover:bg-fondo">
+          className="grid h-12 w-12 place-items-center rounded-full hover:bg-fondo md:hidden">
           <ArrowLeft size={22} aria-hidden />
         </button>
-        <h1 className="flex-1 text-center text-[19px] font-bold">Nexo Radio</h1>
+        <h1 className="flex-1 text-center text-[19px] font-bold md:text-left md:text-[34px]">Nexo Radio</h1>
         <CompartirBtn titulo="Nexo Radio" texto="El ritmo de tu tarde" url="/nexo" className="grid h-12 w-12 place-items-center rounded-full hover:bg-fondo" />
       </div>
 
@@ -121,7 +124,7 @@ function Escuchar() {
           <ul className="mt-3 flex flex-col gap-2">
             {sesiones.map((s) => (
               <li key={s.id} className="flex items-center gap-3 rounded-2xl border border-linea bg-superficie p-3">
-                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-tinta">
+                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-noche">
                   {(s.portada || s.dj_avatar) && <Image src={(s.portada || s.dj_avatar)!} alt="" fill sizes="48px" unoptimized className="object-cover" />}
                 </div>
                 <div className="min-w-0 flex-1">

@@ -28,7 +28,7 @@ export function LogoLocal({
   const nombre = String(local.nombre || "").trim();
   if (local.logo_url) {
     return (
-      <span className={`absolute inset-0 bg-tinta ${relleno}`}>
+      <span className={`absolute inset-0 bg-noche ${relleno}`}>
         <span className="relative block h-full w-full">
           <Image src={local.logo_url} alt="" fill sizes={sizes} priority={priority} className="object-contain" />
         </span>
@@ -57,7 +57,7 @@ export default function LocalCard({ local }: { local: any }) {
       href={`/locales/${local.id}`}
       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-linea bg-white shadow-tarjeta transition hover:-translate-y-0.5 hover:shadow-elevada focus-visible:outline focus-visible:outline-2 focus-visible:outline-magenta active:scale-[0.99]"
     >
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-tinta">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-noche">
         <LogoLocal local={local} sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px" textoClase="text-4xl md:text-5xl" />
       </div>
 

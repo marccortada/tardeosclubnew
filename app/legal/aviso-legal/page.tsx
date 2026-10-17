@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
+import { metadataPublica } from "@/lib/seo";
 import PaginaLegal from "@/components/PaginaLegal";
 import { RESPONSABLE } from "@/lib/legal";
 
-export const metadata: Metadata = {
-  title: "Aviso legal — TardeosClub",
-  description: "Quién está detrás de TardeosClub y condiciones de uso de la web.",
-};
+// Con canónica e imagen al compartir (helper común de lib/seo.ts).
+export const metadata: Metadata = metadataPublica(
+  "Aviso legal — TardeosClub",
+  "Quién está detrás de TardeosClub y condiciones de uso de la web.",
+  "/legal/aviso-legal"
+);
 
 export default function AvisoLegal() {
   const { nombreComercial, razonSocial, nif, domicilio, emailContacto } = RESPONSABLE;

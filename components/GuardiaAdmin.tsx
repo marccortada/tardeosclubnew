@@ -79,7 +79,7 @@ export default function GuardiaAdmin({ children }: { children: React.ReactNode }
     // Sin sesión, lo útil es entrar; con sesión de no-admin, volver a la web.
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-4 text-center">
-        <span className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-tinta text-white">
+        <span className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-noche text-white">
           <ShieldAlert size={28} aria-hidden />
         </span>
         <h1 className="text-2xl font-bold">{user ? "Acceso restringido" : "Entra para administrar"}</h1>

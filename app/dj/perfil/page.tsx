@@ -1,5 +1,7 @@
 "use client";
 
+import { imagenParaSubir } from "@/app/local/_panel/reducirImagen";
+
 import Image from "next/image";
 import { useMemo, useRef, useState } from "react";
 import { Camera, Instagram, Youtube, Music2, Phone } from "lucide-react";
@@ -76,9 +78,12 @@ function FormularioPerfil() {
   const cambiado = useMemo(() => JSON.stringify(f) !== JSON.stringify(base), [f, base]);
   const poner = <K extends keyof Formulario>(k: K, v: Formulario[K]) => { setF((p) => ({ ...p, [k]: v })); setOk(""); };
 
-  const subirFoto = async (file?: File) => {
+  const subirFoto = async (elegido?: File) => {
     if (archivo.current) archivo.current.value = "";
-    if (!file) return;
+    if (!elegido) return;
+    let file: File;
+    try { file = elegido.type.startsWith("image/") ? await imagenParaSubir(elegido) : elegido; }
+    catch (e) { setFoto({ estado: "error", msg: (e as Error).message }); return; }
     if (!file.type.startsWith("image/")) { setFoto({ estado: "error", msg: "Eso no es una imagen. Elige una foto JPG o PNG." }); return; }
     if (file.size > MAX_FOTO_MB * 1024 * 1024) {
       setFoto({ estado: "error", msg: `La foto pesa ${(file.size / 1024 / 1024).toFixed(1)} MB y el máximo es ${MAX_FOTO_MB} MB.` });

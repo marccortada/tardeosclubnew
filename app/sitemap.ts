@@ -20,9 +20,11 @@ export const dynamic = "force-dynamic";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const fijas: MetadataRoute.Sitemap = [
     { url: `${SITE_URL}/`, changeFrequency: "daily", priority: 1 },
-    { url: `${SITE_URL}/tardeos`, changeFrequency: "daily", priority: 0.9 },
-    { url: `${SITE_URL}/mapa`, changeFrequency: "daily", priority: 0.7 },
-    { url: `${SITE_URL}/colaboradores`, changeFrequency: "weekly", priority: 0.7 },
+    // Las rutas de verdad, no las viejas (/tardeos, /mapa, /colaboradores
+    // redirigen): un sitemap con redirecciones gasta rastreo y Google avisa.
+    { url: `${SITE_URL}/eventos`, changeFrequency: "daily", priority: 0.9 },
+    { url: `${SITE_URL}/directorio`, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${SITE_URL}/djs`, changeFrequency: "daily", priority: 0.7 },
     { url: `${SITE_URL}/legal/aviso-legal`, changeFrequency: "yearly", priority: 0.1 },
     { url: `${SITE_URL}/legal/privacidad`, changeFrequency: "yearly", priority: 0.1 },
     { url: `${SITE_URL}/legal/cookies`, changeFrequency: "yearly", priority: 0.1 },

@@ -1,5 +1,7 @@
 "use client";
 
+import { imagenParaSubir } from "@/app/local/_panel/reducirImagen";
+
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { SeccionPanel } from "@/components/panel/PanelShell";
@@ -225,8 +227,10 @@ export default function AdminPopups() {
     p.quitar((x) => x.id === u.id); contar();
   };
 
-  const subirImagen = async (archivo: File) => {
-    if (!archivo.type.startsWith("image/")) { setErrorForm("El archivo tiene que ser una imagen."); return; }
+  const subirImagen = async (elegido: File) => {
+    if (!elegido.type.startsWith("image/")) { setErrorForm("El archivo tiene que ser una imagen."); return; }
+    let archivo: File;
+    try { archivo = await imagenParaSubir(elegido); } catch (e) { setErrorForm((e as Error).message); return; }
     if (archivo.size > 5 * 1024 * 1024) { setErrorForm("La imagen pesa más de 5 MB. Redúcela antes de subirla."); return; }
     setSubiendo(true); setErrorForm("");
     const ext = (archivo.name.split(".").pop() || "jpg").toLowerCase();

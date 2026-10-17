@@ -85,9 +85,10 @@ export default function Directorio() {
 
   return (
     <main className="bg-fondo">
-      <CabeceraApp titulo="Directorio" volver="/eventos" />
+      <CabeceraApp titulo="Directorio" volver="/eventos" sinH1 />
       <div className="mx-auto max-w-3xl px-4 pt-4 md:pt-8">
-        <h1 className="hidden text-[34px] font-bold text-tinta md:block">Directorio</h1>
+        {/* Un solo h1: oculto a la vista en móvil (allí el título lo pinta la barra). */}
+        <h1 className="sr-only text-[34px] font-bold text-tinta md:not-sr-only">Directorio</h1>
         <div className="flex gap-1 rounded-2xl bg-marfil-100 p-1" role="tablist">
           {(["locales", "promotores", "djs"] as const).map((k) => (
             <button key={k} role="tab" aria-selected={pestana === k} onClick={() => { setPestana(k); pag.setPagina(1); }}

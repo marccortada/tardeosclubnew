@@ -84,7 +84,7 @@ export default function MapaFiltrable({ todos }: { todos: Tardeo[] }) {
               <p className="mt-2 text-[16px] text-tinta-suave">
                 No hay ninguna fecha publicada de hoy en adelante. Activa los avisos y te contamos cuando salgan.
               </p>
-              <Link href="/perfil/notificaciones" className="mt-4 inline-flex min-h-tacto w-full items-center justify-center gap-2 rounded-xl bg-oro-400 px-5 font-bold text-tinta hover:bg-oro">
+              <Link href="/perfil/notificaciones" className="mt-4 inline-flex min-h-tacto w-full items-center justify-center gap-2 rounded-xl bg-oro-400 px-5 font-bold text-sobre-oro hover:bg-oro">
                 <Bell size={19} aria-hidden /> Activar avisos
               </Link>
               <Link href="/colaboradores" className="mt-2 inline-flex min-h-tacto items-center gap-1 rounded-xl px-2 text-[15px] font-bold text-magenta-700 hover:bg-magenta-50">

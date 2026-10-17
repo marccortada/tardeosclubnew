@@ -66,7 +66,7 @@ export default function PromocionModal({
         <button
           type="button"
           onClick={() => setAbierto(true)}
-          className="flex min-h-tacto w-full items-center justify-center gap-2 rounded-xl bg-oro px-5 text-[17px] font-bold text-tinta hover:bg-oro-400"
+          className="flex min-h-tacto w-full items-center justify-center gap-2 rounded-xl bg-oro px-5 text-[17px] font-bold text-sobre-oro hover:bg-oro-400"
         >
           <Star size={20} fill="currentColor" aria-hidden /> Destacar este tardeo
         </button>

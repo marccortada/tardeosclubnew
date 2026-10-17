@@ -140,7 +140,7 @@ export default function AltaPortal({ rol }: { rol: RolAlta | null }) {
 
       {/* ---------- Cierre ---------- */}
       <section className="mx-auto max-w-6xl px-4 pt-12 md:px-8 md:pt-16">
-        <div className="flex flex-col items-start gap-4 rounded-[28px] bg-tinta p-6 text-white md:flex-row md:items-center md:justify-between md:p-10">
+        <div className="flex flex-col items-start gap-4 rounded-[28px] bg-noche p-6 text-white md:flex-row md:items-center md:justify-between md:p-10">
           <div>
             <p className="text-[24px] font-extrabold leading-tight md:text-[28px]">¿Empezamos?</p>
             <p className="mt-1 text-[16px] text-white/85">Crea tu cuenta y en un minuto estás completando tu ficha.</p>
@@ -192,10 +192,10 @@ function ElegirTipo() {
               className="group relative isolate flex min-h-[300px] flex-col justify-end overflow-hidden rounded-[24px] p-5 text-white shadow-elevada transition focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-magenta md:min-h-[380px]">
               <Image src={foto(t.foto, 800)} alt="" fill unoptimized sizes="(min-width: 768px) 33vw, 100vw" className="-z-20 object-cover transition duration-500 group-hover:scale-105" />
               <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-black/85 via-black/40 to-magenta/20" />
-              <span className="grid h-11 w-11 place-items-center rounded-xl bg-oro-400 text-tinta">{t.icono}</span>
+              <span className="grid h-11 w-11 place-items-center rounded-xl bg-oro-400 text-sobre-oro">{t.icono}</span>
               <span className="mt-3 text-[26px] font-extrabold leading-tight">{t.titulo}</span>
               <span className="mt-1 text-[16px] text-white/90">{t.texto}</span>
-              <span className="mt-4 inline-flex min-h-[48px] w-fit items-center gap-2 rounded-xl bg-white px-4 text-[16px] font-bold text-tinta transition group-hover:bg-oro-400">
+              <span className="mt-4 inline-flex min-h-[48px] w-fit items-center gap-2 rounded-xl bg-white px-4 text-[16px] font-bold text-tinta transition group-hover:bg-oro-400 group-hover:text-sobre-oro">
                 {t.cta} <ArrowRight size={18} aria-hidden />
               </span>
             </Link>

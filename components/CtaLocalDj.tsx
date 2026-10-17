@@ -53,7 +53,7 @@ export default function CtaLocalDj() {
             <span className="text-[13px] font-bold uppercase tracking-wider text-oro-400">{p.etiqueta}</span>
             <span className="mt-1.5 block text-[26px] font-extrabold leading-tight tracking-tight md:text-[32px]">{p.titulo}</span>
             <span className="mt-2 block max-w-md text-[16px] leading-snug text-white/90">{p.texto}</span>
-            <span className="mt-5 inline-flex min-h-tacto items-center justify-center gap-2 self-start rounded-xl bg-oro-400 px-5 text-[17px] font-bold text-[#1a1a1a] transition group-hover:bg-oro">
+            <span className="mt-5 inline-flex min-h-tacto items-center justify-center gap-2 self-start rounded-xl bg-oro-400 px-5 text-[17px] font-bold text-sobre-oro transition group-hover:bg-oro">
               {p.boton} <ArrowRight size={18} className="transition group-hover:translate-x-0.5" aria-hidden />
             </span>
           </Link>

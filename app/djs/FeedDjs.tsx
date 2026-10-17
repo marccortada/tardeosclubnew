@@ -140,7 +140,12 @@ export default function FeedDjs() {
 
   return (
     <>
-    <main className="fixed inset-x-0 top-0 bottom-[var(--alto-barra-inferior,calc(64px+env(safe-area-inset-bottom)))] z-[60] bg-black text-white md:bottom-0">
+    {/* md:top-[77px]: en escritorio la cabecera de la web (SiteNav, 76 px + borde)
+        va encima y tapaba las pestañas «Para ti / Siguiendo». */}
+    <main className="fixed inset-x-0 top-0 bottom-[var(--alto-barra-inferior,calc(64px+env(safe-area-inset-bottom)))] z-[60] bg-black text-white md:bottom-0 md:top-[77px]">
+      {/* La pantalla es un feed a sangre sin título visible: el h1 es para
+          lectores de pantalla y buscadores. */}
+      <h1 className="sr-only">DJs</h1>
       {/* Pestañas sobre el feed */}
       <div role="tablist" aria-label="Feed de DJs" className="absolute inset-x-0 top-0 z-20 flex justify-center gap-6 bg-gradient-to-b from-black/60 to-transparent pb-6 pt-[max(12px,env(safe-area-inset-top))]">
         {([["parati", "Para ti"], ["siguiendo", "Siguiendo"]] as const).map(([k, l]) => (

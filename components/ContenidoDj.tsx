@@ -1,5 +1,7 @@
 "use client";
 
+import { imagenParaSubir } from "@/app/local/_panel/reducirImagen";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
@@ -70,9 +72,12 @@ export default function ContenidoDj({ djId }: { djId: string }) {
     anadir(limpia);
   };
 
-  const subir = async (f: File | undefined) => {
+  const subir = async (elegido: File | undefined) => {
     if (archivo.current) archivo.current.value = "";
-    if (!f) return;
+    if (!elegido) return;
+    let f: File;
+    try { f = elegido.type.startsWith("image/") ? await imagenParaSubir(elegido) : elegido; }
+    catch (e) { setError((e as Error).message); return; }
     setError(""); setOk("");
     if (!f.type.startsWith("image/")) { setError("Eso no es una imagen. Elige una foto JPG o PNG."); return; }
     if (f.size > MAX_IMAGEN_MB * 1024 * 1024) {

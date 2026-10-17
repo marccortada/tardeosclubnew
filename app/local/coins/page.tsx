@@ -186,7 +186,7 @@ export default function MonederoCoins() {
             {servicios.map((s) => (
               <li key={s.slug} className="flex flex-col rounded-2xl border border-linea bg-white p-4 shadow-tarjeta">
                 <p className="flex items-start justify-between gap-2 text-[16px] font-bold">{s.nombre}
-                  <span className="shrink-0 rounded-full bg-oro px-2.5 py-0.5 text-sm">{s.coste == null ? "Presupuesto" : `${s.coste} Coins`}</span></p>
+                  <span className="shrink-0 rounded-full bg-oro px-2.5 py-0.5 text-sm text-sobre-oro">{s.coste == null ? "Presupuesto" : `${s.coste} Coins`}</span></p>
                 <p className="mt-1 text-[15px] text-tinta-suave">{s.alcance}{s.solo_comprado ? " Solo con Coins comprados." : ""}</p>
                 <div className="mt-auto pt-3">
                   <Boton tamano="pequeno" variante="contorno" ancho disabled={!activos || s.coste == null}

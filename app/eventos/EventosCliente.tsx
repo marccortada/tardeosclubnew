@@ -188,6 +188,15 @@ export default function EventosCliente({ todos }: { todos: Tardeo[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [todos, borrador, cuando, texto, hoy]);
   const afin = (t: Tardeo) => adn ? encajeDe(t, adn).motivos.length > 0 : false;
+  /** ¿Los filtros puestos son los de su ADN? (se compara con lo que daría el ADN con esa misma zona). */
+  const porAdn = !!adn && iguales(f, filtrosDeAdn(adn, f.zona));
+  /** Cuántos filtros hay puestos (zona, música, tipo, entrada) y cuántos planes esconden. */
+  const nFiltros = (f.zona ? 1 : 0) + (f.musica.length ? 1 : 0) + (f.tipo.length ? 1 : 0) + (f.entrada ? 1 : 0);
+  const ocultosPorFiltro = useMemo(() => nFiltros === 0 ? 0
+    : todos.filter((t) => t.fecha >= hoy && coincide(t) && enCuando(t, cuando, hoy)).length
+      - todos.filter((t) => t.fecha >= hoy && coincide(t) && pasaFiltros(t, f) && enCuando(t, cuando, hoy)).length,
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `coincide` depende de q, que ya va en `lista`
+  [todos, f, cuando, hoy, nFiltros, q]);
 
   const abrirFiltros = () => { setBorrador(f); setHoja(true); };
   // El select de zona solo marca si el valor coincide con una opción: se busca
@@ -200,9 +209,10 @@ export default function EventosCliente({ todos }: { todos: Tardeo[] }) {
 
   return (
     <main className="bg-fondo">
-      <CabeceraApp titulo="Eventos" />
+      <CabeceraApp titulo="Eventos" sinH1 />
       <div className="mx-auto max-w-3xl px-4 pt-4 md:pt-8">
-        <h1 className="mb-4 hidden text-[34px] font-bold md:block">Eventos</h1>
+        {/* Un solo h1: oculto a la vista en móvil (allí el título lo pinta la barra). */}
+        <h1 className="sr-only text-[34px] font-bold md:not-sr-only md:mb-4">Eventos</h1>
         <label className="relative block">
           <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-tinta-suave" aria-hidden />
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar planes, locales, DJs…"
@@ -221,8 +231,21 @@ export default function EventosCliente({ todos }: { todos: Tardeo[] }) {
         <div className="mt-3 flex gap-1 rounded-2xl bg-marfil-100 p-1" role="tablist" aria-label="Vista">
           <button role="tab" aria-selected={vista === "mapa"} className={seg(vista === "mapa")} onClick={() => setVista("mapa")}>Mapa</button>
           <button role="tab" aria-selected={vista === "lista"} className={seg(vista === "lista")} onClick={() => setVista("lista")}>Lista</button>
-          <button type="button" className={seg(false)} onClick={abrirFiltros}><SlidersHorizontal size={17} aria-hidden /> Filtros</button>
+          <button type="button" className={seg(nFiltros > 0)} onClick={abrirFiltros} aria-label={nFiltros ? `Filtros, ${nFiltros} activos` : "Filtros"}>
+            <SlidersHorizontal size={17} aria-hidden /> Filtros{nFiltros > 0 && <span className="ml-0.5 tabular-nums">({nFiltros})</span>}
+          </button>
         </div>
+
+        {/* Los filtros que salen del ADN no se veían en ningún sitio: quien tenía
+            ADN veía «0 planes» sin saber por qué, con muy poca oferta (prueba del
+            17-oct). Se dice y se ofrece verlo todo de un toque. */}
+        {nFiltros > 0 && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-marfil-100 px-4 py-2 text-[15px] text-tinta">
+            <span>{porAdn ? "Filtrado según tu ADN" : "Con tus filtros"}{ocultosPorFiltro > 0 ? ` · ${plural(ocultosPorFiltro, "plan oculto", "planes ocultos")}` : ""}</span>
+            <button type="button" onClick={() => { explicitos.current = true; setF(VACIOS); }}
+              className="min-h-[44px] font-semibold text-magenta-700 dark:text-magenta-400">Ver todo</button>
+          </div>
+        )}
 
         <div className="mt-3 flex items-center justify-between text-[15px] text-tinta-suave">
           <span>{vista === "mes" ? `${plural(base.length, "plan", "planes")} en total` : plural(lista.length, "plan", "planes")}</span>

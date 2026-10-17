@@ -45,11 +45,34 @@ export function metadataPrivada(titulo: string): Metadata {
   };
 }
 
-/** Metadatos de una pantalla pública, con su canónica. */
+/** Imagen por defecto al compartir (1200x630). Next no fusiona openGraph a
+ *  fondo: si una página define su openGraph sin `images`, pierde la del
+ *  layout. Por eso cada helper la vuelve a poner. */
+export const OG_POR_DEFECTO = { url: "/branding/og.png", width: 1200, height: 630 };
+
+/**
+ * Texto apto para <meta name="description">: una sola línea, sin emojis y
+ * recortado a ~155 caracteres por una palabra entera (Google corta ahí y la
+ * descripción de un local suele ser larga, con saltos y emojis).
+ */
+export function descripcionMeta(texto: string | null | undefined, max = 155): string {
+  const limpio = (texto ?? "")
+    .replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}\u{20E3}]/gu, "")
+    .replace(/\s+/g, " ")
+    .replace(/ ([,.;:!?])/g, "$1") // el hueco que deja un emoji antes de una coma
+    .trim();
+  if (limpio.length <= max) return limpio;
+  const corte = limpio.slice(0, max - 1);
+  const espacio = corte.lastIndexOf(" ");
+  return `${(espacio > max * 0.6 ? corte.slice(0, espacio) : corte).replace(/[\s,.;:·—-]+$/, "")}…`;
+}
+
+/** Metadatos de una pantalla pública, con su canónica e imagen al compartir. */
 export function metadataPublica(
   titulo: string,
   descripcion: string,
-  ruta: string
+  ruta: string,
+  imagen?: string | null
 ): Metadata {
   return {
     title: titulo,
@@ -60,6 +83,7 @@ export function metadataPublica(
       description: descripcion,
       url: urlAbsoluta(ruta),
       type: "website",
+      images: [imagen ? { url: imagen } : OG_POR_DEFECTO],
     },
   };
 }
@@ -258,7 +282,7 @@ export function jsonLdSitio() {
         inLanguage: "es-ES",
         potentialAction: {
           "@type": "SearchAction",
-          target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/tardeos?q={search_term_string}` },
+          target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/eventos?q={search_term_string}` },
           "query-input": "required name=search_term_string",
         },
       },

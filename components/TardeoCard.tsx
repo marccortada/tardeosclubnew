@@ -112,7 +112,7 @@ export default function TardeoCard({
         {(tardeo.destacado || conEncaje) && (
           <div className="absolute bottom-2.5 left-2.5 right-2.5 z-20 flex flex-col items-start gap-1.5">
             {tardeo.destacado && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-oro px-2.5 py-1 text-[13px] font-bold text-tinta shadow-tarjeta">
+              <span className="inline-flex items-center gap-1 rounded-full bg-oro px-2.5 py-1 text-[13px] font-bold text-sobre-oro shadow-tarjeta">
                 <Star size={13} fill="currentColor" aria-hidden /> Destacado
               </span>
             )}

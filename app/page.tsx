@@ -129,7 +129,7 @@ export default async function Inicio() {
           </p>
 
           <div className="entrar entrar-3 mt-7 grid w-full max-w-md grid-cols-2 gap-3">
-            <Link href="/eventos" className="inline-flex min-h-[56px] items-center justify-center gap-2 rounded-2xl bg-oro-400 px-3 text-[18px] font-extrabold text-[#1a1a1a] shadow-lg transition hover:bg-oro active:scale-[0.98]">
+            <Link href="/eventos" className="inline-flex min-h-[56px] items-center justify-center gap-2 rounded-2xl bg-oro-400 px-3 text-[18px] font-extrabold text-sobre-oro shadow-lg transition hover:bg-oro active:scale-[0.98]">
               <CalendarDays size={20} className="hidden min-[400px]:block" aria-hidden /> Ver tardeos
             </Link>
             {/* Degradado rosa→naranja de la web de siempre. La sombra del
@@ -322,7 +322,7 @@ function Atajo({ href, icono, n, children }: { href: string; icono?: ReactNode; 
     <Link href={href}
       className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-white/40 bg-white/15 px-4 text-[15px] font-semibold text-white backdrop-blur-md transition hover:bg-white/25 active:scale-[0.97]">
       {icono}{children}
-      {!!n && <span className="ml-0.5 min-w-[22px] rounded-full bg-oro-400 px-1.5 text-center text-[13px] font-bold leading-[22px] text-[#1a1a1a]">{n}</span>}
+      {!!n && <span className="ml-0.5 min-w-[22px] rounded-full bg-oro-400 px-1.5 text-center text-[13px] font-bold leading-[22px] text-sobre-oro">{n}</span>}
     </Link>
   );
 }
@@ -348,7 +348,7 @@ function TardeoGrande({ t, solo = false }: { t: Tardeo; solo?: boolean }) {
           <span className="block text-[13px] font-bold uppercase">{mes(t.fecha)}</span>
         </span>
         {t.destacado && (
-          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-oro-400 px-2.5 py-1 text-[13px] font-bold text-[#1a1a1a]">
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-oro-400 px-2.5 py-1 text-[13px] font-bold text-sobre-oro">
             <Star size={13} className="fill-current" aria-hidden /> Destacado
           </span>
         )}

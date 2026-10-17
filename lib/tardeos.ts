@@ -627,40 +627,6 @@ export async function contarSiguientesDeSerie(serieId: string, desdeFecha: strin
   return error ? 0 : (count ?? 0);
 }
 
-/**
- * El perfil DJ del usuario (si lo tiene).
- *
- * Mismo cuidado que en getMiLocal, y por el mismo motivo: /dj enseña "Crear mi
- * perfil DJ" en cuanto esto devuelve null, así que un fallo de lectura no se
- * ve como un fallo — se ve como que no tienes perfil, y acabas con dos. Con
- * `select("*")` bastaba con restringir una columna cualquiera de `djs` (como
- * pasó con `email` en locales) para que la consulta entera reventara.
- */
-export async function getMiDj(profileId: string): Promise<any | null> {
-  const BASE = "id,profile_id,nombre_artistico,bio,estilos,galeria,redes,verificado,reputacion_score,oculto,avatar_url,playlist_url,zonas,contacto";
-  const pedir = (cols: string) =>
-    supabase.from("djs").select(cols)
-      .eq("profile_id", profileId)
-      .order("created_at", { ascending: true }).limit(1).maybeSingle();
-
-  let { data, error } = await pedir(`${BASE},presskit_url`);
-  // Si el lote 47 aún no está pegado, `presskit_url` no existe y la consulta
-  // entera fallaría: el DJ vería «Crear mi perfil» teniendo ya uno. Se
-  // reintenta sin esa columna.
-  // Desde el lote 65 la columna no se puede leer (42501): el press kit es
-  // solo para profesionales y se pide con `presskit_de`, que al dueño sí se
-  // la devuelve.
-  if (error && (falloPorColumna(error, "presskit_url") || error.code === "42501")) {
-    ({ data, error } = await pedir(BASE));
-    if (data) {
-      const pk = await supabase.rpc("presskit_de", { p_dj: (data as any).id });
-      if (!pk.error) (data as any).presskit_url = pk.data ?? null;
-    }
-  }
-  if (error) registrar("djs", "no se pudo cargar el perfil del DJ", error);
-  return (data as any) ?? null;
-}
-
 /** ¿El error es «esa columna no existe»? (42703 en la base, PGRST204 en la API). */
 export function falloPorColumna(e: { code?: string; message?: string } | null | undefined, columna: string): boolean {
   if (!e) return false;
@@ -689,35 +655,6 @@ async function leerDjsPublicos(): Promise<any[]> {
     if ((r.data ?? []).length < 1000) break;
   }
   return data;
-}
-
-/**
- * Un DJ por id (para su página pública).
- *
- * Columnas explícitas, como en getLocalById: con `*` la ficha pública servía
- * también `profile_id` (el id de la cuenta) y `origen_id`, que no pinta nada
- * ahí y ata al DJ con su usuario de auth.
- */
-export async function getDjById(id: string): Promise<any | null> {
-  // Igual que en los locales: `profile_id` entra solo para saber si la ficha
-  // está reclamada y sale convertido en booleano.
-  const BASE = "id,nombre_artistico,bio,estilos,galeria,redes,verificado,reputacion_score,avatar_url,playlist_url,zonas,contacto,profile_id";
-  const pedir = (cols: string) => supabase.from("djs").select(cols).eq("id", id).maybeSingle();
-  let { data, error } = await pedir(`${BASE},presskit_url`);
-  // Sin el lote 47 pegado `presskit_url` no existe y la consulta entera
-  // fallaría: la ficha pública daría 404. Se reintenta sin esa columna.
-  // Con el lote 65 la columna está cerrada (42501): se pide aparte con
-  // `presskit_de`, que solo la da a profesionales.
-  if (error && (falloPorColumna(error, "presskit_url") || error.code === "42501")) {
-    ({ data, error } = await pedir(BASE));
-    if (data) {
-      const pk = await supabase.rpc("presskit_de", { p_dj: id });
-      if (!pk.error) (data as any).presskit_url = pk.data ?? null;
-    }
-  }
-  if (!data) return null;
-  const { profile_id, ...resto } = data as unknown as Record<string, unknown>;
-  return { ...resto, sinDueno: profile_id == null };
 }
 
 /** Tardeos publicados y no expirados en los que pincha un DJ. */
@@ -1041,14 +978,6 @@ export async function estaInscrito(uid: string, tid: string): Promise<boolean> {
   const { data } = await supabase.from("inscripciones").select("id").eq("profile_id", uid).eq("tardeo_id", tid).eq("estado", "apuntado").maybeSingle();
   return !!data;
 }
-/** Devuelve `{ error }`: quien llama debe revertir su estado si hay error. */
-export async function inscribir(uid: string, tid: string): Promise<{ error: { message: string } | null }> {
-  const { error } = await supabase.from("inscripciones").upsert({ profile_id: uid, tardeo_id: tid, estado: "apuntado" }, { onConflict: "tardeo_id,profile_id" });
-  // El aforo lo manda la base (lote 48): si está lleno, lo dice con este texto.
-  if (error && /aforo completo/i.test(error.message)) return { error: { message: "AFORO_COMPLETO" } };
-  return { error };
-}
-
 // ---------- Plazas y asistencia (lote 48) ----------
 export type Plazas = { aforo: number | null; apuntados: number; libres: number | null };
 

@@ -184,3 +184,22 @@ silencio estado y orden de destacados). L8 oculta las 3 fichas de prueba.
 
 **Para el cliente:** «sí» a la limpieza; datos raros en 2 tardeos publicados; privacidad
 «Pendiente»; ¿«oletu» es de prueba?
+
+---
+
+## 17‑oct‑2026 (noche) · Lotes 73-74 en producción y prueba completa
+
+- **Lotes 73 y 74 aplicados** (los pegó el usuario; comprobado leyendo la base).
+- **Prueba con sesión** de los 4 portales (admin, local, DJ, tardícola) en local contra
+  producción: ninguna pantalla rota ni «permission denied»; escrituras [PRUEBA] de sets,
+  Nexo, sorteos, tardeo en borrador y perfil DJ funcionan y se deshicieron. Los intentos
+  de saltarse permisos (Nexo «aceptado», likes, seguidores) se rechazan.
+- **Cruce estático** de todas las escrituras del navegador contra los grants: todo cuadra.
+- **Rastreo público:** 381 URLs y 298 imágenes, 0 rotas.
+- **Arreglado:** modo oscuro (pie, texto sobre oro, magentas, sigue al sistema, mapa),
+  SEO (og:image, descripciones, sitemap, canonical, h1, 404 de DJ inexistente),
+  escritorio de /djs y /nexo, fotos HEIC (se convierten o se explica), Entre Beats para
+  fichas pendientes, filtros del ADN visibles en Eventos, claves repetidas en estadísticas,
+  updates que no comprobaban si se guardaron (anuncios, sets), funciones muertas fuera.
+- **Para probar Entre Beats usar admin@**: dj@ y local@ tienen la ficha oculta/sin
+  aprobar y, desde el 73, no cuentan como profesionales.

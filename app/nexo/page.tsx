@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
+import { metadataPublica } from "@/lib/seo";
 import { Suspense } from "react";
 import NexoRadioPagina from "./NexoRadioPagina";
 
-export const metadata: Metadata = {
-  title: "Nexo Radio · TardeosClub",
-  description: "El ritmo de tu tarde. Radio y comunidad musical.",
-};
+// Con canónica e imagen al compartir (helper común de lib/seo.ts).
+export const metadata: Metadata = metadataPublica(
+  "Nexo Radio · TardeosClub",
+  "El ritmo de tu tarde. Radio y comunidad musical.",
+  "/nexo"
+);
 
 export default function PaginaNexo() {
   // La URL del stream es pública (NEXT_PUBLIC_): se lee en el servidor y se

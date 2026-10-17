@@ -11,7 +11,7 @@ import EnlaceExterno from "@/components/EnlaceExterno";
 import type { Metadata } from "next";
 import type { Canal } from "@/lib/metricas";
 import DatosEstructurados from "@/components/DatosEstructurados";
-import { jsonLdLocal, urlAbsoluta } from "@/lib/seo";
+import { jsonLdLocal, urlAbsoluta, descripcionMeta, OG_POR_DEFECTO } from "@/lib/seo";
 import {
   ArrowLeft, MapPin, BadgeCheck, Store, Megaphone, Instagram, Globe, CalendarCheck,
   Navigation, MessageCircle, Bell, ArrowRight, Images,
@@ -30,8 +30,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const local = await getLocalById(id);
   if (!local) return { title: "Local no encontrado · TardeosClub" };
-  const desc = `Tardeos en ${local.nombre}${local.zona ? ` · ${local.zona}` : ""}. ${local.descripcion || "Descúbrelos en TardeosClub."}`;
-  const fotos: string[] = Array.isArray(local.fotos) ? local.fotos : [];
+  // Una línea, sin emojis y a ~155: la descripción del local suele ser larga.
+  const desc = descripcionMeta(`Tardeos en ${local.nombre}${local.zona ? ` · ${local.zona}` : ""}. ${local.descripcion || "Descúbrelos en TardeosClub."}`);
+  const fotos: string[] = Array.isArray(local.fotos) ? local.fotos.filter((f: unknown) => typeof f === "string" && f) : [];
+  // Al compartir: la foto, si no el logo, si no la imagen general (sin
+  // `images` el enlace salía sin imagen: el openGraph de aquí anula el del layout).
+  const imagen = fotos[0] || local.logo_url || null;
   return {
     title: `${local.nombre} · TardeosClub`,
     description: desc,
@@ -39,7 +43,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     openGraph: {
       title: local.nombre,
       description: desc,
-      images: fotos[0] ? [{ url: fotos[0] }] : undefined,
+      images: [imagen ? { url: imagen } : OG_POR_DEFECTO],
       url: urlAbsoluta(`/locales/${id}`),
       type: "website",
     },
@@ -112,7 +116,7 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
           Con foto: la foto a sangre con un degradado para leer encima. Sin
           foto (casi todos): una banda oscura de marca, nunca un bloque gris
           vacío. El logo va siempre sobre fondo oscuro: muchos son PNG blancos. */}
-      <header className="relative isolate overflow-hidden bg-tinta text-white">
+      <header className="relative isolate overflow-hidden bg-noche text-white">
         {portada ? (
           <>
             <Image src={portada} alt="" fill priority sizes="100vw" className="-z-10 object-cover" />
@@ -138,7 +142,7 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
           </div>
 
           <div className="mt-auto flex flex-col gap-4 pt-8 sm:flex-row sm:items-end sm:gap-6">
-            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-tinta shadow-elevada ring-2 ring-white/20 md:h-36 md:w-36">
+            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-noche shadow-elevada ring-2 ring-white/20 md:h-36 md:w-36">
               <LogoLocal local={local} sizes="144px" priority textoClase="text-3xl md:text-5xl" relleno="p-[10%]" />
             </div>
             <div className="min-w-0">
@@ -150,7 +154,7 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
                   </span>
                 ))}
                 {local.verificado && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-oro px-3 py-1 text-[13px] font-bold text-tinta">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-oro px-3 py-1 text-[13px] font-bold text-sobre-oro">
                     <BadgeCheck size={14} aria-hidden /> Verificado
                   </span>
                 )}

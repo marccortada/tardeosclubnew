@@ -12,7 +12,13 @@ import { contarAvisosSinLeer, getZonas, leerZona, guardarZona, type Zona } from 
  * (o selector de zona en Inicio) en el centro y campana a la derecha.
  * Solo en móvil: en escritorio manda SiteNav.
  */
-export default function CabeceraApp({ titulo, conZona = false, volver }: { titulo?: string; conZona?: boolean; volver?: string }) {
+export default function CabeceraApp({ titulo, conZona = false, volver, sinH1 = false }: {
+  titulo?: string; conZona?: boolean; volver?: string;
+  /** La página ya tiene su propio h1 (visible en escritorio): el título de la
+   *  barra va como texto normal para que no haya dos h1. */
+  sinH1?: boolean;
+}) {
+  const Titulo = sinH1 ? "p" : "h1";
   return (
     <header className="sticky top-0 z-[800] grid h-16 grid-cols-[56px_1fr_56px] items-center border-b border-linea bg-superficie/95 px-3 backdrop-blur md:hidden">
       {volver ? (
@@ -25,7 +31,7 @@ export default function CabeceraApp({ titulo, conZona = false, volver }: { titul
         </Link>
       )}
       <div className="flex min-w-0 justify-center">
-        {conZona ? <SelectorZona /> : <h1 className="truncate text-[19px] font-bold text-tinta">{titulo}</h1>}
+        {conZona ? <SelectorZona /> : <Titulo className="truncate text-[19px] font-bold text-tinta">{titulo}</Titulo>}
       </div>
       <Campana />
     </header>

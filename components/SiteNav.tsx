@@ -26,10 +26,12 @@ const links: { href: string; label: string; icono: typeof Home; externo?: boolea
   { href: "/nexo", label: "Nexo Radio", icono: Radio },
 ];
 
-/** El botón de entrar, rosa neón → oro como el de la web de siempre. La sombra
- *  del texto no es adorno: sobre el extremo amarillo el blanco solo no se lee. */
+/** El botón de entrar, rosa neón → oro como el de la web de siempre. El texto
+ *  va oscuro (`sobre-oro`, fijo en los dos temas): el blanco, aun con sombra,
+ *  se quedaba en ~1,6:1 sobre el extremo dorado; el oscuro da ≥4,9:1 en todo
+ *  el degradado (5:1 en el rosa, 9:1 en el oro). */
 export const claseEntrar =
-  "inline-flex min-h-[44px] items-center rounded-[14px] bg-gradient-to-r from-[#FF3DCF] to-[#FAC72E] px-5 text-[15px] font-bold text-white shadow-tarjeta transition [text-shadow:0_1px_2px_rgba(0,0,0,0.35)] hover:brightness-105 active:scale-[0.98]";
+  "inline-flex min-h-[44px] items-center rounded-[14px] bg-gradient-to-r from-[#FF3DCF] to-[#FAC72E] px-5 text-[15px] font-bold text-sobre-oro shadow-tarjeta transition hover:brightness-105 active:scale-[0.98]";
 
 export default function SiteNav() {
   const pathname = usePathname();
@@ -55,7 +57,7 @@ export default function SiteNav() {
             const active = !externo && (href === "/" ? pathname === "/" : pathname.startsWith(href));
             // Activa en píldora oro: se ve de lejos dónde estás.
             const cls = `inline-flex min-h-[44px] items-center gap-1.5 rounded-md px-3 text-[15px] font-medium transition lg:px-3.5 ${
-              active ? "bg-oro font-semibold text-tinta shadow-tarjeta" : "text-tinta hover:bg-marfil-100"
+              active ? "bg-oro font-semibold text-sobre-oro shadow-tarjeta" : "text-tinta hover:bg-marfil-100"
             }`;
             const contenido = (
               <>
@@ -70,7 +72,7 @@ export default function SiteNav() {
               <span key={href} className="ml-2 flex items-center gap-3 border-l border-linea pl-3">
                 <a href={href} target="_blank" rel="noopener noreferrer"
                   title={`${label} · radio colaboradora, se abre en otra pestaña`}
-                  className="group inline-flex min-h-[44px] items-center gap-2 rounded-full bg-tinta py-1 pl-1 pr-3.5 text-[14px] font-semibold text-white shadow-tarjeta transition hover:bg-black">
+                  className="group inline-flex min-h-[44px] items-center gap-2 rounded-full bg-noche py-1 pl-1 pr-3.5 text-[14px] font-semibold text-white shadow-tarjeta transition hover:bg-black">
                   <Image src="/branding/nexo-radio.png" alt="" width={30} height={30} className="h-[30px] w-[30px] rounded-full bg-white object-contain" />
                   {label}
                   <ArrowUpRight size={15} className="opacity-70 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden />

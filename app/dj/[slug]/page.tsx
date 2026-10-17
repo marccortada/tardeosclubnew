@@ -56,5 +56,7 @@ export default async function DjCompatibilidad({
     (porId.length === 1 ? porId[0] : undefined) ??
     djs.filter((d) => encajaNombre(d.t)).sort((a, b) => b.t.length - a.t.length)[0];
 
-  redirect(encontrado ? `/djs/${encontrado.id}` : "/colaboradores?ver=djs");
+  // Sin coincidencia: directo a la pestaña de DJs del directorio (pasar por
+  // /colaboradores perdía el ?ver=djs y dejaba al usuario en Locales).
+  redirect(encontrado ? `/djs/${encontrado.id}` : "/directorio?ver=djs");
 }

@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
+import { metadataPublica } from "@/lib/seo";
 import PaginaLegal from "@/components/PaginaLegal";
 import { RESPONSABLE } from "@/lib/legal";
 
-export const metadata: Metadata = {
-  title: "Política de cookies — TardeosClub",
-  description: "TardeosClub no usa cookies de publicidad ni de seguimiento. Aquí te explicamos qué guardamos.",
-};
+// Con canónica e imagen al compartir (helper común de lib/seo.ts).
+export const metadata: Metadata = metadataPublica(
+  "Política de cookies — TardeosClub",
+  "TardeosClub no usa cookies de publicidad ni de seguimiento. Aquí te explicamos qué guardamos.",
+  "/legal/cookies"
+);
 
 export default function Cookies() {
   const { emailPrivacidad } = RESPONSABLE;

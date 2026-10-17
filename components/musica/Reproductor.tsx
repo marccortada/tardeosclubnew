@@ -260,7 +260,7 @@ export function MiniReproductor() {
         className={`fixed inset-x-2 z-[999] mx-auto max-w-md md:inset-x-auto md:right-4 md:w-[380px] ${sinBarra ? "bottom-3" : "bottom-[calc(72px+env(safe-area-inset-bottom))] md:bottom-4"}`}
       >
         <div className="flex items-center gap-3 rounded-2xl border border-linea bg-superficie/95 p-2 pr-1 shadow-elevada backdrop-blur">
-          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-tinta">
+          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-noche">
             {actual.portada ? (
               <Image src={actual.portada} alt="" fill sizes="48px" className="object-cover" unoptimized />
             ) : (

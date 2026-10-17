@@ -239,8 +239,10 @@ export async function crearSet(djId: string, s: NuevoSet) {
 export async function actualizarSet(id: string, cambios: Partial<Pick<SetDj, "titulo" | "url" | "portada" | "estilos" | "destacado" | "orden">>) {
   const c: Record<string, unknown> = { ...cambios };
   if (typeof cambios.url === "string") c.plataforma = plataformaDe(cambios.url);
-  const { error } = await supabase.from("sets").update(c).eq("id", id);
-  return error ? error.message : null;
+  // `.select`: 0 filas = la base no dejó (RLS), aunque no haya error.
+  const { data, error } = await supabase.from("sets").update(c).eq("id", id).select("id");
+  if (error) return error.message;
+  return data?.length ? null : "No se ha podido guardar: este set no es tuyo o ya no existe.";
 }
 
 /** Un solo destacado por DJ: se quita a los demás y se pone a este. */

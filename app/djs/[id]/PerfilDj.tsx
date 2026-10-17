@@ -115,8 +115,10 @@ export default function PerfilDj({
 
   return (
     <main className="mx-auto max-w-3xl bg-fondo pb-8">
-      {/* Cabecera: volver (al evento si se vino de una ficha) · nombre · compartir */}
-      <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-linea bg-superficie/95 px-2 py-1 backdrop-blur">
+      {/* Cabecera: volver (al evento si se vino de una ficha) · nombre · compartir.
+          Solo móvil: en escritorio ya está la cabecera de la web (SiteNav) y
+          esta barra salía debajo, duplicada. Compartir pasa al banner. */}
+      <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-linea bg-superficie/95 px-2 py-1 backdrop-blur md:hidden">
         <Link href={volver ?? "/djs"} aria-label={volver ? "Volver al evento" : "Volver a DJs"}
           className="grid h-12 w-12 place-items-center rounded-full hover:bg-fondo">
           <ArrowLeft size={22} aria-hidden />
@@ -126,13 +128,15 @@ export default function PerfilDj({
           className="grid h-12 w-12 place-items-center rounded-full hover:bg-fondo" />
       </div>
 
-      <div className="relative h-36 w-full overflow-hidden bg-tinta md:h-52">
+      <div className="relative h-36 w-full overflow-hidden bg-noche md:mt-6 md:h-52 md:rounded-t-3xl">
         {/* Sin banner propio, degradado de marca: el avatar (400x400) estirado a
             lo ancho se veía pixelado aun difuminado, y el avatar ya sale abajo. */}
         {dj.banner ? (
           <Image src={dj.banner} alt="" fill priority sizes="(max-width: 768px) 100vw, 768px" unoptimized={!optimizable(dj.banner)}
             className="object-cover" />
         ) : <div className="h-full w-full bg-[linear-gradient(135deg,#141014,#930E72_55%,#D61AA8)]" />}
+        <CompartirBtn titulo={dj.nombre} texto={`Escucha a ${dj.nombre} en TardeosClub`} url={`/djs/${dj.id}`}
+          className="absolute right-3 top-3 hidden h-12 w-12 place-items-center rounded-full bg-black/45 text-white backdrop-blur transition hover:bg-black/60 md:grid" />
       </div>
 
       <section className="bg-superficie px-4 pb-4">
@@ -170,7 +174,7 @@ export default function PerfilDj({
         )}
       </section>
 
-      <div role="tablist" aria-label="Secciones del DJ" className="sticky top-[57px] z-20 mx-4 mt-3 grid grid-cols-3 gap-1 rounded-xl bg-marfil-100 p-1">
+      <div role="tablist" aria-label="Secciones del DJ" className="sticky top-[57px] z-20 mx-4 mt-3 grid grid-cols-3 md:top-[77px] gap-1 rounded-xl bg-marfil-100 p-1">
         {([["sets", "Sets"], ["eventos", "Eventos"], ["sobre", "Sobre mí"]] as const).map(([k, l]) => (
           <button key={k} role="tab" aria-selected={pestana === k} type="button" onClick={() => setPestana(k)}
             className={`min-h-[44px] rounded-lg text-[15px] font-bold ${pestana === k ? "bg-magenta text-white" : "text-tinta"}`}>
