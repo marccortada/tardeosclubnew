@@ -327,10 +327,21 @@ veces sin romper nada). Se aplican en orden desde Supabase → SQL Editor.
 
 Paquetes para pegar de una vez: `PEGAR_45_a_62.sql`, `PEGAR_63_a_69.sql`,
 `PEGAR_70_71.sql`, `PEGAR_72.sql` — **todos aplicados en producción el 15‑oct‑2026**.
-El siguiente lote libre es el **74**. Candidato: quitar permisos de TABLA y dejar los de
-columna en `nexo_envios` (un DJ podría insertar su envío ya «aceptado») y en `djs`
-(`revoke update (seguidores)` no surte efecto). Con los permisos por defecto de Supabase
-un `grant (col)` NO restringe nada si la tabla ya tiene el permiso completo.
+- `74` Permisos por columna de verdad (`PEGAR_74.sql`, **pendiente de pegar**, después del
+  73): `nexo_envios` (el envío nace «pendiente»), `djs.seguidores/provisional/creado_por`
+  (disparador), `sets` (contadores), `eb_anuncios` (solo `estado`), `encuestas` (solo
+  `comentario_oculto`), `sorteos` (insert con las columnas del formulario). Probado en
+  local: 80 comprobaciones bien.
+
+El siguiente lote libre es el **75**.
+
+**Permisos por columna en Supabase:** anon y authenticated tienen por defecto permiso de
+TABLA en `public`, así que un `grant (col)` o `revoke (col)` NO restringe nada mientras
+siga el permiso de tabla. Para limitar columnas: `revoke insert/update on t from anon,
+authenticated` y luego `grant insert/update (cols) on t to authenticated` (patrón de los
+lotes 73-74). Columna nueva en `nexo_envios`, `sets`, `eb_anuncios`, `encuestas` o
+`sorteos` que escriba el navegador = darle su grant de columna, o fallará con
+«permission denied».
 `supabase/limpieza/` = limpieza de duplicados de la migración (**no aplicada**:
 necesita "sí"; recuentos con `node --env-file=.env.local scripts/limpieza-recuentos.mjs`,
 solo lectura). Orden, efecto y garantías en `supabase/limpieza/LEEME.md`. Revisada el
