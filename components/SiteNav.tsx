@@ -70,7 +70,7 @@ export default function SiteNav() {
               <span key={href} className="ml-2 flex items-center gap-3 border-l border-linea pl-3">
                 <a href={href} target="_blank" rel="noopener noreferrer"
                   title={`${label} · radio colaboradora, se abre en otra pestaña`}
-                  className="group inline-flex min-h-[40px] items-center gap-2 rounded-full bg-tinta py-1 pl-1 pr-3.5 text-[14px] font-semibold text-white shadow-tarjeta transition hover:bg-black">
+                  className="group inline-flex min-h-[44px] items-center gap-2 rounded-full bg-tinta py-1 pl-1 pr-3.5 text-[14px] font-semibold text-white shadow-tarjeta transition hover:bg-black">
                   <Image src="/branding/nexo-radio.png" alt="" width={30} height={30} className="h-[30px] w-[30px] rounded-full bg-white object-contain" />
                   {label}
                   <ArrowUpRight size={15} className="opacity-70 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden />

@@ -70,8 +70,8 @@ export default function MiAdn() {
           {TIPOS_EVENTO.map((t) => <button key={t} type="button" aria-pressed={adn.tiposEvento.includes(t)} onClick={() => alternarTipo(t)} className={pild(adn.tiposEvento.includes(t))}>{t}</button>)}
         </div>
 
-        <h2 className="mt-5 text-[17px] font-bold text-tinta">Zona</h2>
-        <select value={adn.zonas[0] ?? ""} onChange={(e) => setAdn({ ...adn, zonas: e.target.value ? [e.target.value] : [] })}
+        <h2 id="adn-zona" className="mt-5 text-[17px] font-bold text-tinta">Zona</h2>
+        <select aria-labelledby="adn-zona" value={adn.zonas[0] ?? ""} onChange={(e) => setAdn({ ...adn, zonas: e.target.value ? [e.target.value] : [] })}
           className="mt-2 min-h-[48px] w-full rounded-2xl border border-linea-fuerte bg-superficie px-4 text-[16px] text-tinta">
           <option value="">Cualquier zona</option>
           {zonas.map((z) => <option key={z.slug} value={z.nombre}>{z.nombre}</option>)}

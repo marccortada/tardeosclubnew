@@ -185,6 +185,9 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
     // Un tardeo pasado se puede corregir sin tocar su fecha. Solo se exige
     // fecha de hoy en adelante si se cambia la fecha.
     if (fecha !== tardeo?.fecha && fecha < hoy) { setError("La fecha nueva ya ha pasado. Elige una de hoy en adelante."); return; }
+    // Igual que al crear: sin hora de inicio se mandaba "" y la base contestaba
+    // con un error en inglés («invalid input syntax for type time»).
+    if (!horaInicio) { setError("Falta la hora de inicio."); return; }
     const enlacesSinTocar = precioInicial
       && precio.urlEntradas === precioInicial.urlEntradas && precio.urlPromos === precioInicial.urlPromos;
     const ep = errorPrecio(enlacesSinTocar ? { ...precio, urlEntradas: "", urlPromos: "" } : precio);

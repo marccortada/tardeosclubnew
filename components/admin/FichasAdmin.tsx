@@ -226,7 +226,7 @@ export default function FichasAdmin({ tipo }: { tipo: TipoFicha }) {
   };
 
   const filas = p.filas.map((f) => ({ ...f, zona: f.zona ?? (Array.isArray(f.zonas) ? f.zonas.join(", ") : null), oculto: esDj ? Boolean(f.oculto) : String(f.estado ?? "").startsWith("oculto") }));
-  const btn = "inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border px-3 text-sm font-semibold transition-colors disabled:opacity-50";
+  const btn = "inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border px-3 text-sm font-semibold transition-colors disabled:opacity-50";
 
   return (
     <SeccionPanel
@@ -326,7 +326,7 @@ export default function FichasAdmin({ tipo }: { tipo: TipoFicha }) {
                           <>
                             <Etiqueta>{f.zona_slug ? "Solo lectura · otra zona" : "Solo lectura · sin zona"}</Etiqueta>
                             <Link href={`/locales/${f.id}`} target="_blank" aria-label={`Ver ficha pública de ${f.nombre}`}
-                              className="grid min-h-[40px] min-w-[40px] place-items-center rounded-lg border border-linea-fuerte bg-white hover:bg-marfil-100">
+                              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-lg border border-linea-fuerte bg-white hover:bg-marfil-100">
                               <ExternalLink size={16} aria-hidden />
                             </Link>
                           </>
@@ -348,15 +348,15 @@ export default function FichasAdmin({ tipo }: { tipo: TipoFicha }) {
                           </button>
                         )}
                         <Link href={esDj ? `/dj/perfil?id=${f.id}` : `/local/editar?id=${f.id}`} aria-label={`Editar ${f.nombre}`}
-                          className="grid min-h-[40px] min-w-[40px] place-items-center rounded-lg border border-linea-fuerte bg-white hover:bg-marfil-100">
+                          className="grid min-h-[44px] min-w-[44px] place-items-center rounded-lg border border-linea-fuerte bg-white hover:bg-marfil-100">
                           <Pencil size={16} aria-hidden />
                         </Link>
                         <Link href={esDj ? `/djs/${f.id}` : `/locales/${f.id}`} target="_blank" aria-label={`Ver ficha pública de ${f.nombre}`}
-                          className="grid min-h-[40px] min-w-[40px] place-items-center rounded-lg border border-linea-fuerte bg-white hover:bg-marfil-100">
+                          className="grid min-h-[44px] min-w-[44px] place-items-center rounded-lg border border-linea-fuerte bg-white hover:bg-marfil-100">
                           <ExternalLink size={16} aria-hidden />
                         </Link>
                         <button onClick={() => pedirEliminar(f)} disabled={ocupada} aria-label={`Eliminar ${f.nombre}`}
-                          className="grid min-h-[40px] min-w-[40px] place-items-center rounded-lg border border-linea-fuerte bg-white text-error hover:bg-error-fondo disabled:opacity-50">
+                          className="grid min-h-[44px] min-w-[44px] place-items-center rounded-lg border border-linea-fuerte bg-white text-error hover:bg-error-fondo disabled:opacity-50">
                           <Trash2 size={16} aria-hidden />
                         </button>
                         </>)}

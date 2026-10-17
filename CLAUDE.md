@@ -218,8 +218,8 @@ servidor local no está en el 3000.
   `linea`/`linea-fuerte` (bordes). Estados `ok`, `aviso`, `error`.
 - Tipografía: **Manrope** para todo; **Dancing Script** (`font-script`) solo
   como acento puntual en la web pública.
-- Portada pública (`app/page.tsx`, sin sesión), pensada para móvil: hero a
-  pantalla completa (titular + «Ver tardeos» / «Únete gratis» + Hoy · Este finde ·
+- Portada pública (`app/page.tsx`, sin sesión), pensada para móvil: hero casi a
+  pantalla completa, con tope de 560 px en móvil para que asome el primer tardeo (titular + «Ver tardeos» / «Únete gratis» + Hoy · Este finde ·
   Cerca de mí) → próximos tardeos → «¿Qué te apetece hoy?» (6 estilos) →
   `CarruselDjs` (3 visibles, laterales pequeños y difuminados) → «Así de fácil»
   (3 pasos) → locales y DJs → FAQ (5) → cierre con WhatsApp. Sin mapa, sin franja
@@ -229,6 +229,18 @@ servidor local no está en el 3000.
   Fotos con `propsFoto()` de `lib/fotos.ts` (tamaño según pantalla).
 - Con sesión, `/` es el Inicio de app (`components/tardicola/InicioApp.tsx`); el
   mapa se carga con `next/dynamic` solo ahí.
+- Ficha del tardeo en móvil: barra fija «Asistiré / Guardar» encima de la barra
+  inferior (`components/tardicola/AccionesFicha.tsx`), que se esconde cuando el bloque
+  completo (`AccionTardeo`) está en pantalla. Ambos comparten la clave de
+  `sessionStorage` de la intención sin sesión: si cambia en uno, cambiarla en el otro.
+  `BottomNav` publica su altura real en la variable CSS `--alto-barra-inferior`.
+- Mapa: el CSS de Leaflet NO va en `app/layout.tsx`; lo importan los componentes de
+  mapa junto con `components/mapa.css` (que va después para no ser pisado). Los logos
+  de las chinchetas pasan por el optimizador (`optimizable()` de `lib/fotos.ts`;
+  calidad 75, la única que admite Next 16 por defecto).
+- Cabeceras de seguridad en `next.config.mjs` (`headers()`): sin iframes ajenos,
+  `nosniff`, `Referrer-Policy`, `Permissions-Policy` (sin bloquear `payment`, que
+  PayPal necesitará) y sin `x-powered-by`.
 - No poner carruseles nuevos salvo el de DJs (el cliente no los quiere).
 - Fotos de stock: `lib/fotos.ts` (Unsplash, `unoptimized`).
 
@@ -300,13 +312,36 @@ veces sin romper nada). Se aplican en orden desde Supabase → SQL Editor.
 - `70` Índices duplicados que dejó el paquete. `71` `feed_djs` enseña todos los DJs.
 - `72` Borrar: sorteos en **borrador** (solo admin) y hilos/respuestas/anuncios de
   Entre Beats (su autor o un admin).
+- `73` Arreglos de la auditoría del 17‑oct (`PEGAR_73.sql`, **pendiente de pegar**):
+  sorteo al azar sin pgcrypto (en Supabase vive en `extensions`), tardeos cancelados y
+  finalizados visibles (solo de locales activos), programados vencidos = publicados en
+  avisos, no apuntarse a tardeos cerrados ni valorar sin haber ido
+  (`private.tardeo_cerrado_motivo`), lista de espera y avisos de plaza, nadie se asigna
+  un rol a sí mismo, `admin_asignar_rol` por `auth.users` confirmado, **email del perfil
+  bloqueado** (se sincroniza desde Auth), `es_profesional()` = local activo o DJ no
+  oculto, métricas solo por `medir_evento`, bucket `flyers` con 10 MB y tipos, políticas
+  restrictivas de Storage, `djs.oculto` solo admin, comentarios ocultos por admin,
+  columnas de pago de `djs` cerradas a anon, URLs http(s), tope de códigos de promo,
+  filtro de teléfonos/emails, Meet Zone con la regla de fin, `nexo_sesiones` sin ocultos,
+  `cola_trabajo_total`. Probado en local: 175 comprobaciones bien.
 
 Paquetes para pegar de una vez: `PEGAR_45_a_62.sql`, `PEGAR_63_a_69.sql`,
 `PEGAR_70_71.sql`, `PEGAR_72.sql` — **todos aplicados en producción el 15‑oct‑2026**.
-El siguiente lote libre es el **73**.
+El siguiente lote libre es el **74**. Candidato: quitar permisos de TABLA y dejar los de
+columna en `nexo_envios` (un DJ podría insertar su envío ya «aceptado») y en `djs`
+(`revoke update (seguidores)` no surte efecto). Con los permisos por defecto de Supabase
+un `grant (col)` NO restringe nada si la tabla ya tiene el permiso completo.
 `supabase/limpieza/` = limpieza de duplicados de la migración (**no aplicada**:
 necesita "sí"; recuentos con `node --env-file=.env.local scripts/limpieza-recuentos.mjs`,
-solo lectura).
+solo lectura). Orden, efecto y garantías en `supabase/limpieza/LEEME.md`. Revisada el
+17‑oct contra los lotes 01‑72: reasigna las métricas en vez de abortar y marca cada
+transacción como escritura del servidor.
+
+**Ojo con el SQL Editor:** no tiene sesión de usuario, así que para la base no eres admin
+y los disparadores de protección (lotes 9, 19, 33, 37…) **deshacen en silencio** los
+cambios de estado, orden de destacados, verificado o plan. Un `update` de esas columnas
+pegado a pelo "funciona" y no cambia nada. En scripts de datos, empezar la transacción con
+`select set_config('request.jwt.claims', '{"role":"service_role"}', true);`.
 
 **Estado de los Advisors (15‑oct‑2026, tras el 71):** Security 0 errores, 1 aviso
 ("Leaked Password Protection", requiere plan Pro: **el cliente no quiere Pro**,
@@ -424,7 +459,9 @@ Los usuarios reportan problemas con "¿Algo no funciona?" → `incidencias` →
 bash scripts/desplegar.sh
 ```
 
-Compila con `NEXT_PUBLIC_SITE_URL=https://crm.gnerai.com`, sube por rsync al
+Compila con `NEXT_PUBLIC_SITE_URL=https://crm.gnerai.com` y con la clave pública de push
+(`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, que **lee del `.env` del servidor** para que sea la pareja
+de la privada con la que se envía; si falta o no entra en el JS, no despliega), sube por rsync al
 droplet (`/var/www/tardeosclub`), repone `sharp` de Linux y reinicia PM2.
 El script explica por qué cada exclusión de rsync es necesaria: **no quitarlas**.
 Antes de desplegar: `npx tsc --noEmit` y `npm run lint` sin errores, y los
@@ -452,8 +489,8 @@ salvo `.env.example`.
   `instagram.com/tardeosclub`, supuesto).
 - Email de Sergi → `/admin/equipo`: tarea Zona, zona Tarragona (+ su local).
   Nombre del responsable de Girona.
-- "Sí" a la limpieza de duplicados (15‑oct: 794 tardeos, 59 locales, 30 DJs;
-  6 métricas cuelgan de tardeos duplicados: reasignar, no borrar).
+- "Sí" a la limpieza de duplicados (17‑oct: 794 tardeos, 59 locales, 30 DJs; de las copias
+  cuelgan 26 métricas, que los scripts reasignan). Ver `supabase/limpieza/LEEME.md`.
 - Decidir: aviso de 1 h también a guardados (hoy no); valorar si el local te marcó
   "no vino" (hoy no); acceso sin cuenta / corte de 5 minutos.
 - Cargar oferta real: hoy solo hay 1 tardeo próximo.
@@ -464,8 +501,11 @@ salvo `.env.example`.
   confirme el pago → `coins_movimientos` tipo compra / alta de plan) y encender
   `planes_activos` / `coins_activos`. Hasta entonces la UI dice "Próximamente".
 - Borrar las cuentas `@prueba.tardeosclub.com` al lanzar; dejar un solo admin global.
-- Ocultar fichas de prueba (gnerai, Interdesign, localp).
-- Rotar claves VAPID si producción usa las del historial.
+- Ocultar fichas de prueba (gnerai, Interdesign, localp): `supabase/limpieza/L8_*.sql`,
+  pendiente de pegar. "oletu" (sin dueño, 0 tardeos) sin confirmar si es prueba.
+- Claves VAPID: la del historial público del repo NO es la de producción (comprobado el
+  17‑oct por huella); no hace falta rotar. Hasta el 17‑oct el build desplegado no llevaba
+  la clave pública y no se podían activar notificaciones (arreglado en `desplegar.sh`).
 - Press kit en PDF: sigue en el bucket público `flyers` (la URL ya no se expone a
   no profesionales); cerrarlo del todo = bucket privado + URL firmada.
 - "Desde X €" (falta columna de precio mínimo), banner/ciudad editables en
@@ -474,9 +514,19 @@ salvo `.env.example`.
 - Prueba de punta a punta (15‑oct, 4 cuentas, móvil): todo lo bloqueante e
   importante arreglado. Sin probar por falta de datos: enviar solicitud de mensaje
   a un DJ real, comentar un set, participar en un sorteo publicado, press kit de
-  un DJ visible. Sin reproducir: un 400 en consola al publicar un set. Contadores
-  de admin que no cuadran del todo («Cola de trabajo» de la pestaña frente a
-  «Para hoy»; «Locales activos» 126 frente a 122 en Fichas).
+  un DJ visible. El 400 al publicar un set era casi seguro un título de solo
+  espacios (validado desde el 17‑oct).
+- Auditoría 17‑oct (seguridad, lógica, móvil): todo lo encontrado está arreglado en
+  código o en el lote 73, salvo: roles de zona/tarea aún con casi todo el poder en la
+  base (en la API ya se exige admin general para push, ofertas, borrar cuentas y datos
+  de usuario; hoy no hay roles asignados), retención por 3 denuncias de cuentas
+  nuevas, `perfil_publico` abierto (lo usan los comentarios públicos de sets), revisar
+  en el panel de Storage políticas antiguas demasiado abiertas, y fotos HEIC de iPhone
+  (ahora se rechazan por tipo).
+- Datos de producción que revisar con el cliente: «Tardeo House + Tardeo Hits» dice
+  Café Royale (Barcelona) en el flyer y EL REENCUENTRO (Mataró) en la ficha; «Fiesta
+  Sevillanas» pone 21 feb en el flyer y 2 ene en la ficha. `/legal/privacidad` aún dice
+  «Pendiente» en los datos de la empresa.
 - Git: todo está en la rama `rediseno`; `main` sigue con la versión antigua
   (4‑oct). Pasarlo a `main` cuando se decida y avisar al compañero.
 - Probar en móviles reales (Android Chrome + iPhone Safari): piloto de 2 semanas

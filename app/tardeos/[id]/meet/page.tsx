@@ -210,16 +210,17 @@ export default function MeetZone() {
           const separador = i === 0 || fechaCorta(mensajes[i - 1].created_at) !== d ? d : null;
           return (
             <div key={m.id}>
-              {separador && <p className="my-2 text-center text-[12px] text-tinta-suave">{separador}</p>}
+              {separador && <p className="my-2 text-center text-[13px] text-tinta-suave">{separador}</p>}
               <div className={`flex items-start gap-1 ${mio ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${mio ? "bg-magenta-50" : "bg-marfil-100"} ${m.retenido ? "opacity-60" : ""}`}>
                   {!mio && (
-                    <button type="button" onClick={() => setVerPerfil(m.autor)} className="text-[13px] font-bold text-magenta">
+                    // 15 px y 44 px de alto: es un botón (abre el perfil) y a 13 px era difícil de leer y de acertar.
+                    <button type="button" onClick={() => setVerPerfil(m.autor)} className="-my-1.5 flex min-h-[44px] items-center text-left text-[15px] font-bold text-magenta-700 dark:text-magenta-400">
                       {p?.alias ?? "…"}{esOrg && " · Organizador"}
                     </button>
                   )}
                   <p className="whitespace-pre-wrap break-words text-[15px]">{m.texto}</p>
-                  <p className="text-right text-[11px] text-tinta-suave">
+                  <p className="text-right text-[13px] text-tinta-suave">
                     {m.retenido && "Retenido para revisión · "}{horaCorta(m.created_at)}
                   </p>
                 </div>

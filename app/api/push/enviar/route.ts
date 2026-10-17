@@ -1,7 +1,7 @@
 import webpush from "web-push";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { autorizarAdmin, endpointPushPermitido, urlInternaSegura } from "@/lib/apiAuth";
+import { autorizarAdminGlobal, endpointPushPermitido, urlInternaSegura } from "@/lib/apiAuth";
 import { encajaSegmento } from "@/lib/segmentacion";
 
 export const runtime = "nodejs";
@@ -25,7 +25,8 @@ export async function POST(req: Request) {
 
   // La sesión ANTES que la configuración: qué falta en el servidor no es
   // asunto de un visitante anónimo.
-  const auth = await autorizarAdmin(body.accessToken, req);
+  // Un push le suena a TODA la base: solo admin general, no de zona ni de tarea.
+  const auth = await autorizarAdminGlobal(body.accessToken, req);
   if (auth instanceof NextResponse) return auth;
 
   const URL_SB = process.env.NEXT_PUBLIC_SUPABASE_URL;

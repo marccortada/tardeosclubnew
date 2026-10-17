@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
@@ -34,27 +34,42 @@ export default function BandejaDj() {
   const [confirmar, setConfirmar] = useState<Solicitud | null>(null);
   const [denunciar, setDenunciar] = useState<string | null>(null);
 
+  // Última carga pedida: si se cambia de pestaña antes de que llegue la
+  // anterior, la vieja se descarta y no pisa la lista nueva.
+  const turno = useRef(0);
+
   useEffect(() => {
     if (!user) return;
+    const c = new URLSearchParams(window.location.search).get("c");
     (async () => {
       const { data } = await supabase.from("djs").select("id,nombre_artistico").eq("profile_id", user.id)
         .order("created_at").limit(1).maybeSingle();
       const d = (data as { id: string; nombre_artistico: string } | null) ?? null;
+      if (d && c) {
+        // El aviso abre /dj/mensajes?c=<id>. Si esa solicitud ya está
+        // aceptada (o rechazada), en «Pendientes» no sale y el DJ leía «No
+        // tienes solicitudes pendientes». Se mira su estado y se abre su
+        // pestaña ANTES de fijar el DJ, para que la primera carga ya sea esa.
+        const { data: sol } = await supabase.from("solicitudes_mensaje").select("estado")
+          .eq("id", c).eq("dj_id", d.id).maybeSingle();
+        const est = (sol as { estado: string } | null)?.estado;
+        if (est === "pendiente" || est === "aceptada" || est === "rechazada") setPestana(est);
+        setAbierta(c);
+      }
       setDj(d);
       if (d) {
         const { data: a } = await supabase.from("dj_mensajes_ajustes").select("acepta_solicitudes").eq("dj_id", d.id).maybeSingle();
         setAcepta((a as { acepta_solicitudes: boolean } | null)?.acepta_solicitudes ?? true);
       }
     })();
-    const c = new URLSearchParams(window.location.search).get("c");
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- se lee la URL una vez (sistema externo)
-    if (c) setAbierta(c);
   }, [user]);
 
   const cargar = useCallback(async (djId: string, p: Pestana) => {
+    const yo = ++turno.current;
     setFilas(null);
     const { data, error } = await supabase.from("solicitudes_mensaje").select("id,de,dj_id,texto,estado,respondida_en,created_at")
       .eq("dj_id", djId).eq("estado", p).order("created_at", { ascending: false }).limit(50);
+    if (yo !== turno.current) return; // llegó tarde: hay otra más nueva
     if (error) { setError(textoError(error)); setFilas([]); return; }
     setError(null);
     const f = (data as Solicitud[]) ?? [];

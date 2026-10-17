@@ -10,7 +10,8 @@ import { BotonPlay, BotonSeguir, HojaComentarios } from "@/components/musica/pie
 import { useAuth } from "@/lib/useAuth";
 import { getAdn } from "@/lib/tardicola";
 import { entrarYVolver } from "@/lib/volver";
-import { getFeed, gustarSet, guardarSet, portadaDe, type TarjetaFeed } from "@/lib/sets";
+import { getFeed, gustarSetDetalle, guardarSetDetalle, portadaDe, type TarjetaFeed } from "@/lib/sets";
+import { optimizable } from "@/lib/fotos";
 
 const POR_PAGINA = 6;
 
@@ -42,7 +43,18 @@ export default function FeedDjs() {
   const [error, setError] = useState<string | null>(null);
   const [comentando, setComentando] = useState<TarjetaFeed | null>(null);
   const centinela = useRef<HTMLDivElement>(null);
-  const pidiendo = useRef(false);
+  // Número de la última petición lanzada. Al cambiar de pestaña se lanza una
+  // nueva aunque haya otra en curso: la vieja, al llegar, ve que ya no es la
+  // última y se descarta. Antes un booleano "pidiendo" hacía que el reinicio
+  // se saltara y luego llegaba la página de la pestaña anterior (listas
+  // mezcladas y sin los primeros de la nueva).
+  const peticion = useRef(0);
+  // Solo para "cargar más": evita pedir dos veces la misma página mientras
+  // el scroll sigue viendo el centinela. Un reinicio no lo respeta.
+  const enVuelo = useRef(false);
+  // ♥ / guardar con petición en curso (clave "tipo:dj"): un doble toque
+  // lanzaba alta y baja a la vez y el contador acababa descuadrado.
+  const marcando = useRef(new Set<string>());
 
   // ADN del usuario (si lo tiene). Sin sesión, sin ADN: orden general.
   useEffect(() => {
@@ -52,11 +64,14 @@ export default function FeedDjs() {
   }, [user, loading]);
 
   const cargar = useCallback(async (reiniciar: boolean) => {
-    if (estilos === null || pidiendo.current) return;
-    pidiendo.current = true; setCargando(true);
+    if (estilos === null) return;
+    if (!reiniciar && enVuelo.current) return;
+    const yo = ++peticion.current;
+    enVuelo.current = true; setCargando(true);
     const desde = reiniciar ? 0 : items.length;
     const r = await getFeed(modo === "siguiendo", estilos, desde, POR_PAGINA);
-    pidiendo.current = false; setCargando(false);
+    if (yo !== peticion.current) return; // llegó tarde: hay otra más nueva
+    enVuelo.current = false; setCargando(false);
     if (r.error) { setError(r.error); setFin(true); return; }
     setError(null);
     setItems((xs) => (reiniciar ? r.data : [...xs, ...r.data.filter((n) => !xs.some((x) => x.dj_id === n.dj_id))]));
@@ -66,8 +81,12 @@ export default function FeedDjs() {
   // Al cambiar de pestaña o tener el ADN: empezar de cero.
   useEffect(() => {
     if (estilos === null) return;
-    if (modo === "siguiendo" && !user) { setItems([]); setFin(true); return; }
-    setItems([]); setFin(false);
+    if (modo === "siguiendo" && !user) {
+      // Invalida lo que estuviera en camino para que no rellene esta pestaña.
+      peticion.current++; enVuelo.current = false;
+      setItems([]); setFin(true); setCargando(false); return;
+    }
+    setItems([]); setFin(false); setError(null);
     void cargar(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modo, estilos, user]);
@@ -88,16 +107,26 @@ export default function FeedDjs() {
   async function marcar(t: TarjetaFeed, tipo: "like" | "guardar") {
     if (!user) { router.push(entrarYVolver("/djs")); return; }
     if (!t.set_id) return;
-    if (tipo === "like") {
-      const v = !t.me_gusta;
-      cambiar(t.dj_id, { me_gusta: v, set_likes: Math.max(0, (t.set_likes ?? 0) + (v ? 1 : -1)) });
-      const e = await gustarSet(t.set_id, user.id, v);
-      if (e) cambiar(t.dj_id, { me_gusta: t.me_gusta, set_likes: t.set_likes });
-    } else {
-      const v = !t.guardado;
-      cambiar(t.dj_id, { guardado: v });
-      const e = await guardarSet(t.set_id, user.id, v);
-      if (e) cambiar(t.dj_id, { guardado: t.guardado });
+    const clave = `${tipo}:${t.dj_id}`;
+    if (marcando.current.has(clave)) return; // ya hay una en vuelo: se ignora el segundo toque
+    marcando.current.add(clave);
+    try {
+      if (tipo === "like") {
+        const v = !t.me_gusta;
+        cambiar(t.dj_id, { me_gusta: v, set_likes: Math.max(0, (t.set_likes ?? 0) + (v ? 1 : -1)) });
+        const r = await gustarSetDetalle(t.set_id, user.id, v);
+        // Fallo: todo como estaba. "Ya estaba así": el ♥ queda, pero el
+        // contador de la base no se movió, así que tampoco el de la tarjeta.
+        if (r.error) { cambiar(t.dj_id, { me_gusta: t.me_gusta, set_likes: t.set_likes }); alert(r.error); }
+        else if (!r.cambio) cambiar(t.dj_id, { me_gusta: v, set_likes: t.set_likes });
+      } else {
+        const v = !t.guardado;
+        cambiar(t.dj_id, { guardado: v });
+        const r = await guardarSetDetalle(t.set_id, user.id, v);
+        if (r.error) { cambiar(t.dj_id, { guardado: t.guardado }); alert(r.error); }
+      }
+    } finally {
+      marcando.current.delete(clave);
     }
   }
 
@@ -111,7 +140,7 @@ export default function FeedDjs() {
 
   return (
     <>
-    <main className="fixed inset-x-0 top-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-[60] bg-black text-white md:bottom-0">
+    <main className="fixed inset-x-0 top-0 bottom-[var(--alto-barra-inferior,calc(64px+env(safe-area-inset-bottom)))] z-[60] bg-black text-white md:bottom-0">
       {/* Pestañas sobre el feed */}
       <div role="tablist" aria-label="Feed de DJs" className="absolute inset-x-0 top-0 z-20 flex justify-center gap-6 bg-gradient-to-b from-black/60 to-transparent pb-6 pt-[max(12px,env(safe-area-inset-top))]">
         {([["parati", "Para ti"], ["siguiendo", "Siguiendo"]] as const).map(([k, l]) => (
@@ -124,12 +153,26 @@ export default function FeedDjs() {
 
       <div className="mx-auto h-full max-w-md snap-y snap-mandatory overflow-y-auto overscroll-contain [scrollbar-width:none]">
         {items.map((t, i) => {
-          const fondo = portadaDe({ portada: t.set_portada, url: t.set_url }) || t.evento_flyer || t.banner_url || t.avatar_url;
+          // Imagen propia de la tarjeta (portada del set, flyer o banner). Si solo
+          // hay avatar (400x400), estirarlo a pantalla completa daba una cara
+          // enorme y pixelada: va difuminado de fondo y nítido en un círculo.
+          const propia = portadaDe({ portada: t.set_portada, url: t.set_url }) || t.evento_flyer || t.banner_url;
+          const fondo = propia || t.avatar_url;
           const sesion = [t.set_titulo ?? t.evento_titulo, (t.set_estilos?.length ? t.set_estilos : t.estilos ?? []).slice(0, 2).join(" / ")].filter(Boolean).join(" · ");
           return (
             <article key={t.dj_id} className="relative h-full w-full snap-start snap-always overflow-hidden" aria-label={t.nombre}>
-              {fondo ? (
-                <Image src={fondo} alt="" fill sizes="448px" priority={i < 2} unoptimized className="object-cover" />
+              {propia ? (
+                <Image src={propia} alt="" fill sizes="(max-width: 448px) 100vw, 448px" priority={i < 2} unoptimized={!optimizable(propia)} className="object-cover" />
+              ) : t.avatar_url ? (
+                <>
+                  {/* Fondo: el avatar pequeñito (64 px) muy difuminado y oscurecido;
+                      con blur fuerte no hace falta más resolución. */}
+                  <Image src={t.avatar_url} alt="" fill sizes="64px" priority={i < 2} unoptimized={!optimizable(t.avatar_url)}
+                    className="scale-125 object-cover blur-2xl brightness-[0.55]" />
+                  <div className="absolute left-1/2 top-[16%] h-40 w-40 -translate-x-1/2 overflow-hidden rounded-full shadow-2xl ring-4 ring-white/80">
+                    <Image src={t.avatar_url} alt="" fill sizes="160px" priority={i < 2} unoptimized={!optimizable(t.avatar_url)} className="object-cover" />
+                  </div>
+                </>
               ) : <div className="absolute inset-0 bg-[linear-gradient(160deg,#2B0A26,#930E72_60%,#D61AA8)]" />}
               <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/80" />
 

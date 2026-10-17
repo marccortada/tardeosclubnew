@@ -77,6 +77,14 @@ export async function revisarSalud(): Promise<{ pruebas: Prueba[]; datos: Record
       return { error, nota: `${count ?? 0} tardeos en total` };
     }),
 
+    // No es de la base: la clave pública de push se incrusta al COMPILAR. Si el
+    // build se hizo sin ella, nadie puede activar las notificaciones y nada
+    // más avisa (pasó el 15-oct). scripts/desplegar.sh ya la lee del servidor.
+    comprobar("Notificaciones push en la web", "Vuelve a desplegar con bash scripts/desplegar.sh (lee la clave del .env del servidor).", async () =>
+      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+        ? { error: null, nota: "La web lleva la clave pública" }
+        : { error: { message: "Esta versión de la web se compiló sin NEXT_PUBLIC_VAPID_PUBLIC_KEY: «Activar notificaciones» no puede funcionar." } }),
+
     comprobar("Métricas por evento", "Pega supabase/34_metricas_eventos.sql", async () => {
       const { error, count } = await supabase.from("eventos_metrica").select("id", { count: "exact" }).limit(0);
       if (!error) datos.metricas = count ?? 0;
@@ -245,6 +253,16 @@ export async function revisarSalud(): Promise<{ pruebas: Prueba[]; datos: Record
         return { error: { message: `El feed solo enseña ${filas.length} de ${d.count} DJs (los que tienen set o evento).` } };
       }
       return { error: null, nota: "Correcto" };
+    }),
+    // Lote 73 (arreglos de la auditoría): casi todo son funciones y políticas
+    // que no se ven leyendo; se comprueban dos piezas nuevas que sí: la marca
+    // de rechazos por bloqueo y el total de la cola de trabajo.
+    comprobar("Arreglos de la auditoría (lote 73)", "Pega supabase/PEGAR_73.sql", async () => {
+      const [s, c] = await Promise.all([
+        supabase.from("solicitudes_mensaje").select("por_bloqueo").limit(0),
+        supabase.rpc("cola_trabajo_total", { p_tipo: null, p_zona: null, p_solo_mias: false, p_estado: "abiertas" }),
+      ]);
+      return { error: s.error ?? existeFuncion(c.error) };
     }),
   ]);
 

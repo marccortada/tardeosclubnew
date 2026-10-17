@@ -100,7 +100,7 @@ export default function PanelShell({
       {grupos.map((g, gi) => (
         <div key={gi}>
           {g.titulo && (
-            <p className="mb-1.5 px-3 text-[12px] font-semibold uppercase tracking-wider text-tinta-suave/80">{g.titulo}</p>
+            <p className="mb-1.5 px-3 text-[13px] font-semibold uppercase tracking-wider text-tinta-suave">{g.titulo}</p>
           )}
           <ul className="flex flex-col gap-0.5">
             {g.items.map((i) => {
@@ -118,7 +118,7 @@ export default function PanelShell({
                     <i.icon size={19} strokeWidth={on ? 2.4 : 2} className={on ? "text-magenta" : "text-tinta-suave group-hover:text-tinta"} aria-hidden />
                     <span className="flex-1 truncate">{i.label}</span>
                     {i.nota && (
-                      <span className="shrink-0 rounded-full bg-marfil-100 px-1.5 py-0.5 text-[11px] font-semibold text-tinta-suave">{i.nota}</span>
+                      <span className="shrink-0 rounded-full bg-marfil-100 px-1.5 py-0.5 text-[13px] font-semibold text-tinta-suave">{i.nota}</span>
                     )}
                     {!!badge && badge > 0 && (
                       <span className="grid min-w-[22px] place-items-center rounded-full bg-magenta px-1.5 text-xs font-bold leading-[22px] text-white">
@@ -181,7 +181,7 @@ export default function PanelShell({
         <Image src="/branding/icon-192.png" alt="" width={40} height={40} className="h-10 w-10 rounded-xl" />
       </Link>
       <div className="min-w-0">
-        <p className="text-[12px] font-semibold uppercase tracking-wider text-magenta">{rol}</p>
+        <p className="text-[13px] font-semibold uppercase tracking-wider text-magenta">{rol}</p>
         <p className="truncate text-[15px] font-bold leading-tight">{nombre || "TardeosClub"}</p>
       </div>
     </div>
@@ -205,7 +205,7 @@ export default function PanelShell({
           <Menu size={24} />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase leading-none tracking-wider text-magenta">{rol}</p>
+          <p className="text-[13px] font-semibold uppercase leading-none tracking-wider text-magenta">{rol}</p>
           <p className="truncate text-base font-bold leading-tight">{hijaActual?.label ?? actual?.label ?? nombre ?? ""}</p>
         </div>
         <Link href="/" className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-linea-fuerte px-3 text-[14px] font-semibold text-tinta hover:bg-marfil-100">

@@ -95,9 +95,9 @@ export default function TardeoCard({
             encima del flyer además de compartir: el precio baja al texto para
             no taparle media cabecera al cartel. */}
         <div className="absolute left-2.5 top-2.5 z-20 flex min-w-[46px] flex-col items-center rounded-xl bg-white px-1.5 py-1 md:min-w-[52px] md:px-2 md:py-1.5 text-center leading-none text-tinta shadow-elevada md:left-3 md:top-3">
-          <span className={`text-[11px] font-extrabold tracking-wide ${f.relativo ? "text-magenta-700" : "text-tinta-suave"}`}>{f.arriba}</span>
-          <span className="text-[19px] font-extrabold tracking-tight md:mt-0.5 md:text-[22px]">{f.dia}</span>
-          <span className="text-[11px] font-bold tracking-wide text-tinta-suave md:mt-0.5">{f.mes}</span>
+          <span className={`text-[13px] font-extrabold tracking-wide ${f.relativo ? "text-magenta-700" : "text-tinta-suave"}`}>{f.arriba}</span>
+          <span className="text-[22px] font-extrabold tracking-tight md:mt-0.5">{f.dia}</span>
+          <span className="text-[13px] font-bold tracking-wide text-tinta-suave md:mt-0.5">{f.mes}</span>
         </div>
 
         <CompartirBtn

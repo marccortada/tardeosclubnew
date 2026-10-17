@@ -48,9 +48,13 @@ export async function POST(req: Request) {
 
   // ---- a) y b): tardeos de ayer a mañana (el fin puede caer de madrugada) ----
   const dia = (d: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date(ahora.getTime() + d * 86400000));
+  // «Visible» = publicado, o programado cuya hora de salida ya llegó: la web
+  // lo enseña y deja apuntarse, pero su estado no cambia nunca a 'publicado'.
+  // Filtrando solo 'publicado', sus apuntados se quedaban sin ningún aviso.
+  const visible = `estado.eq.publicado,and(estado.eq.programado,publicar_en.lte.${ahora.toISOString()})`;
   const { data: tardeos, error: eT } = await db.from("tardeos")
     .select("id,titulo,fecha,hora_inicio,hora_fin,horario_version")
-    .eq("estado", "publicado").gte("fecha", dia(-1)).lte("fecha", dia(1));
+    .or(visible).gte("fecha", dia(-1)).lte("fecha", dia(1));
   if (eT) {
     registrar("avisos", "no se pudieron leer los tardeos (¿falta el lote 67?)", eT);
     return NextResponse.json({ error: "No se pudieron leer los tardeos. ¿Falta el lote 67?" }, { status: 500 });
@@ -73,8 +77,10 @@ export async function POST(req: Request) {
       }
       resumen.unaHora += dest.length;
     } else {
-      // La encuesta es solo para quien tenía plaza: a los guardados no.
-      const dest = apuntados.filter((p) => pref.get(p)?.fin_evento !== false);
+      // La encuesta es solo para quien tenía plaza: a los guardados no. Ni a
+      // quien el local marcó «no vino»: la encuesta le diría «no estuviste».
+      const noVinieron = await noAsistieron(db, t.id);
+      const dest = apuntados.filter((p) => pref.get(p)?.fin_evento !== false && !noVinieron.has(p));
       for (const p of dest) nuevos.push({ profile_id: p, aviso: textoFin(t) });
       resumen.fin += dest.length;
     }
@@ -82,10 +88,11 @@ export async function POST(req: Request) {
 
   // ---- c) cambios de horario y cancelaciones ----
   const hace48 = new Date(ahora.getTime() - 48 * 3600000).toISOString();
-  const { data: cambiados } = await db.from("tardeos")
+  const { data: cambiados, error: eC } = await db.from("tardeos")
     .select("id,titulo,fecha,hora_inicio,hora_fin,horario_version")
-    .eq("estado", "publicado").gte("horario_cambiado_en", hace48)
+    .or(visible).gte("horario_cambiado_en", hace48)
     .lte("horario_cambiado_en", new Date(ahora.getTime() - ESPERA_CAMBIO_MS).toISOString());
+  if (eC) registrar("avisos", "no se pudieron leer los cambios de horario", eC);
   for (const t of cambiados ?? []) {
     if (instantesTardeo(t).inicio <= ahora) continue; // ya empezó: no tiene sentido
     const dest = [...new Set([...(await inscritos(db, t.id)), ...(await guardadosDe(db, t.id))])];
@@ -94,13 +101,15 @@ export async function POST(req: Request) {
   }
 
   const sinPushA = new Set<string>(); // "<perfil>|<clave>": ya avisados por /api/avisar-apuntados
-  const { data: cancelados } = await db.from("tardeos")
-    .select("id,titulo,fecha,avisado_cancelacion_en")
+  const { data: cancelados, error: eX } = await db.from("tardeos")
+    .select("id,titulo,fecha,avisado_cancelacion_en,cancelado_en")
     .eq("estado", "cancelado").gte("cancelado_en", hace48)
     .lte("cancelado_en", new Date(ahora.getTime() - ESPERA_CANCELACION_MS).toISOString())
     .gte("fecha", dia(0));
+  if (eX) registrar("avisos", "no se pudieron leer las cancelaciones", eX);
   for (const t of cancelados ?? []) {
-    const ap = await inscritos(db, t.id);
+    // También a quien estaba en lista de espera: también contaba con ir.
+    const ap = await inscritos(db, t.id, ["apuntado", "espera"]);
     const dest = [...new Set([...ap, ...(await guardadosDe(db, t.id))])];
     const av = textoCancelacion(t);
     if (t.avisado_cancelacion_en) ap.forEach((p) => sinPushA.add(`${p}|${av.clave}`));
@@ -140,11 +149,21 @@ export async function GET() {
 
 // ------------------------------------------------------------------------------
 
-async function inscritos(db: SupabaseClient, tardeo: string): Promise<string[]> {
+async function inscritos(db: SupabaseClient, tardeo: string, estados = ["apuntado"]): Promise<string[]> {
   // "Asistiré" = inscripción 'apuntado'. Al cancelar el tardeo no se tocan,
   // así que sirven también para avisar de la cancelación.
-  const { data } = await db.from("inscripciones").select("profile_id").eq("tardeo_id", tardeo).eq("estado", "apuntado");
+  const { data, error } = await db.from("inscripciones").select("profile_id").eq("tardeo_id", tardeo).in("estado", estados);
+  // Un fallo aquí NO es «nadie apuntado»: se para la pasada (el cron vuelve a
+  // los 10 min y, como es idempotente, no duplica nada).
+  if (error) throw new Error(`No se pudieron leer los inscritos de ${tardeo}: ${error.message}`);
   return [...new Set((data ?? []).map((r) => r.profile_id as string))];
+}
+
+/** Quien el local marcó «no vino» (lote 48). Si no se puede leer, nadie: mejor avisar de más. */
+async function noAsistieron(db: SupabaseClient, tardeo: string): Promise<Set<string>> {
+  const { data, error } = await db.from("inscripciones").select("profile_id")
+    .eq("tardeo_id", tardeo).eq("asistencia", "no_asistio");
+  return new Set(error ? [] : (data ?? []).map((r) => r.profile_id as string));
 }
 
 async function guardadosDe(db: SupabaseClient, tardeo: string): Promise<string[]> {

@@ -24,8 +24,29 @@ PROCESO="tardeosclub"
 # canónica, en el og:url que usa WhatsApp y en las 102 URLs del sitemap.
 export NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-https://crm.gnerai.com}"
 
+# La clave pública de las notificaciones push también va en el BUILD, y tiene
+# que ser la PAREJA de la privada con la que el servidor envía (está en su
+# .env). Se lee de allí y no de .env.local: el 15-oct se compiló en un Mac sin
+# ella y en producción «Activar notificaciones» decía «Falta configurar las
+# notificaciones en el servidor» a todo el mundo, sin que nada avisara.
+if [ -z "${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}" ]; then
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY=$(ssh "$SERVIDOR" \
+    "grep -E '^NEXT_PUBLIC_VAPID_PUBLIC_KEY=' $DESTINO/.env | head -1 | cut -d= -f2- | tr -d '\"\r'")
+fi
+if [ -z "$NEXT_PUBLIC_VAPID_PUBLIC_KEY" ]; then
+  echo "▸ Falta NEXT_PUBLIC_VAPID_PUBLIC_KEY en $DESTINO/.env del servidor: sin ella no funcionan las notificaciones. No despliego."
+  exit 1
+fi
+export NEXT_PUBLIC_VAPID_PUBLIC_KEY
+
 echo "▸ Compilando para $NEXT_PUBLIC_SITE_URL"
 npm run build
+
+# Que la clave haya entrado de verdad en el JavaScript del navegador.
+if ! grep -rqF "$NEXT_PUBLIC_VAPID_PUBLIC_KEY" .next/static; then
+  echo "▸ El build no lleva la clave pública de notificaciones. No despliego."
+  exit 1
+fi
 
 echo "▸ Subiendo el servidor"
 rsync -az --delete .next/standalone/ "$SERVIDOR:$DESTINO/" \

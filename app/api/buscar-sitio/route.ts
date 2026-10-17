@@ -26,6 +26,8 @@ export const runtime = "nodejs";
 // Crear un tardeo son dos o tres búsquedas. 60 deja margen de sobra para
 // corregirse y sigue siendo un techo si alguien se pone a darle sin parar.
 const BUSQUEDAS_POR_HORA = 60;
+// Entre todas las cuentas (~32 $ por cada 1.000 en Google Places).
+const BUSQUEDAS_GLOBALES_POR_HORA = 400;
 
 export type Sitio = {
   display: string;
@@ -123,6 +125,10 @@ export async function POST(req: Request) {
 
   if (!(await pasaLimite(`sitio:${auth.uid}`, BUSQUEDAS_POR_HORA))) {
     return respuestaLimite("búsquedas de dirección");
+  }
+  // Techo para toda la web: Google cobra cada búsqueda y crear cuentas es libre.
+  if (!(await pasaLimite("sitio:global", BUSQUEDAS_GLOBALES_POR_HORA))) {
+    return respuestaLimite("búsquedas de dirección de toda la web");
   }
 
   const key = process.env.GOOGLE_PLACES_KEY;

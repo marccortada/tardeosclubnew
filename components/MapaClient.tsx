@@ -5,6 +5,13 @@ import type { Map as LeafletMap, MarkerClusterGroup } from "leaflet";
 import { getTardeosPublicados } from "@/lib/tardeos";
 import { Tardeo } from "@/lib/types";
 import MapaSheet from "@/components/MapaSheet";
+import { optimizable } from "@/lib/fotos";
+// CSS del mapa solo donde hay mapa (antes iba en el layout, en todas las páginas).
+// MarkerCluster.css es solo la base (posicionado y animación); el aspecto de la
+// burbuja es propio. mapa.css va el último para que sus retoques ganen.
+import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "./mapa.css";
 
 /**
  * Reparte los tardeos en "poblaciones" por distancia real, no por texto:
@@ -19,6 +26,8 @@ const RADIO_POBLACION_KM = 8;
 // mirando una acera.
 const ZOOM_MINIMO = 8;
 const ZOOM_MAXIMO = 12;
+// Con un único tardeo: se ve el pueblo y sus calles principales.
+const ZOOM_UNICO = 13;
 
 /**
  * La costa catalana, de Amposta a Portbou. Con uno o ningún tardeo no hay
@@ -37,6 +46,18 @@ function distanciaKm(aLat: number, aLng: number, bLat: number, bLng: number) {
     Math.sin(dLat / 2) ** 2 +
     Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * El logo de la chincheta se ve a 54 px, pero el original pesa hasta 339 KB.
+ * Si es de nuestro Supabase (host permitido en next.config.mjs) o una ruta
+ * propia, se pide al optimizador de Next a 96 px (pantallas 2x). Otros hosts
+ * no están permitidos en el optimizador y darían error: van tal cual.
+ * q=75 y no 70: Next 16 solo acepta las calidades de `images.qualities`
+ * (por defecto [75]); cualquier otra devuelve 400 y el pin saldría vacío.
+ */
+function srcPin(logo: string) {
+  return optimizable(logo) ? `/_next/image?url=${encodeURIComponent(logo)}&w=96&q=75` : logo;
 }
 
 function porPoblaciones(tardeos: Tardeo[]): Tardeo[][] {
@@ -83,6 +104,7 @@ export default function MapaClient({
   const encuadradoRef = useRef(false);
   const costaRef = useRef(false);          // true = encuadre de la costa (0-1 tardeos)
   const unicoRef = useRef<[number, number] | null>(null); // el tardeo, si solo hay uno
+  const puntosRef = useRef<[number, number][]>([]);       // coordenadas pintadas (para comprobar el encuadre)
   const LRef = useRef<any>(null);
   const [sel, setSel] = useState<Tardeo | null>(null);
   const [internos, setInternos] = useState<Tardeo[]>([]);
@@ -126,19 +148,38 @@ export default function MapaClient({
       animate: false,
     });
 
-    // fitBounds deja el contenido pegado a los bordes y, en contenedores bajos
-    // como el mapa de la portada en móvil, se aleja tantísimo que salen
-    // Portugal e Italia. Un punto más de zoom, y nunca por debajo del suelo:
-    // vale más entrar viendo bien la zona buena que verlo todo diminuto.
     // Con la costa entera de encuadre no se acerca más: ya es lo que se quiere ver.
     // En un móvil en vertical o un contenedor bajo, la costa entera obliga a
-    // alejarse hasta Toulouse y Mallorca: suelo de 8, centrado en la costa
-    // (o en el único tardeo, para que su chincheta se vea seguro).
+    // alejarse hasta Toulouse y Mallorca: suelo de 8, centrado en la costa.
     if (costaRef.current) {
-      if (map.getZoom() < ZOOM_MINIMO) map.setView(unicoRef.current ?? [41.6, 2.2], ZOOM_MINIMO, { animate: false });
+      if (unicoRef.current) {
+        // Un solo tardeo: se centra en él a zoom de barrio. Con la costa entera
+        // la chincheta quedaba diminuta y, con el suelo de zoom, a veces fuera.
+        map.setView(unicoRef.current, ZOOM_UNICO, { animate: false });
+      } else if (map.getZoom() < ZOOM_MINIMO) {
+        map.setView([41.6, 2.2], ZOOM_MINIMO, { animate: false });
+      }
     } else {
+      // fitBounds deja los puntos pegados a los bordes y en contenedores bajos
+      // se aleja mucho. Se prueba un punto más de zoom (y el suelo de 8), pero
+      // SOLO si todas las chinchetas siguen dentro: antes se sumaba +1 a ciegas
+      // y con dos tardeos separados el mapa abría en Dosrius sin ningún pin.
+      const puntos: [number, number][] = puntosRef.current;
+      const todosDentro = () => {
+        const t = map.getSize();
+        return puntos.every(([lat, lng]) => {
+          const p = map.latLngToContainerPoint([lat, lng]);
+          return p.x >= lados && p.x <= t.x - lados && p.y >= arriba && p.y <= t.y - abajo;
+        });
+      };
       const z = map.getZoom();
-      map.setZoom(Math.min(Math.max(z + 1, ZOOM_MINIMO), ZOOM_MAXIMO), { animate: false });
+      const centroFit = map.getCenter();
+      const objetivo = Math.min(Math.max(z + 1, ZOOM_MINIMO), ZOOM_MAXIMO);
+      if (objetivo > z) {
+        map.setZoom(objetivo, { animate: false });
+        // Si al acercar se sale alguna, se vuelve al encuadre que las veía todas.
+        if (!todosDentro()) map.setView(centroFit, z, { animate: false });
+      }
     }
     encuadradoRef.current = true;
   }, []);
@@ -236,7 +277,7 @@ export default function MapaClient({
     const pin = (destacado: boolean, logo?: string) => {
       const color = destacado ? "#FAC72E" : "#D61AA8";
       const dentro = logo
-        ? `<img src="${logo}" style="width:100%;height:100%;object-fit:cover;display:block" alt=""
+        ? `<img src="${srcPin(logo)}" style="width:100%;height:100%;object-fit:cover;display:block" alt=""
              onerror="this.src='/branding/pin-logo.png';this.style.objectFit='contain';this.style.padding='5px'"/>`
         : `<img src="/branding/pin-logo.png" style="width:40px;height:auto;display:block" alt=""/>`;
       return L.divIcon({
@@ -304,6 +345,7 @@ export default function MapaClient({
     // Cambian los datos (carga inicial o filtro) -> toca reencuadrar.
     costaRef.current = conCoords.length < 2 && !centro;
     unicoRef.current = conCoords.length === 1 ? [conCoords[0].lat, conCoords[0].lng] : null;
+    puntosRef.current = conCoords.map((t) => [t.lat, t.lng] as [number, number]);
     if (conCoords.length < 2 && centro) {
       // Unos 25 km alrededor del centro de la zona (y su tardeo, si lo hay).
       const zona = L.latLngBounds([[centro[0] - 0.2, centro[1] - 0.28], [centro[0] + 0.2, centro[1] + 0.28]]);

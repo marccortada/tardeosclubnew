@@ -141,6 +141,38 @@ export const seguirDj = (djId: string, uid: string, si: boolean) => alternar("se
 export const gustarSet = (setId: string, uid: string, si: boolean) => alternar("sets_likes", "set_id", setId, uid, si);
 export const guardarSet = (setId: string, uid: string, si: boolean) => alternar("sets_guardados", "set_id", setId, uid, si);
 
+/**
+ * Resultado de marcar/desmarcar con detalle. `cambio = false` significa "ya
+ * estaba así" (23505 al dar de alta, o ninguna fila borrada al quitar): el
+ * estado final es el pedido, pero el contador de la base NO se ha movido, así
+ * que la pantalla no debe sumar ni restar. Con `alternar` a secas un 23505 se
+ * daba por éxito y la tarjeta enseñaba un ♥ de más.
+ */
+export type ResultadoMarca = { error: string | null; cambio: boolean };
+
+async function alternarDetalle(tabla: string, campo: "dj_id" | "set_id", id: string, uid: string, activar: boolean): Promise<ResultadoMarca> {
+  if (activar) {
+    const { error } = await supabase.from(tabla).insert({ profile_id: uid, [campo]: id });
+    if (!error) return { error: null, cambio: true };
+    if (error.code === "23505") return { error: null, cambio: false };
+    return { error: faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message, cambio: false };
+  }
+  // `.select()` devuelve las filas borradas (la política de lectura deja ver
+  // las propias): cero filas = no estaba marcado y el contador no ha bajado.
+  const { data, error } = await supabase.from(tabla).delete().eq("profile_id", uid).eq(campo, id).select(campo);
+  if (error) return { error: faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message, cambio: false };
+  return { error: null, cambio: (data ?? []).length > 0 };
+}
+export const gustarSetDetalle = (setId: string, uid: string, si: boolean) => alternarDetalle("sets_likes", "set_id", setId, uid, si);
+export const guardarSetDetalle = (setId: string, uid: string, si: boolean) => alternarDetalle("sets_guardados", "set_id", setId, uid, si);
+
+/** Seguidores reales del DJ (contador que mantiene el disparador del lote 65). */
+export async function seguidoresDe(djId: string): Promise<number | null> {
+  const { data, error } = await supabase.from("djs").select("seguidores").eq("id", djId).maybeSingle();
+  if (error || !data) return null;
+  return (data as { seguidores: number | null }).seguidores ?? 0;
+}
+
 export async function sigoA(djId: string, uid: string): Promise<boolean> {
   const { data } = await supabase.from("seguidores_dj").select("dj_id").eq("profile_id", uid).eq("dj_id", djId).maybeSingle();
   return !!data;

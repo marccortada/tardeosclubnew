@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { pasaLimite, respuestaLimite, tokenDe } from "@/lib/apiAuth";
+import { esAdminGlobal, pasaLimite, respuestaLimite, tokenDe } from "@/lib/apiAuth";
 import { registrar } from "@/lib/registro";
 
 export const runtime = "nodejs";
@@ -34,8 +34,8 @@ export async function POST(req: Request) {
   const { data: userData } = await admin.auth.getUser(accessToken);
   const uid = userData?.user?.id;
   if (!uid) return NextResponse.json({ error: "Sesión no válida." }, { status: 401 });
-  const { data: prof } = await admin.from("profiles").select("is_admin").eq("id", uid).maybeSingle();
-  if (!prof?.is_admin) return NextResponse.json({ error: "Solo administradores." }, { status: 403 });
+  // Un email a todos los locales: solo admin general, no de zona ni de tarea.
+  if (!(await esAdminGlobal(admin, uid))) return NextResponse.json({ error: "Solo administradores." }, { status: 403 });
 
   /**
    * 2) A quién se le puede escribir, que no es lo mismo que a quién se querría.

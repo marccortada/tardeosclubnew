@@ -2,10 +2,8 @@ import { ReproductorProvider, MiniReproductor } from "@/components/musica/Reprod
 import type { Metadata, Viewport } from "next";
 import { Manrope, Dancing_Script } from "next/font/google";
 import "./globals.css";
-import "leaflet/dist/leaflet.css";
-// Solo la base (posicionado y animación de agrupar/desagrupar).
-// El aspecto del cluster es propio, en MapaClient.
-import "leaflet.markercluster/dist/MarkerCluster.css";
+// El CSS de Leaflet ya no va aquí: lo importan MapaClient y MiniMapa, así las
+// pantallas sin mapa (la mayoría) no lo descargan.
 import { SITE_URL, INDEXABLE } from "@/lib/seo";
 import BottomNav from "@/components/BottomNav";
 import SiteNav from "@/components/SiteNav";

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Download, Share, Plus, X, Smartphone } from "lucide-react";
-import { claseBoton } from "@/components/Boton";
 import { esApple, sePuedeOfrecer } from "@/lib/instalar";
 
 /**
@@ -28,6 +28,7 @@ import { esApple, sePuedeOfrecer } from "@/lib/instalar";
  *   · en ordenador —el sitio de esto es el bolsillo—;
  *   · si dijo «ahora no» hace menos de una semana;
  *   · si dijo «no volver a mostrar», nunca más;
+ *   · en la primera visita (cuenta visitas, una por sesión);
  *   · en los primeros segundos de la visita. Aparecer encima de alguien que
  *     acaba de llegar es la forma más rápida de que cierre la pestaña: primero
  *     que vea que la web le sirve.
@@ -35,6 +36,15 @@ import { esApple, sePuedeOfrecer } from "@/lib/instalar";
 
 const CLAVE_NUNCA = "tc-instalar-nunca";
 const CLAVE_LUEGO = "tc-instalar-luego";
+/** Visitas contadas (una por sesión del navegador, no por página). */
+const CLAVE_VISITAS = "tc-visitas";
+const CLAVE_SESION = "tc-visita-contada";
+/**
+ * Solo desde la 2.ª visita. En la primera, el aviso salía encima de los chips
+ * del hero («Hoy · Este finde · Cerca de mí») justo cuando alguien decide si
+ * la web le sirve. Quien vuelve ya ha visto que sí: ahí tiene sentido.
+ */
+const VISITAS_MINIMAS = 2;
 /** Lo que se le deja mirar antes de pedirle nada. */
 const ESPERA_MS = 12000;
 
@@ -44,12 +54,35 @@ type EventoInstalar = Event & { prompt: () => Promise<void>; userChoice: Promise
 const leer = (k: string): string | null => { try { return localStorage.getItem(k); } catch { return null; } };
 const guardar = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* modo privado */ } };
 
+/** Suma una visita la primera vez en esta sesión y devuelve el total. */
+function contarVisita(): number {
+  try {
+    let n = Number(localStorage.getItem(CLAVE_VISITAS) ?? 0) || 0;
+    if (!sessionStorage.getItem(CLAVE_SESION)) {
+      n += 1;
+      localStorage.setItem(CLAVE_VISITAS, String(n));
+      sessionStorage.setItem(CLAVE_SESION, "1");
+    }
+    return n;
+  } catch { return 0; } // sin almacenamiento no se puede saber si vuelve: no se ofrece
+}
+
+/**
+ * Pantallas con algo fijo abajo que el aviso taparía: la ficha del tardeo
+ * (barra de Asistiré) y el feed de DJs (pantalla completa).
+ */
+const RUTAS_SIN_AVISO = [/^\/tardeos\/[^/]+$/, /^\/djs(\/|$)/];
+
 export default function InstalarApp() {
+  const pathname = usePathname();
   const [evento, setEvento] = useState<EventoInstalar | null>(null);
   const [esIos, setEsIos] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [pasos, setPasos] = useState(false); // iOS: pasos de Safari desplegados
 
   useEffect(() => {
+    // Se cuenta siempre, aunque luego no se ofrezca: es «cuántas veces ha venido».
+    const visitas = contarVisita();
     // Las cinco condiciones viven en `lib/instalar.ts` y están probadas una a
     // una: lo importante de este aviso son los casos en los que NO sale, y eso
     // no se comprueba mirando la pantalla.
@@ -66,7 +99,7 @@ export default function InstalarApp() {
       luego: Number(leer(CLAVE_LUEGO) ?? 0),
       ahora: Date.now(),
     });
-    if (!puede) return;
+    if (!puede || visitas < VISITAS_MINIMAS) return;
 
     const ios = esApple(navigator.userAgent);
     setEsIos(ios);
@@ -93,9 +126,10 @@ export default function InstalarApp() {
     return () => clearTimeout(t);
   }, [evento]);
 
-  if (!visible) return null;
+  if (!visible || RUTAS_SIN_AVISO.some((r) => r.test(pathname))) return null;
 
   const instalar = async () => {
+    if (esIos) { setPasos((v) => !v); return; }
     if (!evento) return;
     setVisible(false);
     await evento.prompt();
@@ -109,55 +143,46 @@ export default function InstalarApp() {
   const nunca = () => { setVisible(false); guardar(CLAVE_NUNCA, "1"); };
 
   return (
-    // Por encima de la barra de abajo (z 1000) y separado de ella, que si no
-    // el botón de instalar queda pegado a los de navegar y se pulsa el que no
-    // es. `bottom-24` es justo el alto de esa barra.
-    <div className="fixed inset-x-3 bottom-24 z-[1100] md:hidden">
-      <div className="rounded-2xl border border-linea bg-white p-4 shadow-elevada">
-        <div className="flex items-start gap-3">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-magenta-50 text-magenta">
-            <Smartphone size={22} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-lg font-bold leading-tight">
-              Tenlo siempre a mano
-            </p>
-            <p className="mt-0.5 text-[15px] text-tinta-suave">
-              {esIos
-                ? "Añádelo a tu pantalla de inicio y se abre como una app."
-                : "Se instala en diez segundos y se abre como una app."}
-            </p>
-          </div>
-          <button onClick={luego} aria-label="Ahora no"
-            className="-mr-1 -mt-1 grid h-11 w-11 shrink-0 place-items-center rounded-full text-tinta-suave hover:bg-marfil-100">
-            <X size={17} />
+    // Franja compacta (~56 px) justo encima de la barra de abajo, cuya altura
+    // real publica BottomNav en --alto-barra-inferior. Antes era una tarjeta
+    // de ~200 px que tapaba media pantalla.
+    <div role="dialog" aria-label="Instalar la app de TardeosClub"
+      style={{ bottom: "calc(var(--alto-barra-inferior, 96px) + 8px)" }}
+      className="fixed inset-x-3 z-[1100] md:hidden">
+      <div className="rounded-2xl border border-linea bg-white shadow-elevada">
+        <div className="flex min-h-[56px] items-center gap-2 py-1.5 pl-3 pr-1">
+          <Smartphone size={22} className="shrink-0 text-magenta" aria-hidden />
+          <p className="min-w-0 flex-1 text-[15px] font-semibold leading-tight text-tinta">Tenlo a mano como app</p>
+          <button type="button" onClick={instalar} aria-expanded={esIos ? pasos : undefined}
+            className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl bg-magenta px-3 text-[15px] font-bold text-white">
+            <Download size={17} aria-hidden /> Instalar app
+          </button>
+          <button type="button" onClick={luego} aria-label="Ahora no"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-tinta-suave hover:bg-marfil-100">
+            <X size={18} aria-hidden />
           </button>
         </div>
 
-        {esIos ? (
+        {esIos && pasos && (
           /* En iOS no hay botón posible: solo se puede enseñar dónde está el
              de Safari. Con los iconos de verdad, porque «el cuadrado con la
              flecha» no lo identifica nadie leyéndolo. */
-          <ol className="mt-3 flex flex-col gap-1.5 rounded-xl bg-marfil-100 p-3 text-[15px] text-tinta">
-            <li className="flex items-center gap-2">
-              <Share size={16} className="shrink-0 text-magenta" />
-              Toca <b>Compartir</b>, abajo en Safari
-            </li>
-            <li className="flex items-center gap-2">
-              <Plus size={16} className="shrink-0 text-magenta" />
-              Y luego <b>Añadir a pantalla de inicio</b>
-            </li>
-          </ol>
-        ) : (
-          <button onClick={instalar}
-            className={claseBoton("primario", "normal", true, "mt-3")}>
-            <Download size={18} /> Instalar
-          </button>
+          <div className="px-3 pb-2">
+            <ol className="flex flex-col gap-1.5 rounded-xl bg-marfil-100 p-3 text-[15px] text-tinta">
+              <li className="flex items-center gap-2">
+                <Share size={16} className="shrink-0 text-magenta" aria-hidden />
+                Toca <b>Compartir</b>, abajo en Safari
+              </li>
+              <li className="flex items-center gap-2">
+                <Plus size={16} className="shrink-0 text-magenta" aria-hidden />
+                Y luego <b>Añadir a pantalla de inicio</b>
+              </li>
+            </ol>
+            <button type="button" onClick={nunca} className="mt-1 min-h-[44px] w-full text-center text-[15px] font-semibold text-tinta-suave">
+              No volver a mostrar
+            </button>
+          </div>
         )}
-
-        <button onClick={nunca} className="mt-1 min-h-[44px] w-full text-center text-[14px] font-semibold text-tinta-suave">
-          No volver a mostrar
-        </button>
       </div>
     </div>
   );

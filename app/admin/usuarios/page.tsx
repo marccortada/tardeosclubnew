@@ -176,7 +176,7 @@ export default function AdminUsuarios() {
     setExportando(null);
     if (error) { setAviso({ tono: "error", texto: "No se pudo exportar: " + error }); return; }
     descargarCsv(`usuarios-${hoyFichero()}.csv`, ["Nombre", "Email", "Teléfono", "Admin", "Alta", "Id"],
-      filas.map((u) => [u.display_name ?? "", u.email ?? "", u.phone ?? "", u.is_admin ? "Sí" : "No", new Date(u.created_at).toLocaleDateString("es-ES"), u.id]));
+      filas.map((u) => [u.display_name ?? "", u.email ?? "", u.phone ?? "", u.is_admin ? "Sí" : "No", new Date(u.created_at).toLocaleDateString("es-ES", { timeZone: "Europe/Madrid" }), u.id]));
     setAviso({ tono: "ok", texto: `Exportados ${filas.length.toLocaleString("es-ES")} usuarios.` });
   };
 
@@ -277,7 +277,7 @@ export default function AdminUsuarios() {
                             const I = f.tipo === "dj" ? Disc3 : f.tipo === "promotor" ? Megaphone : Store;
                             return (
                               <Link key={f.id} href={f.tipo === "dj" ? `/djs/${f.id}` : `/locales/${f.id}`} target="_blank"
-                                className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-linea-fuerte bg-white px-3 text-sm font-semibold hover:bg-marfil-100">
+                                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-linea-fuerte bg-white px-3 text-sm font-semibold hover:bg-marfil-100">
                                 <I size={14} aria-hidden /> <span className="max-w-[12rem] truncate">{f.nombre}</span>
                               </Link>
                             );
@@ -286,7 +286,7 @@ export default function AdminUsuarios() {
                       )}
                     </td>
                     <td className="text-sm text-tinta-suave md:px-4 md:py-3">
-                      <span className="md:hidden">Alta: </span>{new Date(u.created_at).toLocaleDateString("es-ES")}
+                      <span className="md:hidden">Alta: </span>{new Date(u.created_at).toLocaleDateString("es-ES", { timeZone: "Europe/Madrid" })}
                     </td>
                     <td className="md:px-4 md:py-3">
                       <div className="flex flex-wrap gap-1.5 md:justify-end">

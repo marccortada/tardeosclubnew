@@ -6,6 +6,12 @@
 
 
 begin;
+
+-- El SQL Editor no tiene sesión de usuario: para la base no eres admin, y los disparadores
+-- de protección (lotes 9, 19, 33, 37) DESHARÍAN EN SILENCIO los cambios de estado, orden de
+-- destacados y planes. Esto marca la transacción como escritura del servidor (igual que la
+-- service role) y solo dura hasta el commit.
+select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 update public.tardeos set zona = 'Barcelona' where zona = 'BARCELONA';
 update public.locales set zona = 'Barcelona' where zona = 'BARCELONA'; -- BARCELONA → Barcelona
 update public.tardeos set zona = 'Mataró' where zona = 'Mataro';

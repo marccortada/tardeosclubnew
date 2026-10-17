@@ -139,13 +139,16 @@ export function textoCambio(t: { id: string; titulo: string; fecha: string; hora
   };
 }
 
-export function textoCancelacion(t: { id: string; titulo: string; fecha: string }): TextoAviso {
+export function textoCancelacion(t: { id: string; titulo: string; fecha: string; cancelado_en?: string | null }): TextoAviso {
   return {
     tipo: "cancelacion",
     titulo: `Cancelado: ${t.titulo}`,
     cuerpo: `El tardeo del ${fmtDia(t.fecha)} se ha cancelado. Si tenías plaza, queda anulada; no tienes que hacer nada.`,
     url: `/eventos`,
-    clave: `cancel:${t.id}`,
+    // Con la hora de la cancelación en la clave: si se reabre y se vuelve a
+    // cancelar, es un aviso NUEVO. Con `cancel:<id>` a secas, el segundo se
+    // descartaba por duplicado y nadie se enteraba.
+    clave: t.cancelado_en ? `cancel:${t.id}:${Date.parse(t.cancelado_en)}` : `cancel:${t.id}`,
   };
 }
 

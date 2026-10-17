@@ -127,7 +127,7 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
 
         <div className={`mx-auto flex max-w-6xl flex-col px-4 pb-7 pt-3 md:px-8 md:pb-10 md:pt-5 ${portada ? "min-h-[360px] md:min-h-[460px]" : "min-h-[300px] md:min-h-[360px]"}`}>
           <div className="flex items-center justify-between">
-            <Link href="/colaboradores" className="-ml-2 inline-flex min-h-tacto items-center gap-1.5 rounded-xl px-2 text-[15px] font-bold text-white/90 transition hover:bg-white/10">
+            <Link href="/directorio" className="-ml-2 inline-flex min-h-tacto items-center gap-1.5 rounded-xl px-2 text-[15px] font-bold text-white/90 transition hover:bg-white/10">
               <ArrowLeft size={20} aria-hidden /> Locales
             </Link>
             <CompartirBtn
@@ -212,7 +212,7 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
                     </Link>
                   </div>
                   <Link
-                    href={local.zona && !esPromotor ? `/tardeos?zona=${encodeURIComponent(local.zona)}` : "/tardeos"}
+                    href={local.zona && !esPromotor ? `/eventos?zona=${encodeURIComponent(local.zona)}` : "/eventos"}
                     className="mt-3 inline-flex min-h-tacto items-center gap-1 rounded-xl px-2 text-[15px] font-bold text-magenta-700 hover:bg-magenta-50"
                   >
                     {local.zona && !esPromotor ? `Ver otros tardeos en ${local.zona}` : "Ver todos los tardeos"} <ArrowRight size={17} aria-hidden />

@@ -267,7 +267,7 @@ export default function EventosCliente({ todos }: { todos: Tardeo[] }) {
           <Pildora on={vista === "mes"} onClick={() => { setVista("mes"); setCuando(""); }}>Elegir fecha</Pildora>
         </Grupo>
         <Grupo titulo="Zona">
-          <select value={zonaOpcion} onChange={(e) => setBorrador({ ...borrador, zona: e.target.value })}
+          <select aria-label="Zona" value={zonaOpcion} onChange={(e) => setBorrador({ ...borrador, zona: e.target.value })}
             className="min-h-[48px] w-full rounded-2xl border border-linea bg-superficie px-4 text-[16px] text-tinta">
             <option value="">Todas las zonas</option>
             {zonas.map((z) => <option key={z.slug} value={z.nombre}>{z.nombre}</option>)}

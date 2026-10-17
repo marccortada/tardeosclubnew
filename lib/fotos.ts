@@ -58,3 +58,18 @@ export function propsFoto(id: string, { sizes, alt = "", prioridad = false }: { 
   });
   return props;
 }
+
+/**
+ * ¿Puede pasar esta imagen por el optimizador de Next (/_next/image)? Solo
+ * las de nuestro Storage de Supabase (hosts de `images.remotePatterns` en
+ * next.config.mjs) y las rutas propias. Cualquier otro host (miniaturas de
+ * YouTube, SoundCloud…) da 400 en el optimizador: esas van `unoptimized`.
+ * Optimizar importa: un avatar o un flyer original pesa cientos de KB y en
+ * el móvil se ve a una fracción de ese tamaño.
+ */
+const HOSTS_OPTIMIZABLES = /^https:\/\/(fmbzcjsbyazkzsiiykto|obevrycebhqdqtvxnxoy)\.supabase\.co\/storage\/v1\/object\/public\//;
+export function optimizable(src: string | null | undefined): boolean {
+  if (!src) return false;
+  if (src.startsWith("/") && !src.startsWith("//")) return true;
+  return HOSTS_OPTIMIZABLES.test(src);
+}

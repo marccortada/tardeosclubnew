@@ -147,3 +147,40 @@ la petición que da 400 (o mirar Supabase › Logs › API filtrando por status 
   cargar antes la clave con `ssh-add ~/.ssh/id_ed25519_little_forest`.
 - GitHub por SSH con la misma clave:
   `GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_little_forest" git push git@github.com:marccortada/tardeosclubnew.git rediseno`
+
+---
+
+## 17‑oct‑2026 · Auditoría a fondo (último commit + seguridad + lógica + móvil) y arreglos
+
+**Último commit (`5fade89`, contadores de admin):** correcto; «Cola de trabajo» y «por
+verificar» cuentan igual en todas partes.
+
+**Arreglado en código:**
+- Push: el build desplegado no llevaba `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (comprobado en el JS
+  público): nadie podía activar notificaciones. `desplegar.sh` la lee del `.env` del
+  servidor y no despliega si no entra en el JS. La clave del historial público NO es la
+  de producción (huellas distintas): no hace falta rotar. Aviso nuevo en `/admin/salud`.
+- Cabeceras de seguridad (`next.config.mjs`) y sin `x-powered-by`.
+- Avisos/recordatorios: los programados ya visibles cuentan como publicados; la
+  cancelación avisa también a la lista de espera; el aviso de fin no va a quien «no
+  vino»; errores de lectura ya no se tragan; clave de cancelación con fecha.
+- API: push, ofertas, borrar cuentas ajenas y datos de usuario exigen admin GENERAL;
+  techo global por hora en IA de flyers (200) y buscador de direcciones (400);
+  enlace de entradas validado antes de `window.open`.
+- Pantallas: feed de DJs (cargas cruzadas, ♥/guardar/seguir optimistas), aviso de
+  mensaje que abre su pestaña, cola de admin (página vacía, «Soltar»), ficha «ya pasó»
+  por hora de fin, editar sin hora de inicio, título de set vacío (el 400), fechas de
+  admin en hora de Madrid.
+- Móvil: mapa con todas las chinchetas en pantalla y logos optimizados (798 → 304 KB),
+  barra fija «Asistiré / Guardar» en la ficha, flyer entero (4:5), feed de DJs sin cara
+  a pantalla completa, aviso de instalar desde la 2.ª visita y en franja, directorio con
+  foto primero, textos clave ≥13 px, botones ≥44 px, CSS de Leaflet solo con mapa.
+- `es_profesional`, métricas, canje de promos y cola siguen al lote 73.
+
+**SQL nuevo (sin pegar):** `PEGAR_73.sql` (175 pruebas bien en local) y limpieza
+L0‑L8 revisada (24/24 en local, también con el 73): reasigna métricas en vez de abortar
+y marca la transacción como escritura del servidor (sin eso el SQL Editor deshacía en
+silencio estado y orden de destacados). L8 oculta las 3 fichas de prueba.
+
+**Para el cliente:** «sí» a la limpieza; datos raros en 2 tardeos publicados; privacidad
+«Pendiente»; ¿«oletu» es de prueba?

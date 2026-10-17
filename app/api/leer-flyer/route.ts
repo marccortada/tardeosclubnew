@@ -7,6 +7,8 @@ export const runtime = "nodejs";
 
 // Leer un flyer cuesta una llamada a Claude por intento.
 const LECTURAS_POR_HORA = 40;
+// Entre todas las cuentas. Un local lee 2-3 flyers por tardeo: 200/h sobra.
+const LECTURAS_GLOBALES_POR_HORA = 200;
 
 // Tope del base64 (~7 MB de texto ≈ 5 MB de imagen) y tipos que acepta Claude.
 const MAX_BASE64 = 7 * 1024 * 1024;
@@ -55,6 +57,9 @@ export async function POST(req: Request) {
   const auth = await autorizarLocalOAdmin(body.accessToken, req);
   if (auth instanceof NextResponse) return auth;
   if (!(await pasaLimite(`leer:${auth.uid}`, LECTURAS_POR_HORA))) return respuestaLimite("lecturas de flyer");
+  // Techo para toda la web: darse de alta es libre, así que el tope por cuenta
+  // solo frena a uno. Con varias cuentas, sin esto, la factura de IA no tiene fin.
+  if (!(await pasaLimite("leer:global", LECTURAS_GLOBALES_POR_HORA))) return respuestaLimite("lecturas de flyer de toda la web");
 
   if (!body.imageBase64) {
     return NextResponse.json({ error: "Falta la imagen del flyer." }, { status: 400 });

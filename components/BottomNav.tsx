@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAuth } from "@/lib/useAuth";
 import { useRoles } from "@/lib/permisos";
 import { sincronizarTema } from "@/lib/tardicola";
@@ -43,14 +43,31 @@ export default function BottomNav() {
   // El tema guardado en la cuenta manda (vale entre dispositivos).
   useEffect(() => { if (user) sincronizarTema(user.id); }, [user]);
 
-  if (ocultaBarraInferior(pathname)) return null;
+  // Publica la altura real de la barra (con la zona segura del iPhone) en
+  // --alto-barra-inferior. La usan las barras fijas que van ENCIMA (p. ej. la
+  // de «Asistiré» en la ficha): la altura cambia si «Próxima Parada» parte en
+  // dos líneas o si el usuario agranda la letra, y un número fijo se quedaba corto.
+  const navRef = useRef<HTMLElement>(null);
+  const oculta = ocultaBarraInferior(pathname);
+  useEffect(() => {
+    const raiz = document.documentElement.style;
+    const nav = navRef.current;
+    if (!nav) { raiz.setProperty("--alto-barra-inferior", "0px"); return; }
+    const medir = () => raiz.setProperty("--alto-barra-inferior", `${nav.offsetHeight}px`);
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(nav);
+    return () => ro.disconnect();
+  }, [oculta]);
+
+  if (oculta) return null;
   const tabs = esProfesional ? PROFESIONAL : TARDICOLA;
 
   return (
     <>
       {/* Hueco para que la barra fija no tape el final de la página. */}
       <div aria-hidden className={`h-24 ${esRutaPanel(pathname) ? "md:hidden" : "md:h-12"}`} />
-      <nav aria-label="Principal"
+      <nav ref={navRef} aria-label="Principal"
         className="fixed bottom-0 left-0 right-0 z-[1000] border-t border-linea bg-superficie/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
         <div className="mx-auto flex max-w-md items-stretch justify-around px-1">
           {tabs.map(({ href, label, icon: Icon }) => {
@@ -59,7 +76,9 @@ export default function BottomNav() {
               <Link key={href} href={href} aria-current={on ? "page" : undefined}
                 className="flex min-h-[64px] min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1.5">
                 <Icon size={24} strokeWidth={on ? 2.4 : 1.9} className={on ? "text-magenta" : "text-tinta-suave"} aria-hidden />
-                <span className={`max-w-full px-0.5 text-center text-[12px] font-semibold leading-[1.1] ${on ? "text-magenta" : "text-tinta-suave"}`}>
+                {/* 13 px (antes 12): es navegación principal y el público es 30+.
+                    «Próxima Parada» parte en dos líneas: por eso leading-tight. */}
+                <span className={`max-w-full px-0.5 text-center text-[13px] font-semibold leading-tight ${on ? "text-magenta" : "text-tinta-suave"}`}>
                   {label}
                 </span>
               </Link>

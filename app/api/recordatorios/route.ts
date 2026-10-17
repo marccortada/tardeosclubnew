@@ -37,12 +37,19 @@ async function handler(req: Request) {
   const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" });
   const manana = fmt.format(new Date(Date.now() + 24 * 3600 * 1000));
 
-  // Tardeos publicados de mañana
-  const { data: tardeos } = await admin
+  // Tardeos de mañana que la web enseña: publicados, o programados cuya hora
+  // de salida ya llegó (su estado no cambia nunca a 'publicado').
+  const { data: tardeos, error: eT } = await admin
     .from("tardeos")
     .select("id,titulo,fecha,hora_inicio,locales(nombre)")
-    .eq("estado", "publicado")
+    .or(`estado.eq.publicado,and(estado.eq.programado,publicar_en.lte.${new Date().toISOString()})`)
     .eq("fecha", manana);
+
+  // Un fallo de lectura NO es «no hay tardeos mañana»: así el log del cron lo enseña.
+  if (eT) {
+    registrar("recordatorios", "no se pudieron leer los tardeos de mañana", eT);
+    return NextResponse.json({ error: "No se pudieron leer los tardeos de mañana." }, { status: 500 });
+  }
 
   if (!tardeos || tardeos.length === 0) {
     return NextResponse.json({ fecha: manana, tardeos: 0, enviados: 0, aviso: "No hay tardeos mañana." });

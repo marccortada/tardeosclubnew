@@ -162,7 +162,7 @@ export function HojaComentarios({
           {respondiendo && (
             <p className="flex items-center justify-between text-[14px] text-tinta-suave">
               Respondiendo a {respondiendo.alias || "Tardícola"}
-              <button type="button" className="min-h-[36px] font-bold text-magenta" onClick={() => setRespondiendo(null)}>Cancelar</button>
+              <button type="button" className="min-h-[44px] min-w-[44px] px-1 font-bold text-magenta" onClick={() => setRespondiendo(null)}>Cancelar</button>
             </p>
           )}
           <div className="flex gap-2">

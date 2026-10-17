@@ -343,9 +343,9 @@ function TardeoGrande({ t, solo = false }: { t: Tardeo; solo?: boolean }) {
         {/* bg-[#fff] y no bg-white: en modo oscuro globals.css pasa bg-white a
             superficie oscura y la fecha (texto oscuro fijo) dejaba de leerse. */}
         <span className="absolute left-3 top-3 rounded-2xl bg-[#fff] px-3 py-1.5 text-center leading-none text-[#1a1a1a] shadow-md">
-          <span className="block text-[12px] font-bold uppercase text-magenta">{diaSemana(t.fecha)}</span>
+          <span className="block text-[13px] font-bold uppercase text-magenta">{diaSemana(t.fecha)}</span>
           <span className="block text-[24px] font-extrabold">{Number(t.fecha.slice(8, 10))}</span>
-          <span className="block text-[12px] font-bold uppercase">{mes(t.fecha)}</span>
+          <span className="block text-[13px] font-bold uppercase">{mes(t.fecha)}</span>
         </span>
         {t.destacado && (
           <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-oro-400 px-2.5 py-1 text-[13px] font-bold text-[#1a1a1a]">

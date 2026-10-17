@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // No anunciar «x-powered-by: Next.js»: no ayuda a nadie y da pistas a quien busca fallos.
+  poweredByHeader: false,
 
   /**
    * Las direcciones de tardeosclub.com que aquí no existen.
@@ -38,7 +40,7 @@ const nextConfig = {
       // Navegación
       r("/map", "/mapa"),
       r("/profile", "/perfil"),
-      r("/locales", "/colaboradores"),
+      r("/locales", "/directorio"),
 
       // Entrar y darse de alta. Todas caen en /perfil, que es donde vive el
       // acceso en esta app; las de registro con rol, en /unirse, que pregunta
@@ -105,13 +107,33 @@ const nextConfig = {
    * Se quita solo al poner PERMITIR_INDEXACION=true en el dominio definitivo.
    */
   async headers() {
-    if (process.env.PERMITIR_INDEXACION === "true") return [];
-    return [
-      {
-        source: "/:ruta*",
-        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
-      },
+    /**
+     * Cabeceras de seguridad, en TODAS las respuestas (antes no había ninguna).
+     *
+     * - frame-ancestors / X-Frame-Options: nadie puede meter la web dentro de un
+     *   iframe ajeno y engañar a la gente para que pulse «Asistiré» o «Borrar
+     *   cuenta» sin verlo (clickjacking). Los iframes que NOSOTROS ponemos
+     *   (Spotify, YouTube) no se ven afectados: esto es al revés.
+     * - nosniff: el navegador no «adivina» el tipo de un fichero subido.
+     * - Referrer-Policy: al salir a Fourvenues o Instagram no viaja la URL
+     *   completa (puede llevar ?token= de una invitación).
+     * - Permissions-Policy: la ubicación solo para nuestra web (mapa, «Cerca de
+     *   mí»); cámara y micro, para nadie, porque no se usan. NO se bloquea
+     *   `payment`: el botón de PayPal lo necesitará cuando se conecte.
+     * No va una CSP completa de scripts: Next mete scripts en línea y una mal
+     * puesta deja la web en blanco. Se puede añadir más adelante con nonce.
+     */
+    const seguridad = [
+      { key: "Content-Security-Policy", value: "frame-ancestors 'self'; base-uri 'self'; object-src 'none'" },
+      { key: "X-Frame-Options", value: "SAMEORIGIN" },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "Permissions-Policy", value: "geolocation=(self), camera=(), microphone=(), usb=()" },
     ];
+    const robots = process.env.PERMITIR_INDEXACION === "true"
+      ? []
+      : [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
+    return [{ source: "/:ruta*", headers: [...seguridad, ...robots] }];
   },
 };
 

@@ -210,7 +210,7 @@ export default function Registro() {
       f.tardeos?.titulo || "(tardeo borrado)", f.tardeos?.fecha || "", (f.tardeos?.hora_inicio || "").slice(0, 5),
       f.tardeos?.locales?.nombre || "",
       f.estado === "apuntado" ? "Apuntado" : f.estado === "espera" ? "En espera" : "Cancelado",
-      f.asistencia ? nombreAsist[f.asistencia] : "", new Date(f.created_at).toLocaleString("es-ES"),
+      f.asistencia ? nombreAsist[f.asistencia] : "", new Date(f.created_at).toLocaleString("es-ES", { timeZone: "Europe/Madrid" }),
     ].map(celda).join(";"));
     // BOM + punto y coma: Excel en español lo abre con acentos y columnas bien.
     const blob = new Blob(["﻿" + [cab.map(celda).join(";"), ...cuerpo].join("\r\n")], { type: "text/csv;charset=utf-8" });

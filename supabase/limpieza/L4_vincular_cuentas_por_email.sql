@@ -13,7 +13,10 @@
 
 alter table public.profiles add column if not exists vinculado_a uuid;
 
-create or replace function public.vincular_cuenta_antigua(p_nuevo uuid, p_email text)
+-- Las funciones con privilegios viven en `private` (fuera de la API, regla del lote 60).
+create schema if not exists private;
+
+create or replace function private.vincular_cuenta_antigua(p_nuevo uuid, p_email text)
 returns int
 language plpgsql security definer set search_path = public, auth as $$
 declare
@@ -65,25 +68,25 @@ begin
   return v_n;
 end $$;
 
-revoke all on function public.vincular_cuenta_antigua(uuid, text) from public, anon, authenticated;
+revoke all on function private.vincular_cuenta_antigua(uuid, text) from public, anon, authenticated;
 
-create or replace function public.vincular_cuenta_antigua_trg()
+create or replace function private.vincular_cuenta_antigua_trg()
 returns trigger language plpgsql security definer set search_path = public, auth as $$
 begin
-  perform public.vincular_cuenta_antigua(new.id, new.email);
+  perform private.vincular_cuenta_antigua(new.id, new.email);
   return new;
 end $$;
 
-revoke all on function public.vincular_cuenta_antigua_trg() from public, anon, authenticated;
+revoke all on function private.vincular_cuenta_antigua_trg() from public, anon, authenticated;
 
 drop trigger if exists trg_vincular_cuenta_antigua on auth.users;
 create trigger trg_vincular_cuenta_antigua
   after insert or update of email_confirmed_at on auth.users
   for each row when (new.email_confirmed_at is not null)
-  execute function public.vincular_cuenta_antigua_trg();
+  execute function private.vincular_cuenta_antigua_trg();
 
 -- Cuentas que ya existen y están confirmadas (hoy son 8)
-select u.email, public.vincular_cuenta_antigua(u.id, u.email) as perfiles_vinculados
+select u.email, private.vincular_cuenta_antigua(u.id, u.email) as perfiles_vinculados
 from auth.users u where u.email_confirmed_at is not null;
 
 -- COMPROBACIÓN

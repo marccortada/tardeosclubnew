@@ -228,13 +228,8 @@ h1, h2, h3 {
   }
 }
 
-/* ---------- Mapa ---------- */
-.leaflet-container {
-  width: 100%;
-  height: 100%;
-  border-radius: 1.25rem;
-  font-family: inherit;
-}
+/* ---------- Mapa ----------
+   Los estilos de Leaflet viven en components/mapa.css (solo se cargan con mapa). */
 
 /* ---------- Portada sin sesión (landing) ----------
    Animaciones suaves y con sentido: la foto del hero se acerca muy despacio,
@@ -271,9 +266,12 @@ h1, h2, h3 {
    de abajo (4rem + zona segura del iPhone). svh y no vh: con vh, en Safari
    el hero medía más que lo visible y los botones quedaban bajo la barra del
    navegador. En escritorio, la pantalla menos la cabecera, con tope. */
-.hero-landing { min-height: calc(100vh - 8rem); }
+.hero-landing { min-height: min(calc(100vh - 8rem), 560px); }
 @supports (height: 100svh) {
-  .hero-landing { min-height: calc(100svh - 8rem - env(safe-area-inset-bottom, 0px)); }
+  /* Tope de 560 px en móvil: a pantalla completa el primer tardeo quedaba
+     entero bajo el pliegue y no se intuía que había más debajo. Así asoma la
+     primera tarjeta en un móvil de 844 px de alto. */
+  .hero-landing { min-height: min(calc(100svh - 8rem - env(safe-area-inset-bottom, 0px)), 560px); }
 }
 @media (min-width: 768px) {
   .hero-landing { min-height: min(calc(100vh - 76px), 820px); }

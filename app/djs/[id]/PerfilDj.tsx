@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, Heart, MessageCircle, Bookmark, FileDown, BadgeCheck, Instagram } from "lucide-react";
 import CompartirBtn from "@/components/CompartirBtn";
 import TardeoCard from "@/components/TardeoCard";
@@ -14,9 +14,10 @@ import { useRoles } from "@/lib/permisos";
 import { supabase } from "@/lib/supabase";
 import { entrarYVolver } from "@/lib/volver";
 import {
-  sigoA, misMarcas, gustarSet, guardarSet, getPresskit, portadaDe, MENSAJE_FALTA_LOTE, type SetDj,
+  sigoA, misMarcas, gustarSetDetalle, guardarSetDetalle, seguidoresDe, getPresskit, portadaDe, MENSAJE_FALTA_LOTE, type SetDj,
 } from "@/lib/sets";
 import type { Tardeo } from "@/lib/types";
+import { optimizable } from "@/lib/fotos";
 
 type Dj = {
   id: string; nombre: string; bio: string | null; avatar: string | null; banner: string | null;
@@ -43,6 +44,11 @@ export default function PerfilDj({
   const [soyDj, setSoyDj] = useState(false);
   const [presskit, setPresskit] = useState<string | null>(null);
   const [comentando, setComentando] = useState<SetDj | null>(null);
+  // ♥ / guardar con petición en curso (clave "tipo:set"): un doble toque
+  // lanzaba alta y baja a la vez y el contador quedaba descuadrado.
+  const marcando = useRef(new Set<string>());
+  // Última lectura pedida del contador de seguidores (descarta las viejas).
+  const turnoSeguidores = useRef(0);
 
   const destacado = sets.find((s) => s.destacado) ?? sets[0] ?? null;
 
@@ -65,14 +71,43 @@ export default function PerfilDj({
 
   async function marcar(s: SetDj, tipo: "like" | "guardar") {
     if (!user) { router.push(entrarYVolver(`/djs/${dj.id}`)); return; }
+    const clave = `${tipo}:${s.id}`;
+    if (marcando.current.has(clave)) return; // ya hay una en vuelo: se ignora el segundo toque
+    marcando.current.add(clave);
     const conj = tipo === "like" ? likes : guardados;
-    const activar = !conj.has(s.id);
-    const nuevo = new Set(conj); if (activar) nuevo.add(s.id); else nuevo.delete(s.id);
-    (tipo === "like" ? setLikes : setGuardados)(nuevo);
+    const fijar = tipo === "like" ? setLikes : setGuardados;
     const campo = tipo === "like" ? "likes" : "guardados";
-    setSets((xs) => xs.map((x) => (x.id === s.id ? { ...x, [campo]: Math.max(0, x[campo] + (activar ? 1 : -1)) } : x)));
-    const e = await (tipo === "like" ? gustarSet : guardarSet)(s.id, user.id, activar);
-    if (e) { (tipo === "like" ? setLikes : setGuardados)(conj); alert(e); }
+    const activar = !conj.has(s.id);
+    const paso = activar ? 1 : -1;
+    // Funcional: así no se pisa otro set que se esté marcando a la vez.
+    fijar((c) => { const n = new Set(c); if (activar) n.add(s.id); else n.delete(s.id); return n; });
+    const contar = (d: number) =>
+      setSets((xs) => xs.map((x) => (x.id === s.id ? { ...x, [campo]: Math.max(0, x[campo] + d) } : x)));
+    contar(paso);
+    try {
+      const r = await (tipo === "like" ? gustarSetDetalle : guardarSetDetalle)(s.id, user.id, activar);
+      if (r.error) {
+        // Fallo: se deshace la marca Y el contador (antes el número se quedaba sumado).
+        fijar((c) => { const n = new Set(c); if (activar) n.delete(s.id); else n.add(s.id); return n; });
+        contar(-paso);
+        alert(r.error);
+      } else if (!r.cambio) {
+        // "Ya estaba así" (p. ej. 23505): la marca es correcta pero la base no
+        // ha movido su contador, así que la pantalla tampoco.
+        contar(-paso);
+      }
+    } finally {
+      marcando.current.delete(clave);
+    }
+  }
+
+  // Tras seguir/dejar de seguir se lee el contador real de la base en vez de
+  // sumar 1: si ya le seguía (23505) o no le seguía al dejarlo, sumar o
+  // restar descuadraba la cifra.
+  function alCambiarSeguir(v: boolean) {
+    setSigo(v);
+    const yo = ++turnoSeguidores.current;
+    void seguidoresDe(dj.id).then((n) => { if (n !== null && yo === turnoSeguidores.current) setSeguidores(n); });
   }
 
   const subtitulo = [dj.ciudad, dj.estilos.slice(0, 3).join(" / ")].filter(Boolean).join(" · ");
@@ -92,10 +127,12 @@ export default function PerfilDj({
       </div>
 
       <div className="relative h-36 w-full overflow-hidden bg-tinta md:h-52">
-        {dj.banner || dj.avatar ? (
-          <Image src={(dj.banner || dj.avatar)!} alt="" fill priority sizes="768px" unoptimized
-            className={`object-cover ${dj.banner ? "" : "scale-110 blur-md opacity-80"}`} />
-        ) : <div className="h-full w-full bg-[linear-gradient(135deg,#141014,#930E72)]" />}
+        {/* Sin banner propio, degradado de marca: el avatar (400x400) estirado a
+            lo ancho se veía pixelado aun difuminado, y el avatar ya sale abajo. */}
+        {dj.banner ? (
+          <Image src={dj.banner} alt="" fill priority sizes="(max-width: 768px) 100vw, 768px" unoptimized={!optimizable(dj.banner)}
+            className="object-cover" />
+        ) : <div className="h-full w-full bg-[linear-gradient(135deg,#141014,#930E72_55%,#D61AA8)]" />}
       </div>
 
       <section className="bg-superficie px-4 pb-4">
@@ -110,10 +147,11 @@ export default function PerfilDj({
             {subtitulo && <p className="text-[15px] text-tinta-suave">{subtitulo}</p>}
           </div>
         </div>
-        <p className="mt-2 text-[14px] text-tinta-suave">{seguidores} {seguidores === 1 ? "seguidor" : "seguidores"}</p>
+        {/* «0 seguidores» desanima más que no poner nada: solo desde el primero. */}
+        {seguidores > 0 && <p className="mt-2 text-[15px] text-tinta-suave">{seguidores} {seguidores === 1 ? "seguidor" : "seguidores"}</p>}
         <div className="mt-3 grid grid-cols-2 gap-2">
           <BotonSeguir djId={dj.id} inicial={sigo} className="w-full !rounded-xl"
-            onCambio={(v) => { setSigo(v); setSeguidores((n) => Math.max(0, n + (v ? 1 : -1))); }} />
+            onCambio={alCambiarSeguir} />
           <Link href={`/djs/${dj.id}/mensaje`}
             className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-linea-fuerte bg-superficie text-[15px] font-bold">
             Mensaje

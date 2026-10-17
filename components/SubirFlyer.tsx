@@ -100,7 +100,7 @@ export default function SubirFlyer({
                 className="h-[110px] w-[88px] rounded-xl object-cover ring-1 ring-black/10" />
             )}
             <button type="button" onClick={quitar} aria-label="Quitar el flyer"
-              className="absolute -right-2 -top-2 grid h-10 w-10 place-items-center rounded-full bg-tinta text-white shadow">
+              className="absolute -right-2 -top-2 grid h-11 w-11 place-items-center rounded-full bg-tinta text-white shadow">
               <X size={14} />
             </button>
           </div>

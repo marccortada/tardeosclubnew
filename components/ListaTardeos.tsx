@@ -724,7 +724,7 @@ export default function ListaTardeos({ todos, masAdelante = [] }: { todos: Tarde
                   type="button"
                   onClick={a.quitar}
                   aria-label={`Quitar ${a.label}`}
-                  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-magenta-50 pl-3.5 pr-2.5 text-[15px] font-semibold text-magenta-700 transition hover:bg-magenta-100"
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-magenta-50 pl-3.5 pr-2.5 text-[15px] font-semibold text-magenta-700 transition hover:bg-magenta-100"
                 >
                   {a.label} <X size={15} aria-hidden />
                 </button>

@@ -132,12 +132,14 @@ export default function CarruselDjs({ djs }: { djs: Dj[] }) {
             className="grid h-11 w-11 place-items-center rounded-full border border-linea-fuerte bg-superficie text-tinta transition hover:border-magenta hover:text-magenta">
             <ChevronLeft size={22} aria-hidden />
           </button>
-          {/* Puntos: decorativos para el dedo (miden 8 px), pero útiles con
-              teclado y lector de pantalla. */}
-          <div className="flex gap-1.5" role="tablist" aria-label="Elegir DJ">
+          {/* Puntos: el punto se ve de 8 px, pero el botón que lo envuelve mide
+              44 px de alto (y lo que dé de ancho) para que se acierte con el dedo. */}
+          <div className="flex" role="tablist" aria-label="Elegir DJ">
             {lista.map((d, k) => (
               <button type="button" key={d.id} onClick={() => ir(k)} role="tab" aria-selected={k === i} aria-label={d.nombre_artistico}
-                className={`h-2 rounded-full transition-all ${k === i ? "w-6 bg-magenta" : "w-2 bg-linea-fuerte hover:bg-tinta-suave"}`} />
+                className="group grid h-11 min-w-[22px] place-items-center px-[3px]">
+                <span aria-hidden className={`block h-2 rounded-full transition-all ${k === i ? "w-6 bg-magenta" : "w-2 bg-linea-fuerte group-hover:bg-tinta-suave"}`} />
+              </button>
             ))}
           </div>
           <button type="button" onClick={() => ir(i + 1)} aria-label="DJ siguiente"

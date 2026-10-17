@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { autorizarAdmin } from "@/lib/apiAuth";
+import { autorizarAdminGlobal } from "@/lib/apiAuth";
 import { registrar } from "@/lib/registro";
 
 export const runtime = "nodejs";
@@ -18,7 +18,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ error: "Identificador de usuario no válido." }, { status: 400 });
   }
 
-  const auth = await autorizarAdmin(undefined, req);
+  const auth = await autorizarAdminGlobal(undefined, req);
   if (auth instanceof NextResponse) return auth;
 
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);

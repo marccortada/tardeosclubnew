@@ -1,5 +1,6 @@
 "use client";
 
+import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/useAuth";
 import { cargarDatosCuenta } from "@/components/panel/CuentaNav";
@@ -36,13 +37,20 @@ export function useRoles(): Roles {
   useEffect(() => {
     if (!user) return;
     let vivo = true;
-    cargarDatosCuenta(user.id)
-      .then((d) => {
+    // «Profesional» lo decide la BASE (`es_profesional()`, lote 73: admin, local
+    // ACTIVO o DJ no oculto), no una copia de la regla aquí: si no coinciden, la
+    // pestaña Entre Beats aparece y luego la base deniega todo lo de dentro.
+    // Si la función no responde (sin lote), la regla de antes.
+    Promise.all([
+      cargarDatosCuenta(user.id),
+      supabase.rpc("es_profesional").then(({ data, error }) => (error ? null : Boolean(data)), () => null),
+    ])
+      .then(([d, prof]) => {
         const esLocal = d.ficha?.tipo === "local";
         const esPromotor = d.ficha?.tipo === "promotor";
         const r: Roles = {
           cargando: false, conSesion: true, esAdmin: d.esAdmin, esLocal, esPromotor, esDj: d.esDj,
-          esProfesional: d.esAdmin || esLocal || esPromotor || d.esDj,
+          esProfesional: prof ?? (d.esAdmin || esLocal || esPromotor || d.esDj),
         };
         if (vivo) setRoles({ uid: user.id, r });
       })

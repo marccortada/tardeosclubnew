@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Play, Pause, Loader2, ArrowUpRight, Headphones, Send } from "lucide-react";
+import { ArrowLeft, Play, Pause, Loader2, ArrowUpRight, Headphones, Send, ExternalLink } from "lucide-react";
 import CompartirBtn from "@/components/CompartirBtn";
 import { useReproductor } from "@/components/musica/Reproductor";
 import { BotonPlay } from "@/components/musica/piezas";
@@ -64,14 +64,23 @@ export default function NexoRadioPagina({ stream }: { stream: string | null }) {
             <span className="h-2 w-2 animate-pulse rounded-full bg-[#ff1f6b]" aria-hidden /> En directo
           </p>
         )}
-        <button type="button" onClick={playNexo}
-          aria-label={!stream ? "Escuchar en nexoradio.es" : esNexo && sonando ? "Pausar Nexo Radio" : "Escuchar Nexo Radio"}
-          className="mt-5 grid h-16 w-16 place-items-center rounded-full border-[3px] border-[#ff1f6b] text-[#ff1f6b] transition active:scale-95">
-          {esNexo && cargando ? <Loader2 size={28} className="animate-spin" aria-hidden />
-            : esNexo && sonando ? <Pause size={28} fill="currentColor" aria-hidden />
-            : <Play size={28} fill="currentColor" className="translate-x-[2px]" aria-hidden />}
-        </button>
-        {!stream && <p className="mt-3 text-[14px] text-white/70">Se abre la web de Nexo Radio</p>}
+        {stream ? (
+          <button type="button" onClick={playNexo}
+            aria-label={esNexo && sonando ? "Pausar Nexo Radio" : "Escuchar Nexo Radio"}
+            className="mt-5 grid h-16 w-16 place-items-center rounded-full border-[3px] border-[#ff1f6b] text-[#ff1f6b] transition active:scale-95">
+            {esNexo && cargando ? <Loader2 size={28} className="animate-spin" aria-hidden />
+              : esNexo && sonando ? <Pause size={28} fill="currentColor" aria-hidden />
+              : <Play size={28} fill="currentColor" className="translate-x-[2px]" aria-hidden />}
+          </button>
+        ) : (
+          // Sin stream propio, el botón abre OTRA web. Un ▶ hacía creer que
+          // sonaría aquí: ahora lo dice con palabras y con el icono de salir.
+          <a href={WEB_NEXO} target="_blank" rel="noopener noreferrer"
+            className="mt-5 inline-flex min-h-[52px] items-center gap-2 rounded-full border-[3px] border-[#ff1f6b] px-5 text-[16px] font-bold text-white transition active:scale-95">
+            <Play size={20} fill="#ff1f6b" className="text-[#ff1f6b]" aria-hidden /> Escuchar en Nexo Radio <ExternalLink size={18} aria-hidden />
+            <span className="sr-only">(se abre en otra web)</span>
+          </a>
+        )}
       </section>
 
       <div role="tablist" aria-label="Nexo Radio" className="mx-4 mt-4 grid grid-cols-3 gap-1 rounded-xl bg-marfil-100 p-1">
@@ -99,12 +108,15 @@ function Escuchar() {
       setSesiones((data ?? []) as Sesion[]);
     });
   }, []);
+  // Sin sesiones no se enseña el bloque: un título con «pronto verás aquí…»
+  // debajo era una pantalla de relleno. Queda solo el enlace a Nexo.
+  const hay = !!sesiones?.length;
   return (
     <section>
-      <h2 className="text-[20px] font-bold">Descubre sesiones</h2>
+      {hay && <h2 className="text-[20px] font-bold">Descubre sesiones</h2>}
       {error && <p className="mt-3 rounded-xl bg-aviso-fondo p-3 text-[15px] text-aviso">{error}</p>}
       {sesiones === null ? <p className="mt-3 text-tinta-suave">Cargando…</p>
-        : sesiones.length === 0 && !error ? <p className="mt-3 text-[15px] text-tinta-suave">Pronto verás aquí las sesiones que selecciona Nexo.</p>
+        : !hay ? null
         : (
           <ul className="mt-3 flex flex-col gap-2">
             {sesiones.map((s) => (
@@ -123,7 +135,7 @@ function Escuchar() {
           </ul>
         )}
       <a href={WEB_NEXO} target="_blank" rel="noopener noreferrer"
-        className="mt-4 flex min-h-tacto items-center gap-3 border-t border-linea pt-3 text-[16px] font-bold">
+        className={`flex min-h-tacto items-center gap-3 text-[16px] font-bold ${hay || error ? "mt-4 border-t border-linea pt-3" : ""}`}>
         <Headphones size={20} aria-hidden /> <span className="flex-1">Ir a Nexo Radio</span> <ArrowUpRight size={18} aria-hidden />
       </a>
     </section>

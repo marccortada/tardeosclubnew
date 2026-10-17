@@ -2,6 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import type { Map as LeafletMap } from "leaflet";
+// CSS del mapa solo donde hay mapa; mapa.css después para que sus retoques ganen.
+import "leaflet/dist/leaflet.css";
+import "./mapa.css";
 
 export default function MiniMapa({
   lat, lng, alto = 160,

@@ -1,5 +1,6 @@
 "use client";
 
+import { urlSegura } from "@/lib/enlaces";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -126,9 +127,12 @@ export default function AccionTardeo({ tardeo, activo = true }: { tardeo: Tardeo
   };
 
   const comprar = () => {
-    if (!tardeo.urlEntradas) return;
-    medir(tardeo.tipoEntrada === "lista" ? "clic_lista" : "clic_entrada", { tardeoId: tardeo.id, destino: tardeo.urlEntradas });
-    window.open(tardeo.urlEntradas, "_blank", "noopener,noreferrer");
+    // Solo http(s): el enlace lo escribe el local y la base no lo valida, y
+    // React no protege window.open de un «javascript:».
+    const url = urlSegura(tardeo.urlEntradas);
+    if (!url) return;
+    medir(tardeo.tipoEntrada === "lista" ? "clic_lista" : "clic_entrada", { tardeoId: tardeo.id, destino: url });
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   return (

@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { registrar } from "./registro";
@@ -79,6 +79,39 @@ export async function autorizarAdmin(tokenCuerpo?: string, req?: Request): Promi
   if (auth instanceof NextResponse) return auth;
   if (!auth.esAdmin) {
     return NextResponse.json({ error: "Solo para administradores." }, { status: 403 });
+  }
+  return auth;
+}
+
+/**
+ * ¿Admin GLOBAL? Desde el lote 69 hay admins «de zona» o «de tarea» (sorteos,
+ * moderación, comercial…): siguen teniendo `is_admin`, pero no deben poder
+ * hacer lo que toca a toda la base. Misma regla que `private.es_admin_global()`:
+ * admin sin filas en `admin_roles`, o con una fila 'global'.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- vale cualquier cliente con service role
+export async function esAdminGlobal(admin: SupabaseClient<any, any, any>, uid: string): Promise<boolean> {
+  const { data: prof } = await admin.from("profiles").select("is_admin").eq("id", uid).maybeSingle();
+  if (!(prof as { is_admin?: boolean } | null)?.is_admin) return false;
+  const { data: roles, error } = await admin.from("admin_roles").select("tarea").eq("profile_id", uid);
+  // Sin lote 69 (tabla inexistente) todos los admins son globales, como antes.
+  if (error) return true;
+  const lista = (roles ?? []) as { tarea: string }[];
+  return lista.length === 0 || lista.some((r) => r.tarea === "global");
+}
+
+/**
+ * Como autorizarAdmin, pero solo admin GLOBAL. Para lo que afecta a toda la
+ * base: push a todo el mundo, ofertas por email, borrar cuentas ajenas, datos
+ * de cualquier usuario. Un admin de zona o de tarea recibe 403.
+ */
+export async function autorizarAdminGlobal(tokenCuerpo?: string, req?: Request): Promise<NextResponse | Autorizado> {
+  const auth = await autorizarAdmin(tokenCuerpo, req);
+  if (auth instanceof NextResponse) return auth;
+  const URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  if (!(await esAdminGlobal(createClient(URL, SERVICE_ROLE), auth.uid))) {
+    return NextResponse.json({ error: "Solo un administrador general puede hacer esto." }, { status: 403 });
   }
   return auth;
 }

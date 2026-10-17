@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { formatFecha, flyerSrc } from "@/lib/formato";
 import { getTardeoById, getTardeosPublicadosDeLocal } from "@/lib/tardeos";
 import { precioCorto } from "@/lib/tardicola";
-import AccionTardeo from "@/components/AccionTardeo";
+import AccionesFicha from "@/components/tardicola/AccionesFicha";
 import Resenas from "@/components/Resenas";
 import CompartirBtn from "@/components/CompartirBtn";
 import RegistrarVista from "@/components/RegistrarVista";
@@ -18,7 +18,6 @@ import { AfinAMi, LeerMas } from "@/components/tardicola/FichaPiezas";
 import { jsonLdEvento, urlAbsoluta } from "@/lib/seo";
 import { getPromosDeTardeo } from "@/lib/promociones";
 import { sinMarcas } from "@/lib/texto";
-import { hoyEnEspana } from "@/lib/fechas";
 import { instantesTardeo } from "@/lib/avisos";
 import type { Tardeo } from "@/lib/types";
 import { ArrowLeft, CalendarDays, MapPin, Navigation, Tag, Ban, History, Star, ArrowRight } from "lucide-react";
@@ -77,11 +76,13 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
   if (!tardeo) notFound();
 
   const cancelado = tardeo.estado === "cancelado";
-  const pasado = tardeo.fecha < hoyEnEspana();
-  const activo = !pasado && !cancelado;
-  // Se valora cuando ha terminado de verdad (misma regla de fin que la base,
-  // lote 67), no al empezar el día. Cancelado: no se pinta (nada que valorar).
+  // «Ya pasó» por la hora de FIN (misma regla que `public.tardeo_fin`, lote
+  // 67), no por la fecha: un tardeo de 22:00 a 03:00 a las 00:30 salía como
+  // pasado y no dejaba apuntarse, y la encuesta no aparecía hasta el día
+  // siguiente aunque ya hubiera acabado. Cancelado: no se valora.
   const terminado = yaTermino(tardeo);
+  const pasado = terminado;
+  const activo = !pasado && !cancelado;
 
   const [promos, delLocal] = await Promise.all([
     activo ? getPromosDeTardeo(id) : Promise.resolve([]),
@@ -99,14 +100,21 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
   const lineUp = tardeo.djs.filter((d) => d.id && d.nombre.trim());
 
   return (
-    <main className="bg-fondo">
+    // En móvil, con el tardeo activo, hay una barra fija de Asistiré/Guardar
+    // encima de la barra inferior: este relleno evita que tape el final.
+    <main className={`bg-fondo ${activo ? "pb-[76px] md:pb-0" : ""}`}>
       <DatosEstructurados datos={jsonLdEvento(tardeo)} />
       <RegistrarVista tipo="tardeo" id={tardeo.id} />
 
       <div className="mx-auto max-w-3xl md:px-8 md:pt-8">
-        {/* Portada */}
-        <div className="relative aspect-[16/10] w-full overflow-hidden bg-marfil-100 md:rounded-3xl">
-          <Image src={flyer} alt={`Cartel de ${tardeo.titulo}`} fill priority sizes="(max-width: 768px) 100vw, 768px" className="object-cover" />
+        {/* Portada. Los carteles suelen ser verticales: a 16:10 con object-cover
+            se cortaban el título y la fecha impresos. Ahora 4:5 con tope de alto
+            y el cartel entero (contain) sobre una copia difuminada de sí mismo,
+            para que los huecos de los lados no queden en blanco. */}
+        <div className="relative aspect-[4/5] max-h-[min(70svh,640px)] w-full overflow-hidden bg-marfil-100 md:rounded-3xl">
+          <Image src={flyer} alt="" aria-hidden fill sizes="64px" className="scale-110 object-cover opacity-80 blur-2xl" />
+          <span aria-hidden className="absolute inset-0 bg-black/25" />
+          <Image src={flyer} alt={`Cartel de ${tardeo.titulo}`} fill priority sizes="(max-width: 768px) 100vw, 768px" className="object-contain" />
           {/* Volver con historial: conserva filtros, vista y posición de Eventos. */}
           <Link href="/eventos" aria-label="Volver a Eventos"
             className="absolute left-3 top-3 grid h-11 w-11 place-items-center rounded-full bg-black/40 text-white backdrop-blur">
@@ -125,12 +133,14 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
           <div>
             <h1 className="text-[30px] font-bold leading-tight text-tinta md:text-[40px]">{tardeo.titulo}</h1>
             <p className="mt-2 flex items-center gap-2 text-[16px] text-tinta"><CalendarDays size={18} className="text-magenta" aria-hidden /> {cuando(tardeo)}</p>
-            <div className="mt-2 flex items-center justify-between gap-3">
+            {/* En móvil «Cómo llegar» va en su fila: a su lado el nombre del
+                local se cortaba a media palabra. Nombre hasta en dos líneas. */}
+            <div className="mt-2 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <p className="flex min-w-0 items-center gap-2 text-[16px] text-tinta-suave">
                 <MapPin size={18} className="shrink-0 text-magenta" aria-hidden />
                 {tardeo.local.nombre ? (
-                  <Link href={`/locales/${tardeo.local.id}`} className="flex min-h-[44px] min-w-0 items-center hover:underline"><span className="truncate">{[tardeo.local.nombre, tardeo.zona].filter(Boolean).join(" · ")}</span></Link>
-                ) : <span className="truncate">{tardeo.zona || "Por confirmar"}</span>}
+                  <Link href={`/locales/${tardeo.local.id}`} className="flex min-h-[44px] min-w-0 items-center hover:underline"><span className="line-clamp-2">{[tardeo.local.nombre, tardeo.zona].filter(Boolean).join(" · ")}</span></Link>
+                ) : <span className="line-clamp-2">{tardeo.zona || "Por confirmar"}</span>}
               </p>
               <EnlaceExterno href={mapsUrl} canal="mapa" localId={tardeo.local.id} tardeoId={tardeo.id}
                 className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl border border-linea-fuerte bg-superficie px-3 text-[14px] font-semibold text-tinta">
@@ -200,7 +210,7 @@ export default async function FichaTardeo({ params }: { params: Promise<{ id: st
             </section>
           )}
 
-          <AccionTardeo tardeo={tardeo} activo={activo} />
+          <AccionesFicha tardeo={tardeo} activo={activo} />
 
           <DestacarTardeo localId={tardeo.local.id} tardeoId={tardeo.id} titulo={tardeo.titulo} />
           {tardeo.local.id && !cancelado && (

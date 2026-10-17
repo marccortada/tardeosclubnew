@@ -53,10 +53,28 @@ export default function Cola() {
       supabase.rpc("cola_trabajo", {
         p_tipo: tipo || null, p_zona: zona || null, p_solo_mias: mias, p_estado: estado,
         p_limite: hasta - desde + 1, p_desde: desde,
-      }).then(({ data, error }) => {
+      }).then(async ({ data, error }) => {
         if (error) return { data: null, count: null, error: faltaLote(error) ? { message: "Falta el lote 69 en la base de datos." } : error };
         const filas = (data ?? []) as Fila[];
-        return { data: filas, count: filas[0]?.total ?? 0, error: null };
+        // Página vacía (se marcó hecho lo último de la última): no hay fila de la
+        // que leer el total. El lote 73 da `cola_trabajo_total`; sin él, el apaño de abajo.
+        if (filas.length === 0 && desde > 0) {
+          const t = await supabase.rpc("cola_trabajo_total", { p_tipo: tipo || null, p_zona: zona || null, p_solo_mias: mias, p_estado: estado });
+          if (!t.error) return { data: filas, count: Number(t.data ?? 0), error: null };
+        }
+        const limite = hasta - desde + 1;
+        // El total viene en cada fila: con la página vacía (p. ej. se marcó
+        // hecho lo último de la última página) no hay fila de la que leerlo y
+        // salía «No hay nada pendiente» sin paginación. Se garantiza al menos
+        // lo ya visto (`desde` filas antes de esta página) para que
+        // usePaginado retroceda a la anterior. Si el total de la RPC se queda
+        // corto (menos de lo visto), se usa lo visto y, con la página llena,
+        // una más para poder pasar a la siguiente. Si el total cuadra (cuando
+        // el SQL lo arregle), se usa tal cual.
+        const visto = desde + filas.length;
+        const totalRpc = Number(filas[0]?.total ?? 0);
+        const count = totalRpc >= visto ? totalRpc : visto + (filas.length === limite ? 1 : 0);
+        return { data: filas, count, error: null };
       }),
     [tipo, zona, estado, mias],
     25,
@@ -108,14 +126,18 @@ export default function Cola() {
                 <Etiqueta tono="marca">{TIPOS[f.tipo] ?? f.tipo}</Etiqueta>
                 <Etiqueta tono={est.tono}>{est.label}</Etiqueta>
                 <Etiqueta>{f.zona_madre ? ZONAS_MADRE.find((z) => z.clave === f.zona_madre)?.label ?? f.zona_madre : "Sin zona"}</Etiqueta>
-                <span className="ml-auto text-sm text-tinta-suave">{f.fecha ? new Date(f.fecha).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" }) : ""}</span>
+                <span className="ml-auto text-sm text-tinta-suave">{f.fecha ? new Date(f.fecha).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Madrid" }) : ""}</span>
               </div>
               <p className="mt-2 text-[16px] font-bold">{f.titulo}</p>
               {f.detalle && <p className="text-[15px] text-tinta-suave">{f.detalle}</p>}
               <p className="mt-1 text-sm text-tinta-suave">Responsable: <strong>{f.responsable_nombre ?? "sin asignar"}</strong></p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {!esMia && <Boton tamano="pequeno" onClick={() => cambiar(f, { responsable: user?.id ?? null })}>Asignarme</Boton>}
-                {esMia && <Boton tamano="pequeno" variante="contorno" onClick={() => cambiar(f, { responsable: null, estado: "pendiente" })}>Soltar</Boton>}
+                {/* Soltar solo quita el responsable: una tarea hecha o descartada
+                    sigue así (antes volvía a «Pendiente» y reaparecía en Abiertas). */}
+                {esMia && <Boton tamano="pequeno" variante="contorno" onClick={() => cambiar(f, {
+                  responsable: null, estado: f.estado === "hecho" || f.estado === "descartado" ? f.estado : "pendiente",
+                })}>Soltar</Boton>}
                 {f.estado !== "hecho" && <Boton tamano="pequeno" variante="suave" onClick={() => cambiar(f, { estado: "hecho" })}>Marcar hecho</Boton>}
                 {f.estado === "hecho" && <Boton tamano="pequeno" variante="suave" onClick={() => cambiar(f, { estado: "pendiente" })}>Reabrir</Boton>}
                 {f.enlace && (

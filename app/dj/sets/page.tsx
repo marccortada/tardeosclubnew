@@ -38,10 +38,20 @@ export default function SetsDj() {
 
   async function publicar(e: React.FormEvent) {
     e.preventDefault();
-    if (!/^https?:\/\//.test(url.trim())) { setError("Pega el enlace completo (https://…)."); return; }
+    // Mismas reglas que la tabla `sets` (lote 65), comprobadas aquí para dar un
+    // mensaje claro: un título de solo espacios pasaba el `required` del
+    // navegador, se recortaba a "" y la base respondía con un 400.
+    const t = titulo.trim();
+    if (!t) { setError("Ponle un título al set."); return; }
+    if (t.length > 140) { setError(`El título es demasiado largo (${t.length} caracteres). Máximo 140.`); return; }
+    // La base exige http(s):// sin distinguir mayúsculas; aquí igual.
+    if (!/^https?:\/\//i.test(url.trim())) { setError("Pega el enlace completo del set (https://…)."); return; }
+    // La portada no tiene restricción en la base, pero un enlace que no sea
+    // http(s) rompe la imagen en la tarjeta: mejor avisar ahora.
+    if (portada.trim() && !/^https?:\/\//i.test(portada.trim())) { setError("La portada debe ser un enlace completo a una imagen (https://…), o déjala vacía."); return; }
     setGuardando(true); setError(null);
     const err = await crearSet(dj.id, {
-      titulo, url, portada: portada || null,
+      titulo: t, url, portada: portada.trim() || null,
       estilos: estilos.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 6),
       destacado: !sets?.length, orden: (sets?.length ?? 0),
     });

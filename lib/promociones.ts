@@ -133,11 +133,16 @@ export async function borrarPromo(id: string) {
  * `promo_canjes` (una vez por persona). Dos canjes a la vez no pasan del límite.
  */
 export async function canjearPromocion(promoId: string, codigo?: string | null): Promise<{ ok: boolean; error: string | null }> {
-  const { error } = await supabase.rpc("canjear_promocion", { p_promo: promoId, p_codigo: codigo ?? null });
+  const { data, error } = await supabase.rpc("canjear_promocion", { p_promo: promoId, p_codigo: codigo ?? null });
   if (error) {
     const falta = ["PGRST202", "42883"].includes(error.code ?? "");
     return { ok: false, error: falta ? "El canje llegará en breve (falta el lote 68)." : error.message };
   }
+  // Lote 73: un código incorrecto ya no es un error (si lo fuera, se desharía
+  // también la cuenta de intentos y el tope no frenaría a nadie): la base
+  // devuelve { ok: false, error, intentos_restantes }.
+  const r = data as { ok?: boolean; error?: string } | null;
+  if (r && r.ok === false) return { ok: false, error: r.error ?? "Ese código no es válido." };
   return { ok: true, error: null };
 }
 

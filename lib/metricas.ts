@@ -132,20 +132,10 @@ export async function medir(
       p_sesion: sesion(), p_destino: refs.destino ?? null, p_detalle: detalle,
       p_origen: o.origen, p_medio: o.medio, p_campana: o.campana,
     });
-    const code = (r.error as { code?: string } | null)?.code;
-    if (!r.error || (code !== "PGRST202" && code !== "42883")) return;
-
-    const { data: { session } } = await supabase.auth.getSession();
-    await supabase.from("eventos_metrica").insert({
-      tipo,
-      tardeo_id: refs.tardeoId ?? null,
-      local_id: refs.localId ?? null,
-      dj_id: refs.djId ?? null,
-      profile_id: session?.user?.id ?? null,
-      sesion: sesion(),
-      destino: refs.destino ?? null,
-      detalle,
-    });
+    // Desde el lote 73 solo se puede medir por la función: el insert directo a
+    // la tabla está cerrado (dejaba a cualquiera llenar la base de basura).
+    // Si la función fallara, se pierde esa medición y la página sigue igual.
+    void r;
   } catch {
     /* medir nunca puede romper la página */
   }

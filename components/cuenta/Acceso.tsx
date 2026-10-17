@@ -350,7 +350,9 @@ export default function Acceso() {
                   <>
                     {/* ---- Método: dos opciones del mismo peso ---- */}
                     <p id="acceso-metodo" className="mt-5 text-[16px] font-bold">{alta ? "¿Cómo quieres entrar luego?" : "¿Cómo quieres entrar?"}</p>
-                    <div role="radiogroup" aria-labelledby="acceso-metodo" className="mt-1.5 grid grid-cols-2 gap-2">
+                    {/* Apiladas en móvil: a 390 px, lado a lado, «Con código por email» se
+                        partía en dos líneas y parecían dos botones de distinto tamaño. */}
+                    <div role="radiogroup" aria-labelledby="acceso-metodo" className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <OpcionMetodo on={metodo === "clave"} onClick={() => cambiarMetodo("clave")} icono={<KeyRound size={19} aria-hidden />}>
                         Con contraseña
                       </OpcionMetodo>
