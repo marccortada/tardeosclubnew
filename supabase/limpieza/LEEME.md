@@ -36,4 +36,4 @@ node --env-file=.env.local scripts/limpieza-recuentos.mjs
 
 Probado el 17-oct-2026 en Postgres local con los lotes 01-72 y un escenario que imita
 producción (copias con métricas, una visita repetida, contadores, tardeo real con
-asistentes): 25 comprobaciones, todas bien, también en la segunda pasada.
+asistentes): 24 comprobaciones, todas bien, también en la segunda pasada.
