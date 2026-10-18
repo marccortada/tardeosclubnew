@@ -4,7 +4,7 @@
 -- hora desplazada 2 h, sin zona y publicadas aunque estuvieran ocultas, PERO guardan tipo
 -- de evento, ambiente, público y dress code que el gemelo no tiene: se pasan ANTES.
 -- De las copias cuelgan MÉTRICAS (visitas, clics) y, desde el 16-oct, 1 inscripción real
--- (alguien se apuntó a la copia publicada de «Fiesta Sevillanas»): todo pasa al gemelo.
+-- (alguien se apuntó a la copia publicada de «Fiesta Sevillanas»), y desde el 18-oct 2 favoritos: todo pasa al gemelo.
 -- Las que el gemelo ya tiene de la misma visita (misma sesión, tipo y día) se quitan:
 -- contarían doble y además chocarían con el índice que evita duplicados.
 -- Cualquier OTRA cosa que colgara (favoritos, Meet Zone, sorteos…) PARA todo.
@@ -65,6 +65,18 @@ update public.inscripciones i set tardeo_id = g.id
 from public.tardeos d, public.tardeos g
 where d.origen_id is null and g.origen_id = d.id and i.tardeo_id = d.id
   and not exists (select 1 from public.inscripciones x where x.tardeo_id = g.id and x.profile_id = i.profile_id);
+
+-- 3c) Favoritos («guardados»): igual que las inscripciones. Clave (persona,
+-- tardeo): si ya lo tenía guardado en el gemelo, el de la copia sobra y se va
+-- con ella (es el mismo plan guardado dos veces, no se pierde nada).
+update public.favoritos f set tardeo_id = g.id
+from public.tardeos d, public.tardeos g
+where d.origen_id is null and g.origen_id = d.id and f.tardeo_id = d.id
+  and not exists (select 1 from public.favoritos x where x.tardeo_id = g.id and x.profile_id = f.profile_id);
+delete from public.favoritos f
+using public.tardeos d, public.tardeos g
+where d.origen_id is null and g.origen_id = d.id and f.tardeo_id = d.id
+  and exists (select 1 from public.favoritos x where x.tardeo_id = g.id and x.profile_id = f.profile_id);
 
 -- 4) Guarda: si cuelga cualquier otra cosa de una copia, se para TODO (nada se pierde)
 do $g$

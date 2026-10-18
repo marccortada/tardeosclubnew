@@ -357,7 +357,7 @@ Paquetes para pegar de una vez: `PEGAR_45_a_62.sql`, `PEGAR_63_a_69.sql`,
   `comentario_oculto`), `sorteos` (insert con las columnas del formulario). Probado en
   local: 80 comprobaciones bien.
 
-- `75` Asistencia desde la ficha del tardeo (`PEGAR_75.sql`, **pendiente de pegar**):
+- `75` Asistencia desde la ficha del tardeo (`PEGAR_75.sql`, **aplicado en producción el 18‑oct‑2026** con `scripts/aplicar-sql.sh`):
   `private.gestiona_asistencia()` = admin de la zona **o dueño del local**; con ella
   `admin_mover_inscripcion`, `admin_promover_espera` y `marcar_asistencia` (el admin, solo de
   su zona). `lista_de_tardeo()` = lista completa con puesto en la espera (email solo para
@@ -439,10 +439,13 @@ tiene los permisos por defecto de Supabase (`grant` sobre tablas a anon/authenti
 `usage` en el esquema `auth`): en las pruebas hay que darlos a mano, y en los lotes
 conviene ponerlos explícitos.
 
-Pegar en producción: el modo automático de permisos de Claude Code bloquea
-escribir en Supabase y desplegar aunque se autorice en el chat. Lo hace la persona:
-abrir el `PEGAR_*.sql`, ⌘A ⌘C, SQL Editor → Run (si pregunta, **"Run without RLS"**:
-los lotes ya activan RLS) → "Run query".
+Aplicar en producción (desde el 18‑oct‑2026): `bash scripts/aplicar-sql.sh supabase/PEGAR_NN.sql`
+(`--probar` solo prueba la conexión). Usa `SUPABASE_DB_URL` + `SUPABASE_DB_PASSWORD` de
+`.env.local` (Session pooler; nunca subir), solo acepta el proyecto nuevo y se para al primer
+error. El usuario autorizó aplicar así los lotes **probados en local**; lo que borre datos
+sigue necesitando enseñar recuentos y un "sí". En modo automático de Claude Code el
+clasificador lo bloquea: hace falta la sesión en «Saltar permisos» o «Preguntar».
+Alternativa manual: `PEGAR_*.sql` en el SQL Editor → Run ("Run without RLS").
 
 Al copiar SQL al portapapeles en macOS usar
 `osascript -e 'set the clipboard to (read POSIX file "/ruta.sql" as «class utf8»)'`
@@ -533,7 +536,7 @@ salvo `.env.example`.
 - Email de Sergi → `/admin/equipo`: tarea Zona, zona Tarragona (+ su local).
   Nombre del responsable de Girona.
 - Limpieza de duplicados: **"sí" dado el 17‑oct**; `supabase/limpieza/PEGAR_LIMPIEZA.sql`
-  listo para pegar (794 tardeos, 59 locales, 30 DJs; reasigna 31 métricas y 1 inscripción).
+  listo para pegar (794 tardeos, 59 locales, 30 DJs; reasigna sus métricas, 2 inscripciones y 2 favoritos).
   Cuando esté pegado, marcarlo aquí y en §8. Queda fuera: «Fatima Kahlo» tiene dos fichas
   de DJ (una con cuenta) que no son copia por origen: decidir cuál se queda.
 - «Fiesta Sevillanas» (Granollers): en la antigua estaba inactiva y con fechas rotas; tras
