@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, CalendarDays, List } from "lucide-react";
 import { SeccionPanel } from "@/components/panel/PanelShell";
-import Paginacion, { usePaginado, Filtros, EstadoLista } from "@/components/panel/Paginacion";
+import Paginacion, { usePaginado, Filtros, EstadoLista, Buscador, useDiferido } from "@/components/panel/Paginacion";
+import PanelFiltros, { RangoFechas } from "@/components/panel/PanelFiltros";
 import { claseBoton } from "@/components/Boton";
 import CalendarioLocal from "@/components/CalendarioLocal";
 import { useFicha } from "../_panel/PanelLocal";
@@ -15,6 +16,7 @@ const FILTROS: { clave: FiltroTardeos; label: string; vacio: string }[] = [
   { clave: "proximos", label: "Próximos", vacio: "No tienes tardeos próximos. Crea uno y saldrá aquí." },
   { clave: "pasados", label: "Pasados", vacio: "Todavía no hay tardeos pasados." },
   { clave: "borradores", label: "Borradores", vacio: "No tienes nada guardado sin publicar." },
+  { clave: "cerrados", label: "Cancelados y finalizados", vacio: "No tienes tardeos cancelados ni finalizados." },
 ];
 
 /**
@@ -35,7 +37,7 @@ export default function MisTardeos() {
   // y no con useSearchParams, que obliga a un Suspense alrededor.
   useEffect(() => {
     const f = new URLSearchParams(window.location.search).get("filtro");
-    if (f === "pasados" || f === "borradores" || f === "proximos") setFiltro(f);
+    if (f === "pasados" || f === "borradores" || f === "proximos" || f === "cerrados") setFiltro(f);
   }, []);
 
   useEffect(() => {
@@ -44,9 +46,16 @@ export default function MisTardeos() {
     return () => { vivo = false; };
   }, [ficha.id]);
 
+  // Buscar por título y acotar fechas (en el servidor: la lista va paginada).
+  const [texto, setTexto] = useState("");
+  const busca = useDiferido(texto);
+  const [fDesde, setFDesde] = useState("");
+  const [fHasta, setFHasta] = useState("");
+  const activos = [fDesde, fHasta].filter(Boolean).length;
+
   const p = usePaginado(
-    (desde, hasta) => getTardeosDeLocal(ficha.id, filtro, desde, hasta),
-    [ficha.id, filtro],
+    (desde, hasta) => getTardeosDeLocal(ficha.id, filtro, desde, hasta, { texto: busca, desde: fDesde, hasta: fHasta }),
+    [ficha.id, filtro, busca, fDesde, fHasta],
   );
 
   const actual = FILTROS.find((f) => f.clave === filtro)!;
@@ -82,8 +91,14 @@ export default function MisTardeos() {
             valor={filtro}
             onCambiar={setFiltro}
           />
+          <div className="mt-3 flex flex-col gap-3">
+            <Buscador valor={texto} onCambiar={setTexto} placeholder="Buscar por título…" />
+            <PanelFiltros clave="local-tardeos" activos={activos} onLimpiar={() => { setFDesde(""); setFHasta(""); }}>
+              <RangoFechas desde={fDesde} hasta={fHasta} onDesde={setFDesde} onHasta={setFHasta} etiqueta="Fecha del tardeo" />
+            </PanelFiltros>
+          </div>
           <div className="mt-4">
-            <EstadoLista cargando={p.cargando} error={p.error} vacio={actual.vacio} filas={p.filas.length} />
+            <EstadoLista cargando={p.cargando} error={p.error} vacio={busca || activos ? "Ningún tardeo con esa búsqueda o fechas." : actual.vacio} filas={p.filas.length} />
             {p.filas.length > 0 && (
               <ul className={`flex flex-col gap-2 transition-opacity ${p.cargando ? "opacity-60" : ""}`}>
                 {p.filas.map((t) => <FilaTardeo key={t.id} t={t} enlace={enlace} />)}

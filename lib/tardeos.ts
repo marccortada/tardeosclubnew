@@ -881,8 +881,11 @@ export async function setDjsDeTardeo(tardeoId: string, nombres: string[]): Promi
   return { enlazados, sinFicha };
 }
 
-/** Las tres pestañas de "Mis tardeos". */
-export type FiltroTardeos = "proximos" | "pasados" | "borradores";
+/** Las pestañas de "Mis tardeos" ("cerrados" = cancelados y finalizados). */
+export type FiltroTardeos = "proximos" | "pasados" | "borradores" | "cerrados";
+
+/** Búsqueda y rango de fechas opcionales de "Mis tardeos" (se filtran en el servidor). */
+export type BusquedaTardeosLocal = { texto?: string; desde?: string; hasta?: string };
 
 /**
  * Tardeos de un local (cualquier estado), para el panel, de página en página.
@@ -897,10 +900,15 @@ export type FiltroTardeos = "proximos" | "pasados" | "borradores";
  *  - Borradores: lo guardado sin publicar, sea de la fecha que sea.
  */
 export async function getTardeosDeLocal(
-  localId: string, filtro: FiltroTardeos, desde: number, hasta: number,
+  localId: string, filtro: FiltroTardeos, desde: number, hasta: number, busqueda: BusquedaTardeosLocal = {},
 ): Promise<{ data: Tardeo[] | null; count: number | null; error: { message: string } | null }> {
   const hoy = hoyISO();
   let q = supabase.from("tardeos").select(SELECT, { count: "exact" }).eq("local_id", localId);
+  // Título (sin caracteres que rompan el filtro de PostgREST) y rango de días.
+  const texto = (busqueda.texto ?? "").replace(/[,()*%\\"']/g, " ").replace(/\s+/g, " ").trim();
+  if (texto) q = q.ilike("titulo", `%${texto}%`);
+  if (busqueda.desde) q = q.gte("fecha", busqueda.desde);
+  if (busqueda.hasta) q = q.lte("fecha", busqueda.hasta);
   // "Próximos" y "Pasados" son los que están (o estuvieron) a la vista:
   // publicados o programados. Los cancelados/finalizados no se cuentan como
   // próximos (antes salían, y hasta se podía pedir destacar uno cancelado).
@@ -908,6 +916,9 @@ export async function getTardeosDeLocal(
   const vivos = ["publicado", "programado"];
   if (filtro === "proximos") q = q.gte("fecha", hoy).in("estado", vivos).order("fecha", { ascending: true }).order("hora_inicio", { ascending: true }).order("id");
   else if (filtro === "pasados") q = q.lt("fecha", hoy).in("estado", vivos).order("fecha", { ascending: false }).order("id");
+  // Cerrados: cancelados y finalizados, del más reciente hacia atrás. Antes no
+  // salían en ninguna pestaña y el local no podía ver qué había cancelado.
+  else if (filtro === "cerrados") q = q.in("estado", ["cancelado", "finalizado"]).order("fecha", { ascending: false }).order("id");
   else q = q.eq("estado", "borrador").order("fecha", { ascending: true }).order("id");
   const { data, count, error } = await q.range(desde, hasta);
   return { data: data ? data.map(mapRow) : null, count, error };
@@ -917,12 +928,13 @@ export async function getTardeosDeLocal(
 export async function contarTardeosDeLocal(localId: string): Promise<Record<FiltroTardeos, number | null>> {
   const hoy = hoyISO();
   const base = () => supabase.from("tardeos").select("id", { count: "exact", head: true }).eq("local_id", localId);
-  const [p, a, b] = await Promise.all([
+  const [p, a, b, c] = await Promise.all([
     base().gte("fecha", hoy).in("estado", ["publicado", "programado"]),
     base().lt("fecha", hoy).in("estado", ["publicado", "programado"]),
     base().eq("estado", "borrador"),
+    base().in("estado", ["cancelado", "finalizado"]),
   ]);
-  return { proximos: p.count ?? null, pasados: a.count ?? null, borradores: b.count ?? null };
+  return { proximos: p.count ?? null, pasados: a.count ?? null, borradores: b.count ?? null, cerrados: c.count ?? null };
 }
 
 /** Los tardeos de un local entre dos fechas (YYYY-MM-DD), para el calendario
@@ -998,7 +1010,7 @@ export async function getPlazasTardeo(id: string): Promise<Plazas | null> {
 }
 
 export type Inscrito = {
-  inscripcion_id: string; nombre: string; estado: "apuntado" | "cancelado";
+  inscripcion_id: string; nombre: string; estado: "apuntado" | "espera" | "cancelado";
   asistencia: "pendiente" | "asistio" | "no_asistio"; apuntado_en: string;
 };
 
@@ -1010,6 +1022,67 @@ export async function getInscritosTardeo(id: string): Promise<{ filas: Inscrito[
     return { filas: [], error: falta ? "Falta pegar el lote 48 (supabase/48_reservas_aforo_asistencia.sql)." : error.message };
   }
   return { filas: (data ?? []) as Inscrito[], error: null };
+}
+
+/** Fila de la lista completa de un tardeo (lote 75: `lista_de_tardeo`). */
+export type FilaLista = Inscrito & {
+  /** Solo para admins; al local la base se lo da vacío. */
+  email: string | null;
+  espera_desde: string | null;
+  /** Puesto en la lista de espera (1 = el siguiente en subir). */
+  puesto: number | null;
+};
+
+/**
+ * Lista completa de un tardeo para su ficha: confirmados, espera (con puesto) y
+ * cancelados en una sola llamada. Sin el lote 75 se arma como antes, con
+ * `inscritos_de_tardeo` + la fecha de espera leída aparte, para que la pantalla
+ * funcione aunque el lote aún no esté pegado.
+ */
+export async function getListaTardeo(id: string): Promise<{ filas: FilaLista[]; error: string | null; sinLote75: boolean }> {
+  const { data, error } = await supabase.rpc("lista_de_tardeo", { p_tardeo: id });
+  if (!error) return { filas: (data ?? []) as FilaLista[], error: null, sinLote75: false };
+  if (error.code !== "PGRST202" && error.code !== "42883") return { filas: [], error: error.message, sinLote75: false };
+  const r = await getInscritosTardeo(id);
+  if (r.error) return { filas: [], error: r.error, sinLote75: true };
+  const ids = r.filas.filter((f) => f.estado === "espera").map((f) => f.inscripcion_id);
+  const desde = new Map<string, string | null>();
+  if (ids.length) {
+    const { data: d } = await supabase.from("inscripciones").select("id,espera_desde").in("id", ids);
+    for (const x of (d ?? []) as { id: string; espera_desde: string | null }[]) desde.set(x.id, x.espera_desde);
+  }
+  const enEspera = r.filas.filter((f) => f.estado === "espera")
+    .map((f) => ({ ...f, espera_desde: desde.get(f.inscripcion_id) ?? f.apuntado_en }))
+    .sort((a, b) => (a.espera_desde ?? "").localeCompare(b.espera_desde ?? "") || a.inscripcion_id.localeCompare(b.inscripcion_id));
+  const puesto = new Map(enEspera.map((f, i) => [f.inscripcion_id, i + 1]));
+  return {
+    filas: r.filas.map((f) => ({ ...f, email: null, espera_desde: desde.get(f.inscripcion_id) ?? null, puesto: puesto.get(f.inscripcion_id) ?? null })),
+    error: null, sinLote75: true,
+  };
+}
+
+/**
+ * Traduce los errores de gestionar la asistencia a algo que se entienda. Antes
+ * del lote 75 la base solo deja al admin de la zona: al local le decía «Este
+ * tardeo no es de tu zona», que no tiene sentido para él.
+ */
+function errorAsistencia(m: string): string {
+  if (/no es de tu zona/i.test(m)) return "Para gestionar la espera desde aquí falta activar una mejora en la base de datos (lote 75). De momento, pídeselo al equipo.";
+  if (/Aforo completo/i.test(m)) return "El aforo está completo: sube el aforo del tardeo o cancela a alguien para dar esta plaza.";
+  return m;
+}
+
+/** Mover una inscripción: 'apuntado' (dar plaza), 'espera' o 'cancelado'. Admin de la zona o dueño del local (lote 75). */
+export async function moverInscripcion(id: string, estado: "apuntado" | "espera" | "cancelado"): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc("admin_mover_inscripcion", { p_inscripcion: id, p_estado: estado });
+  return { error: error ? errorAsistencia(error.message) : null };
+}
+
+/** Dar plaza al primero de la espera. Devuelve si había alguien. */
+export async function promoverSiguiente(tardeoId: string): Promise<{ error: string | null; nadie: boolean }> {
+  const { data, error } = await supabase.rpc("admin_promover_espera", { p_tardeo: tardeoId });
+  if (error) return { error: errorAsistencia(error.message), nadie: false };
+  return { error: null, nadie: !data };
 }
 
 export async function marcarAsistencia(

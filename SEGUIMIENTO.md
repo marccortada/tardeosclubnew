@@ -216,3 +216,23 @@ silencio estado y orden de destacados). L8 oculta las 3 fichas de prueba.
   limpieza la deja en borrador. «Tardeo House» (Mataró vs Café Royale) ya pasó: se pregunta
   al organizador. Apuntado en CLAUDE.md §11.
 - Lo demás (marca, enlaces, Nexo, privacidad, Fatima Kahlo duplicada) queda guardado en §11.
+
+---
+
+## 18‑oct‑2026 · Asistencia por tardeo, filtros en todos los paneles y modo oscuro
+
+- **Asistencia y espera** (lo pidió el usuario: no se podía filtrar por tardeo ni gestionar
+  desde la ficha): `PasarLista` rehecho con resumen, buscador, filtros y acciones (dar plaza,
+  a espera, cancelar con doble toque, volver a confirmar, dar plaza al siguiente). Está en la
+  ficha del tardeo (local y admin) y en `/admin/registro?tardeo=<id>` (buscador de tardeos y
+  título clicable). `/local/apuntados?tardeo=` filtra de verdad.
+- **Lote 75** (pendiente de pegar): el dueño del local gestiona su lista; el admin, solo su
+  zona. 23/23 en local. Sin él, la pantalla funciona y esas acciones solo le van al admin.
+- **Filtros**: `PanelFiltros` plegable en ~25 listas (tardeos, fichas, usuarios,
+  suscripciones, auditoría, sorteos, CRM, cola, moderación, denuncias, incidencias,
+  reclamaciones, enlaces, pop-ups, Nexo, Coins, tardeos del local, solicitudes, reseñas,
+  Entre Beats, avisos, DJ). Sin buscar texto en la cola (necesita SQL).
+- **Modo oscuro del portal del local**: las cajas de aviso/ok/error eran crema con letra
+  clara (no se leían). «Ver mi ficha» con la ficha en revisión daba 404: ahora vista previa
+  para el dueño. Las páginas «no encontrado» salían en claro: arreglado.
+- **Documento de la empresa (CRM / HubSpot)**: respondido punto por punto (ver artifact).

@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Check, X, Disc3 } from "lucide-react";
 import { SeccionPanel } from "@/components/panel/PanelShell";
 import { Etiqueta } from "@/components/ui/Chip";
 import Boton from "@/components/Boton";
+import { Filtros } from "@/components/panel/Paginacion";
 import { supabase } from "@/lib/supabase";
 import { faltaLote68 } from "@/lib/tardeos";
 import { formatFecha } from "@/lib/formato";
@@ -27,6 +28,14 @@ export default function SolicitudesDeDjs() {
   const [falta, setFalta] = useState(false);
   const [ocupada, setOcupada] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ tono: "ok" | "error"; texto: string } | null>(null);
+  // Pendientes por defecto: es lo que hay que hacer. La RPC ya trae todas las
+  // del local (son pocas), así que separarlas aquí no deja nada fuera.
+  const [pestana, setPestana] = useState<"pendientes" | "resueltas">("pendientes");
+  const visibles = useMemo(
+    () => (filas ?? []).filter((f) => (pestana === "pendientes") === (f.estado === "pendiente")),
+    [filas, pestana],
+  );
+  const nPend = (filas ?? []).filter((f) => f.estado === "pendiente").length;
 
   const cargar = useCallback(async () => {
     const { data, error } = await supabase.rpc("solicitudes_dj_de_local", { p_local: ficha.id });
@@ -55,13 +64,20 @@ export default function SolicitudesDeDjs() {
       ) : (
         <div className="flex flex-col gap-3">
           {msg && <p role="status" className={`rounded-xl p-3 text-[15px] font-semibold ${msg.tono === "ok" ? "bg-ok-fondo text-ok" : "bg-error-fondo text-error"}`}>{msg.texto}</p>}
-          {filas === null ? <p className="text-[15px] text-tinta-suave">Cargando…</p> : filas.length === 0 ? (
+          <Filtros valor={pestana} onCambiar={setPestana}
+            opciones={[
+              { clave: "pendientes" as const, label: "Pendientes", n: filas === null ? null : nPend },
+              { clave: "resueltas" as const, label: "Resueltas", n: filas === null ? null : filas.length - nPend },
+            ]} />
+          {filas === null ? <p className="text-[15px] text-tinta-suave">Cargando…</p> : visibles.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-linea-fuerte bg-white p-6 text-center text-[15px] text-tinta-suave">
-              No hay solicitudes. Cuando un DJ pida vincularse a uno de tus eventos, la verás aquí.
+              {pestana === "pendientes"
+                ? "No hay solicitudes pendientes. Cuando un DJ pida vincularse a uno de tus eventos, la verás aquí."
+                : "Todavía no has resuelto ninguna solicitud."}
             </p>
           ) : (
             <ul className="flex flex-col gap-2">
-              {filas.map((f) => (
+              {visibles.map((f) => (
                 <li key={f.id} className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-3">

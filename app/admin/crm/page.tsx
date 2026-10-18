@@ -4,10 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { SeccionPanel } from "@/components/panel/PanelShell";
 import Paginacion, { Buscador, Filtros, useDiferido } from "@/components/panel/Paginacion";
 import Aviso from "@/components/admin/Aviso";
+import PanelFiltros, { CampoFiltro, claseFiltro, RangoFechas, SelectorOrden } from "@/components/panel/PanelFiltros";
+import { ZONAS_MADRE, type ZonaMadre } from "@/components/admin/roles";
+import { supabase } from "@/lib/supabase";
 import { Etiqueta } from "@/components/ui/Chip";
 import { claseBoton } from "@/components/Boton";
 import { plegar, contieneTexto } from "@/lib/texto";
-import { ETIQUETA } from "@/lib/planes";
+import { ETIQUETA, PLANES, type Plan } from "@/lib/planes";
 import { hoyISO } from "@/lib/tardeos";
 import {
   cargarCrm, guardarSeguimiento, leToca, leerAutores, crmACsv, ESTADOS, CANALES,
@@ -18,7 +21,16 @@ import {
 } from "lucide-react";
 
 type Filtro = "toca" | "sin" | "interesados" | "clientes" | "todos";
+type Orden = "prioridad" | "nombre" | "tardeos" | "seguimiento" | "contacto";
 const POR_PAGINA = 25;
+
+/** Estado de la suscripción (solo para filtrar: el cobro sigue apagado). */
+const ESTADOS_PLAN: { k: string; label: string }[] = [
+  { k: "activa", label: "Cliente (activa)" },
+  { k: "impago", label: "Impago" },
+  { k: "cancelada", label: "Cancelada" },
+  { k: "sin_suscripcion", label: "Sin suscripción" },
+];
 
 const NOMBRE_CANAL: Record<Canal, string> = {
   instagram: "Instagram", email: "Email", telefono: "Teléfono", whatsapp: "WhatsApp", presencial: "En persona", otro: "Otro",
@@ -50,6 +62,32 @@ export default function AdminCrm() {
   const [guardado, setGuardado] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
   const [okExport, setOkExport] = useState("");
+  // Filtros plegables. El CRM se carga entero en el navegador (el orden por
+  // prioridad depende de datos derivados), así que filtrar aquí es filtrar
+  // TODO, no solo la página visible.
+  const [zonaF, setZonaF] = useState<"" | ZonaMadre | "sin_zona">("");
+  const [estadoF, setEstadoF] = useState<"" | EstadoCrm>("");
+  const [canalF, setCanalF] = useState<"" | Canal | "ninguno">("");
+  const [planF, setPlanF] = useState<"" | Plan>("");
+  const [planEstadoF, setPlanEstadoF] = useState("");
+  const [segDesde, setSegDesde] = useState("");
+  const [segHasta, setSegHasta] = useState("");
+  const [orden, setOrden] = useState<Orden>("prioridad");
+  // slug de zona → zona madre (catálogo del lote 63). Sin catálogo, el filtro
+  // de zona solo distingue «sin zona».
+  const [madreDe, setMadreDe] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    supabase.from("zonas").select("slug,zona_madre").then(({ data }) =>
+      setMadreDe(new Map(((data ?? []) as { slug: string; zona_madre: string }[]).map((z) => [z.slug, z.zona_madre]))));
+  }, []);
+
+  const activos = [zonaF, estadoF, canalF, planF, planEstadoF, segDesde, segHasta, orden !== "prioridad"].filter(Boolean).length;
+  const limpiarFiltros = () => {
+    setZonaF(""); setEstadoF(""); setCanalF(""); setPlanF(""); setPlanEstadoF("");
+    setSegDesde(""); setSegHasta(""); setOrden("prioridad"); setPagina(1);
+  };
+  /** Cambiar un filtro vuelve a la primera página. */
+  const conPagina1 = <T,>(set: (v: T) => void) => (v: T) => { set(v); setPagina(1); };
 
   const hoy = hoyISO();
 
@@ -104,12 +142,30 @@ export default function AdminCrm() {
     const q = plegar(busca);
     const filtrada = fichas.filter((f) => {
       if (q && !contieneTexto(f.nombre, q) && !contieneTexto(f.zona ?? "", q)) return false;
+      if (zonaF === "sin_zona" && f.zonaSlug) return false;
+      if (zonaF && zonaF !== "sin_zona" && (!f.zonaSlug || madreDe.get(f.zonaSlug) !== zonaF)) return false;
+      if (estadoF && f.seg.estado !== estadoF) return false;
+      if (canalF === "ninguno" && f.seg.canal) return false;
+      if (canalF && canalF !== "ninguno" && f.seg.canal !== canalF) return false;
+      if (planF && f.plan !== planF) return false;
+      if (planEstadoF && f.planEstado !== planEstadoF) return false;
+      // Rango de «Volver el»: con rango puesto, sin fecha no entra.
+      if ((segDesde || segHasta) && !f.seg.proximo_seguimiento) return false;
+      if (segDesde && f.seg.proximo_seguimiento! < segDesde) return false;
+      if (segHasta && f.seg.proximo_seguimiento! > segHasta) return false;
       if (filtro === "toca") return leToca(f, hoy);
       if (filtro === "sin") return f.seg.estado === "no_contactado";
       if (filtro === "interesados") return f.seg.estado === "interesado";
       if (filtro === "clientes") return f.planEstado === "activa";
       return true;
     });
+    const porNombre = (a: FichaCrm, b: FichaCrm) => a.nombre.localeCompare(b.nombre, "es");
+    if (orden === "nombre") return [...filtrada].sort(porNombre);
+    if (orden === "tardeos") return [...filtrada].sort((a, b) => b.tardeos - a.tardeos || porNombre(a, b));
+    if (orden === "seguimiento")
+      return [...filtrada].sort((a, b) => (a.seg.proximo_seguimiento ?? "9999").localeCompare(b.seg.proximo_seguimiento ?? "9999") || porNombre(a, b));
+    if (orden === "contacto")
+      return [...filtrada].sort((a, b) => (b.seg.ultimo_contacto ?? "").localeCompare(a.seg.ultimo_contacto ?? "") || porNombre(a, b));
     // Vencidos primero (el más atrasado arriba), después los nunca tocados, y
     // dentro de cada grupo el que más tardeos tiene: es el que más te interesa.
     const rango = (f: FichaCrm) => (leToca(f, hoy) ? 0 : f.seg.estado === "no_contactado" ? 1 : 2);
@@ -117,7 +173,7 @@ export default function AdminCrm() {
       rango(a) - rango(b)
       || (a.seg.proximo_seguimiento ?? "9999").localeCompare(b.seg.proximo_seguimiento ?? "9999")
       || b.tardeos - a.tardeos);
-  }, [fichas, busca, filtro, hoy]);
+  }, [fichas, busca, filtro, hoy, zonaF, madreDe, estadoF, canalF, planF, planEstadoF, segDesde, segHasta, orden]);
 
   // Al cambiar de estado una ficha puede salir del filtro: si la página se
   // queda vacía, se pinta la última que exista.
@@ -153,6 +209,48 @@ export default function AdminCrm() {
             { clave: "todos", label: "Todos", n: cargando ? null : cuentas.todos },
           ]}
         />
+        <PanelFiltros clave="admin-crm" activos={activos} onLimpiar={limpiarFiltros}>
+          <CampoFiltro etiqueta="Zona">
+            <select value={zonaF} onChange={(e) => conPagina1(setZonaF)(e.target.value as typeof zonaF)} className={claseFiltro}>
+              <option value="">Todas</option>
+              {ZONAS_MADRE.map((z) => <option key={z.clave} value={z.clave}>{z.label}</option>)}
+              <option value="sin_zona">Sin zona</option>
+            </select>
+          </CampoFiltro>
+          <CampoFiltro etiqueta="Estado comercial">
+            <select value={estadoF} onChange={(e) => conPagina1(setEstadoF)(e.target.value as typeof estadoF)} className={claseFiltro}>
+              <option value="">Todos</option>
+              {ESTADOS.map((e) => <option key={e.k} value={e.k}>{e.label}</option>)}
+            </select>
+          </CampoFiltro>
+          <CampoFiltro etiqueta="Canal">
+            <select value={canalF} onChange={(e) => conPagina1(setCanalF)(e.target.value as typeof canalF)} className={claseFiltro}>
+              <option value="">Todos</option>
+              {CANALES.map((c) => <option key={c} value={c}>{NOMBRE_CANAL[c]}</option>)}
+              <option value="ninguno">Sin canal</option>
+            </select>
+          </CampoFiltro>
+          <CampoFiltro etiqueta="Plan">
+            <select value={planF} onChange={(e) => conPagina1(setPlanF)(e.target.value as typeof planF)} className={claseFiltro}>
+              <option value="">Todos</option>
+              {PLANES.map((x) => <option key={x} value={x}>{ETIQUETA[x]}</option>)}
+            </select>
+          </CampoFiltro>
+          <CampoFiltro etiqueta="Suscripción">
+            <select value={planEstadoF} onChange={(e) => conPagina1(setPlanEstadoF)(e.target.value)} className={claseFiltro}>
+              <option value="">Todas</option>
+              {ESTADOS_PLAN.map((x) => <option key={x.k} value={x.k}>{x.label}</option>)}
+            </select>
+          </CampoFiltro>
+          <SelectorOrden<Orden> valor={orden} onCambiar={conPagina1(setOrden)} opciones={[
+            { clave: "prioridad", label: "A quién le toca (recomendado)" },
+            { clave: "nombre", label: "Nombre (A-Z)" },
+            { clave: "tardeos", label: "Más tardeos" },
+            { clave: "seguimiento", label: "Próximo seguimiento" },
+            { clave: "contacto", label: "Último contacto (reciente)" },
+          ]} />
+          <RangoFechas desde={segDesde} hasta={segHasta} onDesde={conPagina1(setSegDesde)} onHasta={conPagina1(setSegHasta)} etiqueta="Volver el" />
+        </PanelFiltros>
       </div>
 
       {cargando ? (
@@ -161,7 +259,7 @@ export default function AdminCrm() {
         </div>
       ) : lista.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-linea-fuerte bg-white p-8 text-center text-[15px] text-tinta-suave">
-          {filtro === "toca" && !busca
+          {filtro === "toca" && !busca && !activos
             ? "Hoy no le toca a nadie. Pon una fecha de «Volver el» a los que hayas contactado."
             : "Ningún local con ese filtro."}
         </p>

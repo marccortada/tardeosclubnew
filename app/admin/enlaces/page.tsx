@@ -10,6 +10,8 @@ import Hoja from "@/components/ui/Hoja";
 import Aviso from "@/components/admin/Aviso";
 import Campo, { claseCampo } from "@/components/ui/Campo";
 import { Etiqueta } from "@/components/ui/Chip";
+import PanelFiltros, { CampoFiltro, claseFiltro, RangoFechas } from "@/components/panel/PanelFiltros";
+import { rangoTimestamp } from "@/lib/filtrosLista";
 import { Copy, Check, MessageCircle, Plus, Store, Megaphone, Disc3, Link2, Loader2 } from "lucide-react";
 
 /**
@@ -62,9 +64,9 @@ function AdminEnlaces() {
   // Un "ahora" estable para que la consulta no cambie en cada render.
   const [ahora] = useState(() => new Date().toISOString());
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- builder de supabase con filtros encadenados
   // Por `usada_en`, no por `usada_por`: este se vacía si se borra la cuenta que
   // la usó (on delete set null) y la invitación volvía a salir como pendiente.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- builder de supabase con filtros encadenados
   const aplicar = (q: any, f: Filtro) => {
     if (f === "pendientes") return q.is("usada_en", null).gt("expira_en", ahora);
     if (f === "usadas") return q.not("usada_en", "is", null);
@@ -72,11 +74,35 @@ function AdminEnlaces() {
     return q;
   };
 
+  // Búsqueda (email o nombre de la ficha) y filtros plegables, en el servidor.
+  const [textoInv, setTextoInv] = useState("");
+  const buscaInv = useDiferido(textoInv);
+  const [tipoInv, setTipoInv] = useState<"" | "local" | "dj">("");
+  const [fDesde, setFDesde] = useState("");
+  const [fHasta, setFHasta] = useState("");
+  const activos = [tipoInv, fDesde, fHasta].filter(Boolean).length;
+  const limpiarFiltros = () => { setTipoInv(""); setFDesde(""); setFHasta(""); };
+
   const p = usePaginado<Invitacion>(
-    (desde, hasta) =>
-      (aplicar(supabase.from("invitaciones").select("id,token,tipo,ficha_id,email,usada_por,usada_en,expira_en,created_at", { count: "exact" }), filtro)
-        .order("created_at", { ascending: false }).order("id").range(desde, hasta)) as PromiseLike<{ data: Invitacion[] | null; count: number | null; error: unknown }>,
-    [filtro],
+    async (desde, hasta) => {
+      let q = aplicar(supabase.from("invitaciones").select("id,token,tipo,ficha_id,email,usada_por,usada_en,expira_en,created_at", { count: "exact" }), filtro);
+      if (tipoInv) q = q.eq("tipo", tipoInv);
+      q = rangoTimestamp(q, "created_at", fDesde, fHasta);
+      const l = limpiar(buscaInv);
+      if (l) {
+        // La invitación solo guarda el id de la ficha: primero se buscan las
+        // fichas por nombre (locales y DJs) y luego sus invitaciones. Tope de
+        // 100 fichas por tipo: para buscar algo concreto sobra.
+        const [loc, dj] = await Promise.all([
+          tipoInv === "dj" ? Promise.resolve({ data: [] }) : supabase.from("locales").select("id").ilike("nombre", `%${l}%`).limit(100),
+          tipoInv === "local" ? Promise.resolve({ data: [] }) : supabase.from("djs").select("id").ilike("nombre_artistico", `%${l}%`).limit(100),
+        ]);
+        const ids = [...((loc.data ?? []) as { id: string }[]), ...((dj.data ?? []) as { id: string }[])].map((x) => x.id);
+        q = q.or(ids.length ? `email.ilike.%${l}%,ficha_id.in.(${ids.join(",")})` : `email.ilike.%${l}%`);
+      }
+      return (q.order("created_at", { ascending: false }).order("id").range(desde, hasta)) as PromiseLike<{ data: Invitacion[] | null; count: number | null; error: unknown }>;
+    },
+    [filtro, buscaInv, tipoInv, fDesde, fHasta],
     25,
   );
 
@@ -159,10 +185,23 @@ function AdminEnlaces() {
               { clave: "todas", label: "Todas", n: cuentas.todas },
             ]}
           />
+          <div className="mt-3 flex flex-col gap-3">
+            <Buscador valor={textoInv} onCambiar={setTextoInv} placeholder="Buscar por ficha o email…" />
+            <PanelFiltros clave="admin-enlaces" activos={activos} onLimpiar={limpiarFiltros}>
+              <CampoFiltro etiqueta="Ficha de">
+                <select value={tipoInv} onChange={(e) => setTipoInv(e.target.value as typeof tipoInv)} className={claseFiltro}>
+                  <option value="">Locales y DJs</option>
+                  <option value="local">Locales y promotores</option>
+                  <option value="dj">DJs</option>
+                </select>
+              </CampoFiltro>
+              <RangoFechas desde={fDesde} hasta={fHasta} onDesde={setFDesde} onHasta={setFHasta} etiqueta="Creada" />
+            </PanelFiltros>
+          </div>
         </div>
 
         <EstadoLista cargando={p.cargando} error={p.error} filas={p.filas.length}
-          vacio={filtro === "pendientes" ? "No hay invitaciones pendientes. Crea una con «Nuevo enlace de invitación»." : "No hay invitaciones en este apartado."} />
+          vacio={activos || buscaInv ? "Ninguna invitación con estos filtros." : filtro === "pendientes" ? "No hay invitaciones pendientes. Crea una con «Nuevo enlace de invitación»." : "No hay invitaciones en este apartado."} />
 
         {p.filas.length > 0 && (
           <ul className={`flex flex-col gap-3 ${p.cargando ? "opacity-60" : ""}`}>

@@ -142,7 +142,10 @@ export default function Apuntados() {
 
   const proximos = grupos.filter((g) => g.fecha >= hoy).sort((a, b) => a.fecha.localeCompare(b.fecha));
   const pasados = grupos.filter((g) => g.fecha < hoy).sort((a, b) => b.fecha.localeCompare(a.fecha));
-  const lista = (periodo === "proximos" ? proximos : pasados)
+  // ?tardeo=<id>: antes solo abría y resaltaba ese grupo entre todos; ahora la
+  // lista se queda SOLO con ese tardeo (con «Ver todos» para volver).
+  const soloPedido = pedido ? grupos.find((g) => g.id === pedido) : undefined;
+  const lista = soloPedido ? [soloPedido] : (periodo === "proximos" ? proximos : pasados)
     .filter((g) => !busca.trim() || plegar(g.titulo).includes(plegar(busca.trim())));
   const pag = lista.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
   const totalPersonas = lista.reduce((s, g) => s + g.filas.length, 0);
@@ -192,7 +195,15 @@ export default function Apuntados() {
         </p>
       )}
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      {soloPedido && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-magenta/30 bg-magenta-50 p-3 text-[15px]">
+          <span className="flex-1">Viendo solo <b>{soloPedido.titulo}</b>.</span>
+          <button type="button" onClick={() => { setPedido(null); window.history.replaceState(null, "", window.location.pathname); }}
+            className="inline-flex min-h-[44px] items-center rounded-xl border border-linea-fuerte bg-white px-3 font-semibold">Ver todos</button>
+        </div>
+      )}
+
+      <div className={`flex flex-col gap-3 md:flex-row md:items-center md:justify-between ${soloPedido ? "hidden" : ""}`}>
         <Filtros
           opciones={[
             { clave: "proximos" as Periodo, label: "Próximos", n: filas ? proximos.length : null },

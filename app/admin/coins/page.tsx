@@ -5,7 +5,9 @@ import { SeccionPanel } from "@/components/panel/PanelShell";
 import { Etiqueta } from "@/components/ui/Chip";
 import Boton from "@/components/Boton";
 import Campo, { claseCampo } from "@/components/ui/Campo";
-import { useDiferido } from "@/components/panel/Paginacion";
+import Paginacion, { useDiferido, usePaginado, Buscador, Filtros, EstadoLista } from "@/components/panel/Paginacion";
+import PanelFiltros, { RangoFechas } from "@/components/panel/PanelFiltros";
+import { limpiarBusqueda, rangoTimestamp } from "@/lib/filtrosLista";
 import { supabase } from "@/lib/supabase";
 import { faltaLote68 } from "@/lib/tardeos";
 import {
@@ -20,6 +22,10 @@ const TIPOS = [
   { k: "protegido", t: "Saldo protegido", bolsa: "protegido" },
   { k: "ajuste", t: "Ajuste manual ±", bolsa: "comprado" },
 ] as const;
+
+const ABIERTAS = ["pendiente", "confirmada", "en_curso"];
+type FiltroReserva = "abiertas" | "pendiente" | "confirmada" | "en_curso" | "entregada" | "cancelada" | "rechazada" | "todas";
+type FilaReserva = Reserva & { locales?: { nombre: string } | null };
 
 /**
  * Coins desde el equipo (dossier pág. 13 y 15): apuntes manuales con motivo
@@ -41,22 +47,37 @@ export default function AdminCoins() {
   const [referencia, setReferencia] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [msg, setMsg] = useState<{ tono: "ok" | "error"; texto: string } | null>(null);
-  const [cola, setCola] = useState<(Reserva & { locales?: { nombre: string } | null })[]>([]);
   const [falta, setFalta] = useState(false);
   const [notas, setNotas] = useState<Record<string, string>>({});
+  // Reservas: antes solo las 100 abiertas más antiguas, sin más. Ahora
+  // paginadas en el servidor y filtrables por estado, local y fecha.
+  const [estadoR, setEstadoR] = useState<FiltroReserva>("abiertas");
+  const [textoLocal, setTextoLocal] = useState("");
+  const buscaLocal = useDiferido(textoLocal);
+  const [fDesde, setFDesde] = useState("");
+  const [fHasta, setFHasta] = useState("");
+  const activosFiltro = [fDesde, fHasta].filter(Boolean).length;
 
-  const cargarCola = useCallback(async () => {
-    const { data, error } = await supabase.from("coins_reservas").select("*, locales(nombre)")
-      .in("estado", ["pendiente", "confirmada", "en_curso"]).order("created_at").order("id").limit(100);
-    if (error) { setFalta(faltaLote68(error)); if (!faltaLote68(error)) setMsg({ tono: "error", texto: error.message }); return; }
-    setCola((data ?? []) as typeof cola);
-  }, []);
+  const cola = usePaginado<FilaReserva>((desde, hasta) => {
+    const l = limpiarBusqueda(buscaLocal);
+    // `!inner` solo al buscar por local: así el filtro de nombre recorta las reservas.
+    let q = supabase.from("coins_reservas").select(l ? "*, locales!inner(nombre)" : "*, locales(nombre)", { count: "exact" });
+    if (estadoR === "abiertas") q = q.in("estado", ABIERTAS);
+    else if (estadoR !== "todas") q = q.eq("estado", estadoR);
+    if (l) q = q.ilike("locales.nombre", `%${l}%`);
+    q = rangoTimestamp(q, "created_at", fDesde, fHasta);
+    // Abiertas: la más antigua primero (es la que más espera). Cerradas: la más nueva.
+    return q.order("created_at", { ascending: estadoR === "abiertas" || ABIERTAS.includes(estadoR) }).order("id").range(desde, hasta)
+      .then(({ data, count, error }) => {
+        if (error && faltaLote68(error)) setFalta(true);
+        return { data: (data ?? []) as unknown as FilaReserva[], count, error: error ? { message: error.message } : null };
+      });
+  }, [estadoR, buscaLocal, fDesde, fHasta], 25);
+  const cargarCola = cola.recargar;
 
   useEffect(() => {
     coinsActivos().then(setActivos);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void cargarCola();
-  }, [cargarCola]);
+  }, []);
 
   useEffect(() => {
     let vivo = true;
@@ -156,13 +177,32 @@ export default function AdminCoins() {
         </section>
 
         <section>
-          <h2 className="mb-3 text-xl font-bold">Reservas abiertas</h2>
-          {cola.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-linea-fuerte bg-white p-5 text-center text-[15px] text-tinta-suave">No hay reservas pendientes.</p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {cola.map((r) => {
+          <h2 className="mb-3 text-xl font-bold">Reservas</h2>
+          <div className="mb-3 flex flex-col gap-3">
+            <Filtros<FiltroReserva> valor={estadoR} onCambiar={setEstadoR}
+              opciones={[
+                { clave: "abiertas", label: "Abiertas", n: estadoR === "abiertas" && !cola.cargando ? cola.total : null },
+                { clave: "pendiente", label: "Pendientes" },
+                { clave: "confirmada", label: "Confirmadas" },
+                { clave: "en_curso", label: "En curso" },
+                { clave: "entregada", label: "Entregadas" },
+                { clave: "cancelada", label: "Canceladas" },
+                { clave: "rechazada", label: "Rechazadas" },
+                { clave: "todas", label: "Todas" },
+              ]} />
+            <Buscador valor={textoLocal} onCambiar={setTextoLocal} placeholder="Buscar por local…" />
+            <PanelFiltros clave="admin-coins" activos={activosFiltro} onLimpiar={() => { setFDesde(""); setFHasta(""); }}>
+              <RangoFechas desde={fDesde} hasta={fHasta} onDesde={setFDesde} onHasta={setFHasta} etiqueta="Pedida" />
+            </PanelFiltros>
+          </div>
+          <EstadoLista cargando={cola.cargando} error={cola.error} filas={cola.filas.length}
+            vacio={estadoR === "abiertas" && !buscaLocal && !activosFiltro ? "No hay reservas pendientes." : "Ninguna reserva con estos filtros."} />
+          {cola.filas.length > 0 && (
+            <ul className={`flex flex-col gap-2 ${cola.cargando ? "opacity-60" : ""}`}>
+              {cola.filas.map((r) => {
                 const e = ESTADO_RESERVA[r.estado] ?? { texto: r.estado, tono: "neutro" as const };
+                // Una reserva cerrada (entregada, cancelada, rechazada) ya no se mueve.
+                const abierta = ABIERTAS.includes(r.estado);
                 return (
                   <li key={r.id} className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta">
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -173,19 +213,24 @@ export default function AdminCoins() {
                       </div>
                       <Etiqueta tono={e.tono}>{e.texto}</Etiqueta>
                     </div>
-                    <input aria-label="Nota o resultado" placeholder="Nota / resultado (opcional)" value={notas[r.id] ?? ""}
-                      onChange={(ev) => setNotas((n) => ({ ...n, [r.id]: ev.target.value }))} className={`${claseCampo} mt-2`} />
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {r.estado === "pendiente" && <Boton tamano="pequeno" onClick={() => mover(r, "confirmada")}>Confirmar</Boton>}
-                      {r.estado === "confirmada" && <Boton tamano="pequeno" onClick={() => mover(r, "en_curso")}>Empezar</Boton>}
-                      {r.estado !== "pendiente" && <Boton tamano="pequeno" variante="contorno" onClick={() => mover(r, "entregada")}>Entregada</Boton>}
-                      {r.estado !== "en_curso" && <Boton tamano="pequeno" variante="peligro" onClick={() => mover(r, "cancelar")}>Cancelar y devolver</Boton>}
-                    </div>
+                    {abierta && (
+                      <>
+                        <input aria-label="Nota o resultado" placeholder="Nota / resultado (opcional)" value={notas[r.id] ?? ""}
+                          onChange={(ev) => setNotas((n) => ({ ...n, [r.id]: ev.target.value }))} className={`${claseCampo} mt-2`} />
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {r.estado === "pendiente" && <Boton tamano="pequeno" onClick={() => mover(r, "confirmada")}>Confirmar</Boton>}
+                          {r.estado === "confirmada" && <Boton tamano="pequeno" onClick={() => mover(r, "en_curso")}>Empezar</Boton>}
+                          {r.estado !== "pendiente" && <Boton tamano="pequeno" variante="contorno" onClick={() => mover(r, "entregada")}>Entregada</Boton>}
+                          {r.estado !== "en_curso" && <Boton tamano="pequeno" variante="peligro" onClick={() => mover(r, "cancelar")}>Cancelar y devolver</Boton>}
+                        </div>
+                      </>
+                    )}
                   </li>
                 );
               })}
             </ul>
           )}
+          <Paginacion pagina={cola.pagina} total={cola.total} porPagina={cola.porPagina} onCambiar={cola.setPagina} cargando={cola.cargando} />
         </section>
       </div>
     </SeccionPanel>

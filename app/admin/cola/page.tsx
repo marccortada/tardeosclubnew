@@ -7,7 +7,7 @@ import Paginacion, { usePaginado, Filtros, EstadoLista } from "@/components/pane
 import Boton from "@/components/Boton";
 import Aviso from "@/components/admin/Aviso";
 import { Etiqueta } from "@/components/ui/Chip";
-import { claseCampo } from "@/components/ui/Campo";
+import PanelFiltros, { CampoFiltro, claseFiltro } from "@/components/panel/PanelFiltros";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import { faltaLote, ZONAS_MADRE, usePermisosAdmin } from "@/components/admin/roles";
@@ -98,21 +98,30 @@ export default function Cola() {
         <Filtros
           opciones={[{ clave: "abiertas", label: "Abiertas" }, { clave: "hecho", label: "Hechas" }, { clave: "todas", label: "Todas" }] as { clave: "abiertas" | "todas" | "hecho"; label: string }[]}
           valor={estado} onCambiar={setEstado} />
-        <div className="grid gap-2 sm:grid-cols-3">
-          <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={claseCampo} aria-label="Tipo">
-            <option value="">Todos los tipos</option>
-            {Object.entries(TIPOS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-          <select value={zona} onChange={(e) => setZona(e.target.value)} className={claseCampo} aria-label="Zona">
-            <option value="">{permisos.global ? "Todas las zonas" : "Mis zonas"}</option>
-            {ZONAS_MADRE.filter((z) => permisos.zonas === null || permisos.zonas.includes(z.clave))
-              .map((z) => <option key={z.clave} value={z.clave}>{z.label}</option>)}
-          </select>
-          <label className="flex min-h-[44px] items-center gap-2 rounded-xl border border-linea-fuerte bg-white px-3 text-[15px]">
+        {/* Tipo, zona y «solo mías» van plegados: en el móvil la lista empieza
+            justo debajo de las pestañas. Sin buscador de texto: la RPC
+            `cola_trabajo` no filtra por título/detalle y buscar solo en la
+            página visible engañaría (diría «no hay» con resultados detrás). */}
+        <PanelFiltros clave="admin-cola" activos={[tipo, zona, mias].filter(Boolean).length}
+          onLimpiar={() => { setTipo(""); setZona(""); setMias(false); }}>
+          <CampoFiltro etiqueta="Tipo">
+            <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={claseFiltro}>
+              <option value="">Todos los tipos</option>
+              {Object.entries(TIPOS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </CampoFiltro>
+          <CampoFiltro etiqueta="Zona">
+            <select value={zona} onChange={(e) => setZona(e.target.value)} className={claseFiltro}>
+              <option value="">{permisos.global ? "Todas las zonas" : "Mis zonas"}</option>
+              {ZONAS_MADRE.filter((z) => permisos.zonas === null || permisos.zonas.includes(z.clave))
+                .map((z) => <option key={z.clave} value={z.clave}>{z.label}</option>)}
+            </select>
+          </CampoFiltro>
+          <label className="flex min-h-[44px] items-center gap-2 self-end rounded-xl border border-linea-fuerte bg-white px-3 text-[15px]">
             <input type="checkbox" checked={mias} onChange={(e) => setMias(e.target.checked)} className="h-5 w-5 accent-magenta" />
             Solo asignadas a mí
           </label>
-        </div>
+        </PanelFiltros>
       </div>
 
       <EstadoLista cargando={p.cargando} error={p.error} vacio="No hay nada pendiente con estos filtros." filas={p.filas.length} />

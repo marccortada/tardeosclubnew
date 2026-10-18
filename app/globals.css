@@ -22,6 +22,10 @@
   --c-sobre-oro: 26 26 26;
   /* Enlaces y texto rosa sobre el fondo de cada tema. */
   --c-magenta-texto: 147 14 114; /* magenta-700 */
+  /* Fondos suaves de estado (cajas de aviso, etiquetas). */
+  --c-ok-fondo: 232 246 238;
+  --c-aviso-fondo: 255 244 214;
+  --c-error-fondo: 253 236 239;
 }
 /* Modo oscuro (dossier pág. 9): opcional, la preferencia se guarda. */
 :root.dark,
@@ -39,6 +43,9 @@
   --c-magenta-50: 54 20 46;
   --c-magenta-100: 80 26 66;
   --c-magenta-texto: 255 61 207; /* magenta-400: ≥5:1 sobre fondo y superficie oscuros */
+  --c-ok-fondo: 18 48 32;
+  --c-aviso-fondo: 56 42 10;
+  --c-error-fondo: 64 20 30;
 }
 /* Lo antiguo que usa bg-white a pelo: en oscuro pasa a superficie. */
 .dark .bg-white { background-color: rgb(var(--c-superficie)); }
@@ -52,6 +59,15 @@
 .dark .text-magenta {
   color: rgb(var(--c-magenta-texto));
 }
+/* Texto de estado en oscuro: el verde, ámbar y rojo de siempre se quedan en
+   2,5-3:1 sobre fondo oscuro; aquí pasan a sus tonos claros (≥7:1). Solo el
+   TEXTO: bg-ok / bg-error con letra blanca siguen igual. */
+.dark .text-ok { color: rgb(74 222 128); }
+.dark .text-aviso { color: rgb(252 211 77); }
+.dark .text-error { color: rgb(253 164 175); }
+/* El oro es igual en los dos temas: lo que va ENCIMA siempre oscuro. En lo
+   antiguo con bg-oro + text-tinta, en oscuro la letra se aclaraba. */
+.dark .bg-oro.text-tinta, .dark .bg-oro-400.text-tinta, .dark .bg-oro-500.text-tinta { color: rgb(var(--c-sobre-oro)); }
 /* Chips y botones «elegidos» con bg-tinta + texto blanco: en oscuro el fondo
    se aclara, así que el texto pasa a oscuro (queda un chip claro invertido). */
 .dark .bg-tinta.text-white { color: rgb(var(--c-fondo)); }

@@ -16,12 +16,25 @@ import { refrescarPortada } from "@/components/admin/revalidar";
 import { descargarCsv, leerPorLotes, hoyFichero } from "@/components/admin/csv";
 import { useFiltroZona, SelectorZona, esperar } from "@/components/admin/FiltroZona";
 import { useAuth } from "@/lib/useAuth";
+import PanelFiltros, { CampoFiltro, claseFiltro, SelectorOrden, RangoFechas } from "@/components/panel/PanelFiltros";
+import { rangoTimestamp } from "@/lib/filtrosLista";
+import { PLANES, ETIQUETA as ETIQUETA_PLAN, type Plan } from "@/lib/planes";
+import { ZONAS } from "@/lib/zonas";
 import {
   BadgeCheck, Eye, EyeOff, Plus, ExternalLink, Pencil, Store, Disc3, Megaphone, Trash2, Download, CheckCircle2, Loader2,
 } from "lucide-react";
 
 export type TipoFicha = "locales" | "promotores" | "djs";
 type Filtro = "todos" | "publicados" | "pendientes" | "ocultos" | "sin_dueno" | "verificados";
+type Orden = "nombre" | "recientes" | "antiguos";
+/** Valores de `plan_estado` (lote 33). Aquí solo se FILTRA por ellos: cobrar sigue apagado. */
+type EstadoPlan = "sin_suscripcion" | "activa" | "impago" | "cancelada";
+const ESTADOS_PLAN: { clave: EstadoPlan; label: string }[] = [
+  { clave: "sin_suscripcion", label: "Sin suscripción" },
+  { clave: "activa", label: "Al corriente" },
+  { clave: "impago", label: "Pago pendiente" },
+  { clave: "cancelada", label: "Cancelada" },
+];
 
 type Fila = {
   id: string;
@@ -69,6 +82,14 @@ export default function FichasAdmin({ tipo }: { tipo: TipoFicha }) {
   const [texto, setTexto] = useState("");
   const busca = useDiferido(texto);
   const [filtro, setFiltro] = useState<Filtro>("todos");
+  // Filtros del bloque plegable (todos en el servidor).
+  const [plan, setPlan] = useState<Plan | "">("");
+  const [estadoPlan, setEstadoPlan] = useState<EstadoPlan | "">("");
+  /** Solo DJs: zona grande de `djs.zonas` ("sin" = ninguna puesta). */
+  const [zonaDj, setZonaDj] = useState("");
+  const [altaDesde, setAltaDesde] = useState("");
+  const [altaHasta, setAltaHasta] = useState("");
+  const [orden, setOrden] = useState<Orden>("nombre");
   const [correos, setCorreos] = useState<Map<string, string>>(new Map());
   const [cuentas, setCuentas] = useState<Partial<Record<Filtro, number>>>({});
   const [aviso, setAviso] = useState<{ tono: "ok" | "error"; texto: string } | null>(null);
@@ -111,12 +132,19 @@ export default function FichasAdmin({ tipo }: { tipo: TipoFicha }) {
     if (!esDj) q = zona.aplicar(q);
     const l = limpiar(busca);
     if (l) q = (esDj ? q.ilike("nombre_artistico", `%${l}%`) : q.or(`nombre.ilike.%${l}%,zona.ilike.%${l}%`));
+    if (plan) q = q.eq("plan", plan);
+    if (estadoPlan) q = q.eq("plan_estado", estadoPlan);
+    if (esDj && zonaDj === "sin") q = q.or("zonas.is.null,zonas.eq.{}");
+    else if (esDj && zonaDj) q = q.contains("zonas", [zonaDj]);
+    q = rangoTimestamp(q, "created_at", altaDesde, altaHasta);
+    if (orden === "recientes") return q.order("created_at", { ascending: false, nullsFirst: false }).order("id");
+    if (orden === "antiguos") return q.order("created_at", { ascending: true }).order("id");
     return q.order(esDj ? "nombre_artistico" : "nombre").order("id");
   };
 
   const p = usePaginado<Fila>(
     (desde, hasta) => (esperaZona ? esperar() : filtrada(true).range(desde, hasta)),
-    [tipo, filtro, busca, claveZona],
+    [tipo, filtro, busca, claveZona, plan, estadoPlan, zonaDj, altaDesde, altaHasta, orden],
     25,
   );
 
@@ -225,6 +253,10 @@ export default function FichasAdmin({ tipo }: { tipo: TipoFicha }) {
     setAviso({ tono: "ok", texto: `Exportadas ${todas.length.toLocaleString("es-ES")} fichas.` });
   };
 
+  // Cuántos filtros del bloque plegable hay puestos (el rango de alta cuenta como uno).
+  const activos = [plan, estadoPlan, esDj && zonaDj, altaDesde || altaHasta, orden !== "nombre"].filter(Boolean).length;
+  const quitarExtras = () => { setPlan(""); setEstadoPlan(""); setZonaDj(""); setAltaDesde(""); setAltaHasta(""); setOrden("nombre"); };
+
   const filas = p.filas.map((f) => ({ ...f, zona: f.zona ?? (Array.isArray(f.zonas) ? f.zonas.join(", ") : null), oculto: esDj ? Boolean(f.oculto) : String(f.estado ?? "").startsWith("oculto") }));
   const btn = "inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border px-3 text-sm font-semibold transition-colors disabled:opacity-50";
 
@@ -262,12 +294,43 @@ export default function FichasAdmin({ tipo }: { tipo: TipoFicha }) {
             { clave: "verificados", label: "Verificados", n: cuentas.verificados },
           ]}
         />
+        <PanelFiltros clave={`admin-fichas-${tipo}`} activos={activos} onLimpiar={quitarExtras}>
+          <SelectorOrden<Orden> valor={orden} onCambiar={setOrden} opciones={[
+            { clave: "nombre", label: "Nombre (A-Z)" },
+            { clave: "recientes", label: "Altas más recientes" },
+            { clave: "antiguos", label: "Altas más antiguas" },
+          ]} />
+          {/* Plan y estado del plan: solo para buscar. Los pagos siguen apagados
+              («Próximamente»); cambiarlos se hace en Suscripciones. */}
+          <CampoFiltro etiqueta="Plan">
+            <select value={plan} onChange={(e) => setPlan(e.target.value as Plan | "")} className={claseFiltro}>
+              <option value="">Cualquier plan</option>
+              {PLANES.map((x) => <option key={x} value={x}>{ETIQUETA_PLAN[x]}</option>)}
+            </select>
+          </CampoFiltro>
+          <CampoFiltro etiqueta="Suscripción">
+            <select value={estadoPlan} onChange={(e) => setEstadoPlan(e.target.value as EstadoPlan | "")} className={claseFiltro}>
+              <option value="">Cualquiera</option>
+              {ESTADOS_PLAN.map((x) => <option key={x.clave} value={x.clave}>{x.label}</option>)}
+            </select>
+          </CampoFiltro>
+          {esDj && (
+            <CampoFiltro etiqueta="Zona donde pincha">
+              <select value={zonaDj} onChange={(e) => setZonaDj(e.target.value)} className={claseFiltro}>
+                <option value="">Todas las zonas</option>
+                {ZONAS.map((z) => <option key={z} value={z}>{z}</option>)}
+                <option value="sin">Sin zona puesta</option>
+              </select>
+            </CampoFiltro>
+          )}
+          <RangoFechas desde={altaDesde} hasta={altaHasta} onDesde={setAltaDesde} onHasta={setAltaHasta} etiqueta="Alta" />
+        </PanelFiltros>
       </div>
 
       <div aria-live="polite">{aviso && <Aviso tono={aviso.tono}>{aviso.texto}</Aviso>}</div>
 
       <EstadoLista cargando={p.cargando} error={p.error} filas={filas.length}
-        vacio={busca || filtro !== "todos" || (!esDj && zona.filtra) ? "Nada con esos filtros." : `Todavía no hay ${t.titulo.toLowerCase()}.`} />
+        vacio={busca || filtro !== "todos" || activos > 0 || (!esDj && zona.filtra) ? "Nada con esos filtros." : `Todavía no hay ${t.titulo.toLowerCase()}.`} />
 
       {filas.length > 0 && (
         <div className={`overflow-hidden rounded-2xl border border-linea bg-white ${p.cargando ? "opacity-60" : ""}`}>

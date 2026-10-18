@@ -4,7 +4,6 @@ import TardeoCard from "@/components/TardeoCard";
 import Resenas from "@/components/Resenas";
 import Playlist from "@/components/Playlist";
 import CompartirBtn from "@/components/CompartirBtn";
-import { notFound } from "next/navigation";
 import Link from "next/link";
 import { enlacesDe, type Red } from "@/lib/redes";
 import EnlaceExterno from "@/components/EnlaceExterno";
@@ -23,6 +22,7 @@ import RegistrarVista from "@/components/RegistrarVista";
 import MiniMapa from "@/components/MiniMapa";
 import { LogoLocal, tipoDeLocal } from "@/components/LocalCard";
 import { sinMarcas } from "@/lib/texto";
+import FichaNoPublicaPropia from "./FichaNoPublicaPropia";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +58,9 @@ const TITULO = "font-display text-[24px] font-bold leading-tight md:text-[30px]"
 export default async function PaginaLocal({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const local = await getLocalById(id);
-  if (!local) notFound();
+  // El servidor lee sin sesión: una ficha en revisión no le llega ni a su
+  // dueño. El navegador la vuelve a pedir con sesión y, si no es suya, 404.
+  if (!local) return <FichaNoPublicaPropia id={id} />;
 
   const tardeos = await getTardeosPublicadosDeLocal(id);
   const fotos: string[] = (Array.isArray(local.fotos) ? local.fotos : []).filter((f: unknown) => typeof f === "string" && f);

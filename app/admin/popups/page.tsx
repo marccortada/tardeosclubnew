@@ -5,7 +5,9 @@ import { imagenParaSubir } from "@/app/local/_panel/reducirImagen";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { SeccionPanel } from "@/components/panel/PanelShell";
-import Paginacion, { usePaginado, Filtros, EstadoLista } from "@/components/panel/Paginacion";
+import Paginacion, { usePaginado, Filtros, EstadoLista, Buscador, useDiferido } from "@/components/panel/Paginacion";
+import PanelFiltros, { CampoFiltro, claseFiltro } from "@/components/panel/PanelFiltros";
+import { limpiarBusqueda } from "@/lib/filtrosLista";
 import SegmentadorPopup, { SIN_SEGMENTAR, type Segmentacion } from "@/components/SegmentadorPopup";
 import { TarjetaPopup, urlCtaValida, CTA_POR_DEFECTO, type Popup } from "@/components/PopupCliente";
 import Boton from "@/components/Boton";
@@ -122,11 +124,24 @@ export default function AdminPopups() {
     }
   };
 
+  // Búsqueda y filtros plegables (en el servidor, sobre la misma consulta).
+  const [texto, setTexto] = useState("");
+  const busca = useDiferido(texto);
+  const [tipoF, setTipoF] = useState("");
+  const [publicoF, setPublicoF] = useState("");
+  const activos = [tipoF, publicoF].filter(Boolean).length;
+  const limpiarFiltros = () => { setTipoF(""); setPublicoF(""); };
+
   const p = usePaginado<Popup>(
-    (desde, hasta) =>
-      aplicar(supabase.from("popups").select("*", { count: "exact" }), filtro)
-        .order("created_at", { ascending: false }).order("id").range(desde, hasta),
-    [filtro],
+    (desde, hasta) => {
+      let q = aplicar(supabase.from("popups").select("*", { count: "exact" }), filtro);
+      if (tipoF) q = q.eq("tipo", tipoF);
+      if (publicoF) q = q.eq("publico", publicoF);
+      const l = limpiarBusqueda(busca);
+      if (l) q = q.or(`titulo.ilike.%${l}%,mensaje.ilike.%${l}%`);
+      return q.order("created_at", { ascending: false }).order("id").range(desde, hasta);
+    },
+    [filtro, busca, tipoF, publicoF],
     25,
   );
 
@@ -384,12 +399,29 @@ export default function AdminPopups() {
             { clave: "pausado", label: "Pausados", n: cuentas.pausado },
           ]}
         />
+        <div className="mt-3 flex flex-col gap-3">
+          <Buscador valor={texto} onCambiar={setTexto} placeholder="Buscar por título o mensaje…" />
+          <PanelFiltros clave="admin-popups" activos={activos} onLimpiar={limpiarFiltros}>
+            <CampoFiltro etiqueta="Tipo">
+              <select value={tipoF} onChange={(e) => setTipoF(e.target.value)} className={claseFiltro}>
+                <option value="">Todos</option>
+                {TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </CampoFiltro>
+            <CampoFiltro etiqueta="A quién sale">
+              <select value={publicoF} onChange={(e) => setPublicoF(e.target.value)} className={claseFiltro}>
+                <option value="">Cualquier público</option>
+                {PUBLICOS.map((x) => <option key={x.valor} value={x.valor}>{x.label}</option>)}
+              </select>
+            </CampoFiltro>
+          </PanelFiltros>
+        </div>
       </div>
 
       {aviso && <Aviso tono={aviso.tono}>{aviso.texto}</Aviso>}
 
       <EstadoLista cargando={p.cargando} error={p.error} filas={p.filas.length}
-        vacio={filtro === "todos" ? "Todavía no hay pop-ups. Crea el primero con «Nuevo pop-up»." : "Ninguno en este estado."} />
+        vacio={activos || busca ? "Ningún pop-up con estos filtros." : filtro === "todos" ? "Todavía no hay pop-ups. Crea el primero con «Nuevo pop-up»." : "Ninguno en este estado."} />
 
       {p.filas.length > 0 && (
         <ul className={`flex flex-col gap-3 ${p.cargando ? "opacity-60" : ""}`}>

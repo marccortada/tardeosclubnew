@@ -14,9 +14,12 @@ import Hoja from "@/components/ui/Hoja";
 import { Etiqueta } from "@/components/ui/Chip";
 import Aviso from "@/components/admin/Aviso";
 import { Store, Disc3, Loader2, Power, PowerOff } from "lucide-react";
+import PanelFiltros, { CampoFiltro, claseFiltro, SelectorOrden } from "@/components/panel/PanelFiltros";
 
 type Rol = "local" | "dj";
 type Filtro = "todas" | "activa" | "impago" | "sin_suscripcion" | "cancelada";
+/** Orden de la lista: por nombre, o por cuándo se acaba el periodo marcado. */
+type Orden = "nombre" | "hasta_asc" | "hasta_desc";
 
 type Ficha = {
   id: string;
@@ -58,6 +61,10 @@ export default function AdminSuscripciones() {
   const [filtro, setFiltro] = useState<Filtro>("todas");
   const [texto, setTexto] = useState("");
   const busca = useDiferido(texto);
+  // Filtros del bloque plegable. Solo deciden qué se VE: no tocan planes ni cobros.
+  const [planFiltro, setPlanFiltro] = useState<Plan | "">("");
+  const [caduca30, setCaduca30] = useState(false);
+  const [orden, setOrden] = useState<Orden>("nombre");
   const [cuentas, setCuentas] = useState<Partial<Record<Filtro, number>>>({});
   const [totales, setTotales] = useState<{ local?: number; dj?: number }>({});
   const [guardando, setGuardando] = useState<string | null>(null);
@@ -82,7 +89,16 @@ export default function AdminSuscripciones() {
       let q = aplicar(supabase.from(tablaDe(rol)).select(cols, { count: "exact" }), filtro);
       const l = limpiar(busca);
       if (l) q = q.ilike(nombreDe(rol), `%${l}%`);
-      return q.order(nombreDe(rol)).order("id").range(desde, hasta).then((r: any) => ({
+      if (planFiltro) q = q.eq("plan", planFiltro);
+      if (caduca30) {
+        // De ahora a dentro de 30 días: las que hay que renovar pronto (las ya
+        // caducadas no entran; para esas está la cifra «caducadas sin renovar»).
+        const ahora = new Date();
+        q = q.gte("plan_hasta", ahora.toISOString()).lte("plan_hasta", new Date(ahora.getTime() + 30 * 86400000).toISOString());
+      }
+      // Por fecha de fin: las que no tienen fecha, al final.
+      q = orden === "nombre" ? q.order(nombreDe(rol)) : q.order("plan_hasta", { ascending: orden === "hasta_asc", nullsFirst: false });
+      return q.order("id").range(desde, hasta).then((r: any) => ({
         ...r,
         data: (r.data ?? []).map((x: any): Ficha => ({
           id: x.id,
@@ -101,7 +117,7 @@ export default function AdminSuscripciones() {
           : r.error,
       }));
     },
-    [rol, filtro, busca],
+    [rol, filtro, busca, planFiltro, caduca30, orden],
     25,
   );
 
@@ -206,6 +222,8 @@ export default function AdminSuscripciones() {
   };
 
   const apagado = reglas === false;
+  const activos = [planFiltro, caduca30, orden !== "nombre"].filter(Boolean).length;
+  const quitarExtras = () => { setPlanFiltro(""); setCaduca30(false); setOrden("nombre"); };
 
   return (
     <SeccionPanel
@@ -288,12 +306,30 @@ export default function AdminSuscripciones() {
             { clave: "cancelada", label: "Canceladas", n: cuentas.cancelada },
           ]}
         />
+        <PanelFiltros clave="admin-suscripciones" activos={activos} onLimpiar={quitarExtras}>
+          <CampoFiltro etiqueta="Plan">
+            <select value={planFiltro} onChange={(e) => setPlanFiltro(e.target.value as Plan | "")} className={claseFiltro}>
+              <option value="">Cualquier plan</option>
+              {PLANES.map((x) => <option key={x} value={x}>{ETIQUETA[x]}</option>)}
+            </select>
+          </CampoFiltro>
+          <SelectorOrden<Orden> valor={orden} onCambiar={setOrden} opciones={[
+            { clave: "nombre", label: "Nombre (A-Z)" },
+            { clave: "hasta_asc", label: "Acaban antes" },
+            { clave: "hasta_desc", label: "Acaban más tarde" },
+          ]} />
+          {/* Casilla grande: con el dedo una casilla nativa de 16 px no se acierta. */}
+          <label className="flex min-h-[48px] cursor-pointer items-center gap-3 self-end rounded-xl border border-linea-fuerte bg-white px-3 text-[15px] font-semibold">
+            <input type="checkbox" checked={caduca30} onChange={(e) => setCaduca30(e.target.checked)} className="h-5 w-5 accent-magenta" />
+            Caduca en los próximos 30 días
+          </label>
+        </PanelFiltros>
       </div>
 
       {aviso && <Aviso tono={aviso.tono}>{aviso.texto}</Aviso>}
 
       <EstadoLista cargando={p.cargando} error={p.error} filas={p.filas.length}
-        vacio={busca || filtro !== "todas" ? "Nada con esos filtros." : rol === "local" ? "No hay locales." : "No hay DJs."} />
+        vacio={busca || filtro !== "todas" || activos > 0 ? "Nada con esos filtros." : rol === "local" ? "No hay locales." : "No hay DJs."} />
 
       {p.filas.length > 0 && (
         <ul className={`flex flex-col gap-3 ${p.cargando ? "opacity-60" : ""}`}>

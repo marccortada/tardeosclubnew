@@ -218,6 +218,10 @@ servidor local no está en el 3000.
 - Colores (tokens Tailwind): `magenta` #D61AA8 (neón `magenta-400` #FF3DCF),
   `oro` #FAC72E, `naranja`, `tinta` (texto), `tinta-suave`, `marfil` (fondos),
   `linea`/`linea-fuerte` (bordes). Estados `ok`, `aviso`, `error`.
+  Estados `ok`/`aviso`/`error`: el color base es fijo (fondo de botón con letra
+  blanca); `*-fondo` va por variable y, como texto, se aclara en oscuro (`globals.css`).
+  En oscuro, `layout.tsx` vuelve a poner la clase `dark` si React rehace `<html>`
+  (pasaba en las páginas «no encontrado»).
   Fijos en los dos temas: `noche` (fondos oscuros de marca: pie, cabecera de ficha,
   huecos de foto; **no** `bg-tinta`, que en oscuro se aclara) y `sobre-oro` (texto
   encima del oro, siempre oscuro). `magenta-50/100` van por variable (en oscuro,
@@ -277,6 +281,16 @@ const { filas, total, pagina, setPagina, porPagina, cargando, error, quitar } =
 Y debajo `<Paginacion …/>`, arriba `<Buscador/>` + `<Filtros/>`, y
 `<EstadoLista/>` para cargando/vacío/error. Ejemplo completo:
 `components/admin/FichasAdmin.tsx`.
+
+Filtros secundarios (fechas, orden, plan, local…) dentro de `<PanelFiltros>`
+(`components/panel/PanelFiltros.tsx`): bloque plegable «Filtros (n)» con «Quitar»,
+recuerda si estaba abierto por pantalla. Piezas: `CampoFiltro`, `RangoFechas`,
+`SelectorOrden`, `claseFiltro`; ayudas de consulta en `lib/filtrosLista.ts`. Siempre
+en la consulta del servidor y en las dependencias de `usePaginado`.
+
+**Asistencia de un tardeo:** `app/local/_panel/PasarLista.tsx` (en la ficha del tardeo
+del local y en `/admin/registro?tardeo=<id>`): resumen, buscador, filtros (por marcar,
+vinieron, espera, cancelados…), dar plaza / a espera / cancelar / volver a confirmar.
 
 ---
 
@@ -343,7 +357,15 @@ Paquetes para pegar de una vez: `PEGAR_45_a_62.sql`, `PEGAR_63_a_69.sql`,
   `comentario_oculto`), `sorteos` (insert con las columnas del formulario). Probado en
   local: 80 comprobaciones bien.
 
-El siguiente lote libre es el **75**.
+- `75` Asistencia desde la ficha del tardeo (`PEGAR_75.sql`, **pendiente de pegar**):
+  `private.gestiona_asistencia()` = admin de la zona **o dueño del local**; con ella
+  `admin_mover_inscripcion`, `admin_promover_espera` y `marcar_asistencia` (el admin, solo de
+  su zona). `lista_de_tardeo()` = lista completa con puesto en la espera (email solo para
+  admins). El aforo se sigue respetando. **No confundir** con `gestiona_tardeo()` (lote 55,
+  «cualquier admin o dueño»), que usan las políticas de invitaciones/solicitudes de DJs.
+  Probado en local: 23 comprobaciones bien.
+
+El siguiente lote libre es el **76**.
 
 **Permisos por columna en Supabase:** anon y authenticated tienen por defecto permiso de
 TABLA en `public`, así que un `grant (col)` o `revoke (col)` NO restringe nada mientras

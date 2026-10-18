@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { SeccionPanel } from "@/components/panel/PanelShell";
-import Paginacion, { usePaginado, Filtros, EstadoLista } from "@/components/panel/Paginacion";
+import Paginacion, { usePaginado, Filtros, EstadoLista, Buscador, useDiferido } from "@/components/panel/Paginacion";
+import PanelFiltros, { CampoFiltro, claseFiltro, RangoFechas } from "@/components/panel/PanelFiltros";
+import { limpiarBusqueda, rangoTimestamp } from "@/lib/filtrosLista";
 import Boton from "@/components/Boton";
 import Hoja from "@/components/ui/Hoja";
 import Aviso from "@/components/admin/Aviso";
@@ -53,16 +55,33 @@ export default function AdminReclamaciones() {
   const [obrando, setObrando] = useState(false);
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
+  // Búsqueda y filtros plegables, en el servidor.
+  const [texto, setTexto] = useState("");
+  const busca = useDiferido(texto);
+  const [tipo, setTipo] = useState<"" | "local" | "dj">("");
+  const [resultado, setResultado] = useState<"" | "aprobada" | "rechazada">("");
+  const [fDesde, setFDesde] = useState("");
+  const [fHasta, setFHasta] = useState("");
+  // «Resultado» solo cuenta en Resueltas (en Pendientes no se aplica).
+  const activos = [tipo, filtro === "resueltas" ? resultado : "", fDesde, fHasta].filter(Boolean).length;
+  const limpiarFiltros = () => { setTipo(""); setResultado(""); setFDesde(""); setFHasta(""); };
 
   const p = usePaginado<Solicitud>(
     (desde, hasta) => {
       let q = supabase.from("solicitudes_reclamacion")
         .select("id,tipo,objetivo_id,solicitante,cargo,telefono,mensaje,estado,created_at,resuelta_en", { count: "exact" });
-      q = filtro === "pendientes" ? q.eq("estado", "pendiente") : q.neq("estado", "pendiente");
+      q = filtro === "pendientes" ? q.eq("estado", "pendiente")
+        : resultado ? q.eq("estado", resultado) : q.neq("estado", "pendiente");
+      if (tipo) q = q.eq("tipo", tipo);
+      q = rangoTimestamp(q, "created_at", fDesde, fHasta);
+      // El nombre de la ficha está en otra tabla (local o DJ): se busca en lo
+      // que escribió quien pide, que es donde suele decir quién es.
+      const l = limpiarBusqueda(busca);
+      if (l) q = q.or(`mensaje.ilike.%${l}%,cargo.ilike.%${l}%,telefono.ilike.%${l}%`);
       return q.order(filtro === "pendientes" ? "created_at" : "resuelta_en", { ascending: filtro === "pendientes", nullsFirst: false })
         .order("id").range(desde, hasta) as unknown as PromiseLike<{ data: Solicitud[] | null; count: number | null; error: unknown }>;
     },
-    [filtro],
+    [filtro, busca, tipo, resultado, fDesde, fHasta],
     25,
   );
 
@@ -143,13 +162,35 @@ export default function AdminReclamaciones() {
             { clave: "resueltas", label: "Resueltas", n: cuentas.resueltas },
           ]}
         />
+        <div className="mt-3 flex flex-col gap-3">
+          <Buscador valor={texto} onCambiar={setTexto} placeholder="Buscar en mensaje, cargo o teléfono…" />
+          <PanelFiltros clave="admin-reclamaciones" activos={activos} onLimpiar={limpiarFiltros}>
+            <CampoFiltro etiqueta="Ficha de">
+              <select value={tipo} onChange={(e) => setTipo(e.target.value as typeof tipo)} className={claseFiltro}>
+                <option value="">Locales y DJs</option>
+                <option value="local">Locales</option>
+                <option value="dj">DJs</option>
+              </select>
+            </CampoFiltro>
+            {filtro === "resueltas" && (
+              <CampoFiltro etiqueta="Resultado">
+                <select value={resultado} onChange={(e) => setResultado(e.target.value as typeof resultado)} className={claseFiltro}>
+                  <option value="">Aprobadas y rechazadas</option>
+                  <option value="aprobada">Aprobadas</option>
+                  <option value="rechazada">Rechazadas</option>
+                </select>
+              </CampoFiltro>
+            )}
+            <RangoFechas desde={fDesde} hasta={fHasta} onDesde={setFDesde} onHasta={setFHasta} etiqueta="Pedida" />
+          </PanelFiltros>
+        </div>
       </div>
 
       {error && <Aviso>{error}</Aviso>}
       {ok && <Aviso tono="ok">{ok}</Aviso>}
 
       <EstadoLista cargando={p.cargando} error={p.error} filas={p.filas.length}
-        vacio={filtro === "pendientes" ? "No hay solicitudes pendientes. Todo al día." : "Todavía no has resuelto ninguna."} />
+        vacio={activos || busca ? "Ninguna solicitud con estos filtros." : filtro === "pendientes" ? "No hay solicitudes pendientes. Todo al día." : "Todavía no has resuelto ninguna."} />
 
       <ul className={`flex flex-col gap-3 ${p.cargando ? "opacity-60" : ""}`}>
         {p.filas.map((s) => {

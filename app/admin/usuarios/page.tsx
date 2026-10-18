@@ -12,6 +12,8 @@ import Aviso from "@/components/admin/Aviso";
 import { claseCampo } from "@/components/ui/Campo";
 import { useAuth } from "@/lib/useAuth";
 import { descargarCsv, leerPorLotes, hoyFichero } from "@/components/admin/csv";
+import PanelFiltros, { CampoFiltro, claseFiltro, SelectorOrden, RangoFechas } from "@/components/panel/PanelFiltros";
+import { rangoTimestamp } from "@/lib/filtrosLista";
 import { Shield, Store, Megaphone, Disc3, Info, Mail, Phone, KeyRound, Trash2, Download } from "lucide-react";
 
 type Perfil = {
@@ -24,6 +26,7 @@ type Perfil = {
 };
 type FichaUsuario = { id: string; nombre: string; tipo: "local" | "promotor" | "dj" };
 type Filtro = "todos" | "admins" | "local" | "dj" | "sin";
+type Orden = "recientes" | "antiguos" | "nombre";
 /** Ids de dueños de fichas: pocas filas (las que tienen dueño), se piden una vez. */
 type Duenos = { local: string[]; dj: string[] };
 /** Acción en curso sobre un usuario (se confirma siempre en una hoja). */
@@ -50,6 +53,12 @@ export default function AdminUsuarios() {
   const [texto, setTexto] = useState("");
   const busca = useDiferido(texto);
   const [filtro, setFiltro] = useState<Filtro>("todos");
+  // Filtros del bloque plegable (en el servidor).
+  const [altaDesde, setAltaDesde] = useState("");
+  const [altaHasta, setAltaHasta] = useState("");
+  const [orden, setOrden] = useState<Orden>("recientes");
+  /** "si" / "no" = `profiles.acepta_ofertas` (lote 38); "" = da igual. */
+  const [ofertas, setOfertas] = useState<"" | "si" | "no">("");
   const [cuentas, setCuentas] = useState<Partial<Record<Filtro, number>>>({});
   const [fichas, setFichas] = useState<Map<string, FichaUsuario[]>>(new Map());
   const { user } = useAuth();
@@ -82,13 +91,17 @@ export default function AdminUsuarios() {
     if (duenos) q = filtrarPorFicha(q, filtro, duenos);
     const l = limpiar(busca);
     if (l) q = q.or(`email.ilike.%${l}%,display_name.ilike.%${l}%`);
-    return q.order("created_at", { ascending: false }).order("id");
+    if (ofertas) q = q.eq("acepta_ofertas", ofertas === "si");
+    q = rangoTimestamp(q, "created_at", altaDesde, altaHasta);
+    // Por nombre: los que no lo pusieron van al final, no delante de la "A".
+    if (orden === "nombre") return q.order("display_name", { ascending: true, nullsFirst: false }).order("id");
+    return q.order("created_at", { ascending: orden === "antiguos" }).order("id");
   };
 
   const p = usePaginado<Perfil>(
     (desde, hasta) =>
       consulta(true).range(desde, hasta) as unknown as PromiseLike<{ data: Perfil[] | null; count: number | null; error: unknown }>,
-    [filtro, busca, !!duenos],
+    [filtro, busca, !!duenos, altaDesde, altaHasta, orden, ofertas],
     25,
   );
 
@@ -180,6 +193,9 @@ export default function AdminUsuarios() {
     setAviso({ tono: "ok", texto: `Exportados ${filas.length.toLocaleString("es-ES")} usuarios.` });
   };
 
+  const activos = [altaDesde || altaHasta, orden !== "recientes", ofertas].filter(Boolean).length;
+  const quitarExtras = () => { setAltaDesde(""); setAltaHasta(""); setOrden("recientes"); setOfertas(""); };
+
   // Para el segundo paso del borrado hay que escribir el email (o "BORRAR" si no tiene).
   const palabra = accion?.u.email || "BORRAR";
   const btnFila = "inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-linea-fuerte bg-white px-3 text-sm font-semibold hover:bg-marfil-100 disabled:opacity-50";
@@ -221,11 +237,26 @@ export default function AdminUsuarios() {
             { clave: "sin", label: "Sin ficha", n: cuentas.sin },
           ]}
         />
+        <PanelFiltros clave="admin-usuarios" activos={activos} onLimpiar={quitarExtras}>
+          <SelectorOrden<Orden> valor={orden} onCambiar={setOrden} opciones={[
+            { clave: "recientes", label: "Altas más recientes" },
+            { clave: "antiguos", label: "Altas más antiguas" },
+            { clave: "nombre", label: "Nombre (A-Z)" },
+          ]} />
+          <CampoFiltro etiqueta="Acepta ofertas">
+            <select value={ofertas} onChange={(e) => setOfertas(e.target.value as "" | "si" | "no")} className={claseFiltro}>
+              <option value="">Da igual</option>
+              <option value="si">Sí, acepta ofertas</option>
+              <option value="no">No acepta</option>
+            </select>
+          </CampoFiltro>
+          <RangoFechas desde={altaDesde} hasta={altaHasta} onDesde={setAltaDesde} onHasta={setAltaHasta} etiqueta="Alta" />
+        </PanelFiltros>
         {errDuenos && <Aviso tono="error">No se pudo saber quién tiene ficha ({errDuenos}). Los filtros por ficha no funcionarán.</Aviso>}
       </div>
 
       <EstadoLista cargando={p.cargando || esperaDuenos} error={p.error ?? (errDuenos && filtro !== "todos" && filtro !== "admins" ? String(errDuenos) : null)} filas={p.filas.length}
-        vacio={busca || filtro !== "todos" ? "Ningún usuario con esos filtros." : "Todavía no hay usuarios registrados."} />
+        vacio={busca || filtro !== "todos" || activos > 0 ? "Ningún usuario con esos filtros." : "Todavía no hay usuarios registrados."} />
 
       {p.filas.length > 0 && !esperaDuenos && (
         <div className={`overflow-hidden rounded-2xl border border-linea bg-white ${p.cargando ? "opacity-60" : ""}`}>

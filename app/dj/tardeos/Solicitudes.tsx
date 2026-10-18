@@ -6,7 +6,7 @@ import Boton from "@/components/Boton";
 import Campo, { claseCampo } from "@/components/ui/Campo";
 import { Etiqueta } from "@/components/ui/Chip";
 import Aviso from "@/components/admin/Aviso";
-import { useDiferido } from "@/components/panel/Paginacion";
+import { Filtros, useDiferido } from "@/components/panel/Paginacion";
 import { supabase } from "@/lib/supabase";
 import { faltaLote68, hoyISO } from "@/lib/tardeos";
 import { formatFecha } from "@/lib/formato";
@@ -23,6 +23,8 @@ const ESTADO: Record<string, { t: string; tono: "ok" | "aviso" | "neutro" | "err
   rechazada: { t: "Rechazada", tono: "error" }, retirada: { t: "Retirada", tono: "neutro" },
 };
 
+const POR_TANDA = 50;
+
 /**
  * Dossier pág. 11: el DJ puede pedir vincularse a un evento que ya existe (lo
  * aprueba el organizador en su panel) o proponer uno nuevo si no existe (lo
@@ -38,14 +40,23 @@ export default function SolicitudesDj({ djId }: { djId: string }) {
   const [proponer, setProponer] = useState(false);
   const [p, setP] = useState({ titulo: "", fecha: "", hora: "", lugar: "", enlace: "", nota: "" });
   const [enviando, setEnviando] = useState(false);
+  // Estado en el servidor y «Ver más» en vez de cortar callado en 50.
+  const [estadoF, setEstadoF] = useState<"todas" | "pendiente" | "aprobada" | "rechazada" | "retirada">("todas");
+  const [tope, setTope] = useState(POR_TANDA);
+  const [hayMas, setHayMas] = useState(false);
 
   const cargar = useCallback(async () => {
-    const { data, error } = await supabase.from("dj_solicitudes")
+    let q = supabase.from("dj_solicitudes")
       .select("id,tipo,estado,created_at,mensaje,nota_resolucion,propuesta,tardeos(titulo,fecha)")
-      .eq("dj_id", djId).order("created_at", { ascending: false }).limit(50);
+      .eq("dj_id", djId);
+    if (estadoF !== "todas") q = q.eq("estado", estadoF);
+    // Se pide una de más para saber si hay más sin contar todo.
+    const { data, error } = await q.order("created_at", { ascending: false }).order("id").limit(tope + 1);
     if (error) { setFalta(faltaLote68(error)); setLista([]); if (!faltaLote68(error)) setMsg({ tono: "error", texto: error.message }); return; }
-    setLista((data ?? []) as unknown as Sol[]);
-  }, [djId]);
+    const filas = (data ?? []) as unknown as Sol[];
+    setHayMas(filas.length > tope);
+    setLista(filas.slice(0, tope));
+  }, [djId, estadoF, tope]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -148,8 +159,20 @@ export default function SolicitudesDj({ djId }: { djId: string }) {
 
       <section>
         <h2 className="mb-2 text-lg font-bold">Mis solicitudes</h2>
+        <div className="mb-3">
+          <Filtros valor={estadoF} onCambiar={(k) => { setEstadoF(k); setTope(POR_TANDA); }}
+            opciones={[
+              { clave: "todas" as const, label: "Todas" },
+              { clave: "pendiente" as const, label: "Pendientes" },
+              { clave: "aprobada" as const, label: "Aprobadas" },
+              { clave: "rechazada" as const, label: "Rechazadas" },
+              { clave: "retirada" as const, label: "Retiradas" },
+            ]} />
+        </div>
         {!lista ? null : lista.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-linea-fuerte bg-white p-5 text-center text-[15px] text-tinta-suave">Aún no has pedido nada.</p>
+          <p className="rounded-2xl border border-dashed border-linea-fuerte bg-white p-5 text-center text-[15px] text-tinta-suave">
+            {estadoF === "todas" ? "Aún no has pedido nada." : "No tienes solicitudes en este estado."}
+          </p>
         ) : (
           <ul className="flex flex-col gap-2">
             {lista.map((s) => {
@@ -170,6 +193,9 @@ export default function SolicitudesDj({ djId }: { djId: string }) {
               );
             })}
           </ul>
+        )}
+        {hayMas && (
+          <Boton className="mt-3" variante="contorno" ancho onClick={() => setTope((t) => t + POR_TANDA)}>Ver más</Boton>
         )}
       </section>
     </div>

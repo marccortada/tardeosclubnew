@@ -264,6 +264,13 @@ export async function revisarSalud(): Promise<{ pruebas: Prueba[]; datos: Record
       ]);
       return { error: s.error ?? existeFuncion(c.error) };
     }),
+    // Lote 75: gestionar la asistencia desde la ficha del tardeo (el local da
+    // plaza, pasa a espera o cancela). Sin él, la lista se ve igual pero esas
+    // acciones solo le funcionan al admin.
+    comprobar("Asistencia desde la ficha del tardeo (lote 75)", "Pega supabase/PEGAR_75.sql", async () => {
+      const { error } = await supabase.rpc("lista_de_tardeo", { p_tardeo: "00000000-0000-0000-0000-000000000000" });
+      return { error: existeFuncion(error) };
+    }),
   ]);
 
   // Lotes que solo crean disparadores, restricciones o políticas: no se ven

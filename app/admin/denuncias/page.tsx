@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { SeccionPanel } from "@/components/panel/PanelShell";
-import Paginacion, { usePaginado, Filtros, EstadoLista } from "@/components/panel/Paginacion";
+import Paginacion, { usePaginado, Filtros, EstadoLista, Buscador, useDiferido } from "@/components/panel/Paginacion";
+import PanelFiltros, { CampoFiltro, claseFiltro, RangoFechas } from "@/components/panel/PanelFiltros";
+import { limpiarBusqueda, rangoTimestamp } from "@/lib/filtrosLista";
 import Boton from "@/components/Boton";
 import { MOTIVOS_COMUNIDAD, NOMBRE_TIPO, type TipoObjeto } from "@/lib/denuncias";
 import { fechaCorta, horaCorta, textoError } from "@/lib/meet";
@@ -30,10 +32,28 @@ export default function DenunciasAdmin() {
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
 
-  const { filas, total, pagina, setPagina, porPagina, cargando, error, quitar } = usePaginado<Fila>((desde, hasta) =>
-    supabase.from("denuncias").select("id,denunciante,tipo_objeto,objeto_id,motivo,mensaje,estado,created_at,resuelta_en", { count: "exact" })
-      .eq("estado", estado).order("created_at", { ascending: estado !== "pendiente" ? false : true }).order("id").range(desde, hasta),
-  [estado]);
+  // Filtros extra (plegables). Todo en el servidor: la cola está paginada.
+  const [texto, setTexto] = useState("");
+  const busca = useDiferido(texto);
+  const [tipo, setTipo] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const [fDesde, setFDesde] = useState("");
+  const [fHasta, setFHasta] = useState("");
+  const activos = [tipo, motivo, fDesde, fHasta].filter(Boolean).length;
+  const limpiarFiltros = () => { setTipo(""); setMotivo(""); setFDesde(""); setFHasta(""); };
+
+  const { filas, total, pagina, setPagina, porPagina, cargando, error, quitar } = usePaginado<Fila>((desde, hasta) => {
+    let q = supabase.from("denuncias").select("id,denunciante,tipo_objeto,objeto_id,motivo,mensaje,estado,created_at,resuelta_en", { count: "exact" })
+      .eq("estado", estado);
+    if (tipo) q = q.eq("tipo_objeto", tipo);
+    if (motivo) q = q.eq("motivo", motivo);
+    q = rangoTimestamp(q, "created_at", fDesde, fHasta);
+    // Solo se busca en la explicación del denunciante: el texto denunciado vive
+    // en otras tablas (Meet Zone, mensajes, Entre Beats) y no se puede cruzar aquí.
+    const l = limpiarBusqueda(busca);
+    if (l) q = q.ilike("mensaje", `%${l}%`);
+    return q.order("created_at", { ascending: estado !== "pendiente" ? false : true }).order("id").range(desde, hasta);
+  }, [estado, busca, tipo, motivo, fDesde, fHasta]);
 
   // El contenido denunciado de toda la página en una sola llamada.
   useEffect(() => {
@@ -61,6 +81,22 @@ export default function DenunciasAdmin() {
       <div className="space-y-4">
         <Filtros<Estado> valor={estado} onCambiar={setEstado}
           opciones={[{ clave: "pendiente", label: "Pendientes", n: estado === "pendiente" ? total : null }, { clave: "retirado", label: "Retiradas" }, { clave: "desestimado", label: "Desestimadas" }]} />
+        <Buscador valor={texto} onCambiar={setTexto} placeholder="Buscar en la explicación…" />
+        <PanelFiltros clave="admin-denuncias" activos={activos} onLimpiar={limpiarFiltros}>
+          <CampoFiltro etiqueta="Dónde">
+            <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={claseFiltro}>
+              <option value="">Todo</option>
+              {(Object.entries(NOMBRE_TIPO) as [TipoObjeto, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </CampoFiltro>
+          <CampoFiltro etiqueta="Motivo">
+            <select value={motivo} onChange={(e) => setMotivo(e.target.value)} className={claseFiltro}>
+              <option value="">Todos</option>
+              {MOTIVOS_COMUNIDAD.map((m) => <option key={m.k} value={m.k}>{m.label}</option>)}
+            </select>
+          </CampoFiltro>
+          <RangoFechas desde={fDesde} hasta={fHasta} onDesde={setFDesde} onHasta={setFHasta} etiqueta="Denunciada" />
+        </PanelFiltros>
         {aviso && <p role="status" className={`rounded-xl p-3 text-[15px] font-semibold ${aviso.ok ? "bg-ok-fondo text-ok" : "bg-error-fondo text-error"}`}>{aviso.texto}</p>}
         <EstadoLista cargando={cargando} error={error ? textoError({ message: error, code: /does not exist|schema cache/.test(error) ? "42P01" : undefined }, "63/66") : null}
           vacio={estado === "pendiente" ? "No hay denuncias pendientes. Todo al día." : "No hay denuncias aquí."} filas={filas.length} />

@@ -12,6 +12,8 @@ import Hoja from "@/components/ui/Hoja";
 import { claseCampo } from "@/components/ui/Campo";
 import Paginacion, { Buscador, usePaginado, useDiferido } from "@/components/panel/Paginacion";
 import Denunciar from "@/components/comunidad/Denunciar";
+import PanelFiltros, { CampoFiltro, claseFiltro } from "@/components/panel/PanelFiltros";
+import { limpiarBusqueda } from "@/lib/filtrosLista";
 import { autores, CATEGORIAS, consultaBusqueda, TEMAS, type Anuncio, type Autor, type Hilo, type Respuesta } from "@/lib/entreBeats";
 import { fechaCorta, pareceContacto, textoError } from "@/lib/meet";
 import type { TipoObjeto } from "@/lib/denuncias";
@@ -157,11 +159,17 @@ function Hilos({ q, yo }: { q: string; yo: string }) {
   const [crear, setCrear] = useState(false);
   const [abierto, setAbierto] = useState<Hilo | null>(null);
   const ts = consultaBusqueda(q);
+  // Filtros plegables (en el servidor, como la búsqueda).
+  const [tema, setTema] = useState("");
+  const [mios, setMios] = useState(false);
+  const activos = [tema, mios].filter(Boolean).length;
   const { filas, total, pagina, setPagina, porPagina, cargando, error, recargar, cambiar } = usePaginado<Hilo>((desde, hasta) => {
     let c = supabase.from("eb_hilos").select("id,autor,titulo,cuerpo,tema,zona,retenido,created_at,eb_respuestas(count)", { count: "exact" });
     if (ts) c = c.textSearch("busqueda", ts, { config: "spanish" });
+    if (tema) c = c.eq("tema", tema);
+    if (mios) c = c.eq("autor", yo);
     return c.order("created_at", { ascending: false }).order("id").range(desde, hasta);
-  }, [ts], 20);
+  }, [ts, tema, mios, yo], 20);
 
   useEffect(() => {
     autores(filas.map((h) => h.autor)).then((a) => setGente((p) => ({ ...p, ...a })));
@@ -177,9 +185,21 @@ function Hilos({ q, yo }: { q: string; yo: string }) {
 
   return (
     <div className="space-y-3">
+      <PanelFiltros clave="eb-hilos" activos={activos} onLimpiar={() => { setTema(""); setMios(false); }}>
+        <CampoFiltro etiqueta="Tema">
+          <select value={tema} onChange={(e) => setTema(e.target.value)} className={claseFiltro}>
+            <option value="">Todos</option>
+            {TEMAS.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </CampoFiltro>
+        <label className="flex min-h-[44px] items-center gap-2 self-end rounded-xl border border-linea-fuerte bg-white px-3 text-[15px]">
+          <input type="checkbox" checked={mios} onChange={(e) => setMios(e.target.checked)} className="h-5 w-5 accent-magenta" />
+          Solo mis hilos
+        </label>
+      </PanelFiltros>
       {error ? <Fallo e={textoError({ message: error, code: /does not exist|schema cache/.test(error) ? "42P01" : undefined })} />
         : cargando && filas.length === 0 ? <p className="grid place-items-center py-8 text-tinta-suave"><Loader2 className="animate-spin" aria-label="Cargando" /></p>
-        : filas.length === 0 ? <p className="rounded-2xl border border-dashed border-linea p-6 text-center text-[15px] text-tinta-suave">{q ? "No hay hilos con esa búsqueda." : "Aún no hay hilos. Abre el primero."}</p>
+        : filas.length === 0 ? <p className="rounded-2xl border border-dashed border-linea p-6 text-center text-[15px] text-tinta-suave">{q || activos ? "No hay hilos con esa búsqueda o filtros." : "Aún no hay hilos. Abre el primero."}</p>
         : filas.map((h) => (
           <article key={h.id} className="rounded-2xl border border-linea bg-superficie p-4">
             <div className="flex items-start gap-2">
@@ -318,11 +338,25 @@ function Anuncios({ q, yo }: { q: string; yo: string }) {
   const [contactar, setContactar] = useState<Anuncio | null>(null);
   const [error, setError] = useState<string | null>(null);
   const ts = consultaBusqueda(q);
+  // Filtros plegables. La zona del anuncio es texto libre («Barcelona»,
+  // «Maresme»…), así que se busca por parecido y no con una lista cerrada.
+  const [categoria, setCategoria] = useState("");
+  const [zonaTxt, setZonaTxt] = useState("");
+  const zonaD = useDiferido(zonaTxt);
+  const [soloAbiertos, setSoloAbiertos] = useState(false);
+  const [mios, setMios] = useState(false);
+  const activos = [categoria, zonaTxt.trim(), soloAbiertos, mios].filter(Boolean).length;
+  const limpiarFiltros = () => { setCategoria(""); setZonaTxt(""); setSoloAbiertos(false); setMios(false); };
   const { filas, total, pagina, setPagina, porPagina, cargando, error: errLista, recargar, cambiar } = usePaginado<Anuncio>((desde, hasta) => {
     let c = supabase.from("eb_anuncios").select("id,autor,categoria,titulo,cuerpo,zona,estilos,contacto,estado,retenido,created_at", { count: "exact" });
     if (ts) c = c.textSearch("busqueda", ts, { config: "spanish" });
+    if (categoria) c = c.eq("categoria", categoria);
+    const z = limpiarBusqueda(zonaD);
+    if (z) c = c.ilike("zona", `%${z}%`);
+    if (soloAbiertos) c = c.eq("estado", "abierto");
+    if (mios) c = c.eq("autor", yo);
     return c.order("estado").order("created_at", { ascending: false }).order("id").range(desde, hasta);
-  }, [ts], 20);
+  }, [ts, categoria, zonaD, soloAbiertos, mios, yo], 20);
 
   useEffect(() => {
     autores(filas.map((h) => h.autor)).then((a) => setGente((p) => ({ ...p, ...a })));
@@ -341,10 +375,29 @@ function Anuncios({ q, yo }: { q: string; yo: string }) {
 
   return (
     <div className="space-y-3">
+      <PanelFiltros clave="eb-anuncios" activos={activos} onLimpiar={limpiarFiltros}>
+        <CampoFiltro etiqueta="Categoría">
+          <select value={categoria} onChange={(e) => setCategoria(e.target.value)} className={claseFiltro}>
+            <option value="">Todas</option>
+            {CATEGORIAS.map((c) => <option key={c.k} value={c.k}>{c.label}</option>)}
+          </select>
+        </CampoFiltro>
+        <CampoFiltro etiqueta="Zona">
+          <input value={zonaTxt} onChange={(e) => setZonaTxt(e.target.value)} placeholder="p. ej. Barcelona" maxLength={60} className={claseFiltro} />
+        </CampoFiltro>
+        <label className="flex min-h-[44px] items-center gap-2 self-end rounded-xl border border-linea-fuerte bg-white px-3 text-[15px]">
+          <input type="checkbox" checked={soloAbiertos} onChange={(e) => setSoloAbiertos(e.target.checked)} className="h-5 w-5 accent-magenta" />
+          Solo abiertos
+        </label>
+        <label className="flex min-h-[44px] items-center gap-2 self-end rounded-xl border border-linea-fuerte bg-white px-3 text-[15px]">
+          <input type="checkbox" checked={mios} onChange={(e) => setMios(e.target.checked)} className="h-5 w-5 accent-magenta" />
+          Solo mis anuncios
+        </label>
+      </PanelFiltros>
       <Fallo e={error} />
       {errLista ? <Fallo e={textoError({ message: errLista, code: /does not exist|schema cache/.test(errLista) ? "42P01" : undefined })} />
         : cargando && filas.length === 0 ? <p className="grid place-items-center py-8 text-tinta-suave"><Loader2 className="animate-spin" aria-label="Cargando" /></p>
-        : filas.length === 0 ? <p className="rounded-2xl border border-dashed border-linea p-6 text-center text-[15px] text-tinta-suave">{q ? "No hay anuncios con esa búsqueda." : "Aún no hay anuncios."}</p>
+        : filas.length === 0 ? <p className="rounded-2xl border border-dashed border-linea p-6 text-center text-[15px] text-tinta-suave">{q || activos ? "No hay anuncios con esa búsqueda o filtros." : "Aún no hay anuncios."}</p>
         : filas.map((a) => (
           <article key={a.id} className="rounded-2xl border border-linea bg-superficie p-4">
             <div className="flex items-start gap-2">

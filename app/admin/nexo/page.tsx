@@ -8,6 +8,9 @@ import { useReproductor } from "@/components/musica/Reproductor";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import { ESTADOS_NEXO, faltaLote, MENSAJE_FALTA_LOTE, type EnvioNexo } from "@/lib/sets";
+import { Buscador, useDiferido } from "@/components/panel/Paginacion";
+import PanelFiltros, { RangoFechas } from "@/components/panel/PanelFiltros";
+import { limpiarBusqueda, rangoTimestamp } from "@/lib/filtrosLista";
 
 type Envio = EnvioNexo & { djs: { nombre_artistico: string } | null };
 type Franja = { id: string; dia_semana: number | null; hora: string; titulo: string; detalle: string | null };
@@ -29,15 +32,33 @@ export default function AdminNexo() {
   const [total, setTotal] = useState(0);
   const [notas, setNotas] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  // Búsqueda (título o DJ) y fechas de envío, en el servidor.
+  const [texto, setTexto] = useState("");
+  const busca = useDiferido(texto);
+  const [fDesde, setFDesde] = useState("");
+  const [fHasta, setFHasta] = useState("");
+  const activos = [fDesde, fHasta].filter(Boolean).length;
+  // Cambiar un filtro vuelve a la primera página (si no, se puede quedar en
+  // una página que ya no existe y decir «no hay envíos»).
+  const conPagina0 = (set: (v: string) => void) => (v: string) => { set(v); setPagina(0); };
 
   const cargar = useCallback(async () => {
-    const { data, error, count } = await supabase.from("nexo_envios")
+    let q = supabase.from("nexo_envios")
       .select("id,dj_id,set_id,titulo,url,descripcion,estado,nota_nexo,created_at,revisado_en,djs(nombre_artistico)", { count: "exact" })
-      .eq("estado", estado).order("created_at", { ascending: false }).order("id")
+      .eq("estado", estado);
+    q = rangoTimestamp(q, "created_at", fDesde, fHasta);
+    const l = limpiarBusqueda(busca);
+    if (l) {
+      // El nombre del DJ está en `djs`: se buscan primero sus ids (tope 100).
+      const { data: djs } = await supabase.from("djs").select("id").ilike("nombre_artistico", `%${l}%`).limit(100);
+      const ids = ((djs ?? []) as { id: string }[]).map((d) => d.id);
+      q = q.or(ids.length ? `titulo.ilike.%${l}%,dj_id.in.(${ids.join(",")})` : `titulo.ilike.%${l}%`);
+    }
+    const { data, error, count } = await q.order("created_at", { ascending: false }).order("id")
       .range(pagina * POR_PAGINA, pagina * POR_PAGINA + POR_PAGINA - 1);
     if (error) { setError(faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message); setFilas([]); return; }
     setError(null); setFilas((data ?? []) as unknown as Envio[]); setTotal(count ?? 0);
-  }, [estado, pagina]);
+  }, [estado, pagina, busca, fDesde, fHasta]);
   useEffect(() => { void cargar(); }, [cargar]);
 
   async function decidir(e: Envio, nuevo: EnvioNexo["estado"]) {
@@ -63,10 +84,16 @@ export default function AdminNexo() {
           </button>
         ))}
       </div>
+      <div className="mt-3 flex flex-col gap-3">
+        <Buscador valor={texto} onCambiar={conPagina0(setTexto)} placeholder="Buscar por título o DJ…" />
+        <PanelFiltros clave="admin-nexo" activos={activos} onLimpiar={() => { setFDesde(""); setFHasta(""); setPagina(0); }}>
+          <RangoFechas desde={fDesde} hasta={fHasta} onDesde={conPagina0(setFDesde)} onHasta={conPagina0(setFHasta)} etiqueta="Enviada" />
+        </PanelFiltros>
+      </div>
       {error && <p role="alert" className="mt-3 rounded-xl bg-error-fondo p-3 text-[15px] text-error">{error}</p>}
 
       {filas === null ? <p className="mt-4 text-tinta-suave">Cargando…</p>
-        : filas.length === 0 ? <p className="mt-4 text-[15px] text-tinta-suave">No hay envíos en este estado.</p>
+        : filas.length === 0 ? <p className="mt-4 text-[15px] text-tinta-suave">{busca || activos ? "Ningún envío con estos filtros." : "No hay envíos en este estado."}</p>
         : (
           <ul className="mt-4 flex flex-col gap-3">
             {filas.map((e) => (

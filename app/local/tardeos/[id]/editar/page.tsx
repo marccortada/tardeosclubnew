@@ -34,7 +34,22 @@ import { Check, Loader2, Trash2, EyeOff, Eye, ExternalLink, Users, Ban, Copy, Re
 import PromocionesDeTardeo from "@/components/PromocionesDeTardeo";
 
 /** Una tarjeta con título para cada bloque del formulario. */
-function Bloque({ titulo, ayuda, children, id }: { titulo: string; ayuda?: string; children: ReactNode; id?: string }) {
+function Bloque({ titulo, ayuda, children, id, plegable }: { titulo: string; ayuda?: string; children: ReactNode; id?: string; plegable?: boolean }) {
+  // Plegable: los bloques largos (asistentes, invitar DJs) se pueden esconder
+  // para llegar antes a lo de abajo; empiezan abiertos para no esconder nada.
+  if (plegable) return (
+    <details id={id} open className="group scroll-mt-20 rounded-2xl border border-linea bg-white p-4 shadow-tarjeta md:p-6">
+      <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
+        <span className="flex-1">
+          <span className="block text-lg font-bold">{titulo}</span>
+          {ayuda && <span className="mt-0.5 block text-sm text-tinta-suave">{ayuda}</span>}
+        </span>
+        <span className="text-[14px] font-semibold text-magenta-700 group-open:hidden">Mostrar</span>
+        <span className="hidden text-[14px] font-semibold text-magenta-700 group-open:inline">Ocultar</span>
+      </summary>
+      <div className="mt-4 flex flex-col gap-4">{children}</div>
+    </details>
+  );
   return (
     <section id={id} className="scroll-mt-20 rounded-2xl border border-linea bg-white p-4 shadow-tarjeta md:p-6">
       <h2 className="text-lg font-bold">{titulo}</h2>
@@ -98,6 +113,8 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
   // Si la columna aún no existe en la base (lote 48 sin pegar), no se intenta escribir.
   const [hayColumnaAforo, setHayColumnaAforo] = useState(false);
   const [inscritos, setInscritos] = useState<{ filas: Inscrito[]; error: string | null } | null>(null);
+  // Confirmados según la lista (cambia al dar plaza o cancelar desde ella).
+  const [nConf, setNConf] = useState<number | null>(null);
   // Sin el lote 48 no hay `inscritos_de_tardeo`: los nombres salen de la
   // función del lote 8 (por local) para no dejar la sección vacía.
   const [respaldo, setRespaldo] = useState<string[]>([]);
@@ -418,6 +435,9 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
   const cerrado = tardeo.estado === "cancelado" || tardeo.estado === "finalizado";
   const est = NOMBRE_ESTADO[tardeo.estado ?? "publicado"] ?? NOMBRE_ESTADO.borrador;
   const apuntados = inscritos?.filas.filter((f) => f.estado === "apuntado") ?? [];
+  // Hay lista si alguien se apuntó alguna vez (también en espera o cancelado):
+  // antes el bloque solo salía con confirmados y la espera quedaba escondida.
+  const hayLista = (inscritos?.filas.length ?? 0) > 0;
 
   return (
     <SeccionPanel
@@ -521,11 +541,10 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
 
         {/* Quién viene. Usa la función del lote 48, que responde al local y
             también al admin. */}
-        {(apuntados.length > 0 || respaldo.length > 0 || precio.modo === "gratis") && (
-          <Bloque id="apuntados" titulo={`Apuntados${apuntados.length || respaldo.length ? ` (${apuntados.length || respaldo.length})` : ""}`}
-            ayuda="Marca quién vino: se guarda al tocar.">
-            <PasarLista tardeoId={id} nombresRespaldo={respaldo}
-              onCambio={(f) => setInscritos((x) => (x ? { ...x, filas: f } : x))} />
+        {(hayLista || respaldo.length > 0 || precio.modo === "gratis") && (
+          <Bloque id="apuntados" plegable titulo={`Asistentes y lista de espera${nConf != null ? ` (${nConf})` : apuntados.length || respaldo.length ? ` (${apuntados.length || respaldo.length})` : ""}`}
+            ayuda="Pasa lista, da plaza a quien espera o cancela. Cada cambio se guarda al tocar.">
+            <PasarLista tardeoId={id} nombresRespaldo={respaldo} onCambio={(f) => setNConf(f.length)} />
             {!ajena && (apuntados.length > 0 || respaldo.length > 0) && (
               <Link href={enlace(`/local/apuntados?tardeo=${id}`)} className="inline-flex min-h-[44px] items-center gap-2 text-[15px] font-bold text-magenta-700">
                 <Users size={16} aria-hidden /> Exportar CSV
@@ -536,7 +555,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
 
         {/* Invitaciones (lote 55): el DJ entra en el cartel solo si acepta. Se
             guardan al momento, aparte del "Guardar cambios". */}
-        <Bloque titulo="Invitar a un DJ" ayuda="Le llega a su panel. Si acepta, sale en el cartel y en su perfil.">
+        <Bloque plegable titulo="Invitar a un DJ" ayuda="Le llega a su panel. Si acepta, sale en el cartel y en su perfil.">
           <InvitarDj tardeoId={id} creadaPor={user?.id} />
         </Bloque>
 

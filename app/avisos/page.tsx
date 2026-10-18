@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import { entrarYVolver, enlacePropio } from "@/lib/volver";
 import { claseBoton } from "@/components/Boton";
-import Paginacion, { usePaginado, EstadoLista } from "@/components/panel/Paginacion";
+import Paginacion, { usePaginado, EstadoLista, Filtros } from "@/components/panel/Paginacion";
 import { CabeceraApp, Mensaje } from "@/components/retorno/Piezas";
 
 type Aviso = { id: string; tipo: string; titulo: string; cuerpo: string | null; url: string | null; leido_en: string | null; created_at: string };
@@ -34,13 +34,19 @@ export default function Avisos() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [aviso, setAviso] = useState<string | null>(null);
+  // «No leídos» en el servidor: con muchos avisos, los pendientes pueden estar
+  // en la página 3 y aquí se ven todos juntos.
+  const [soloNoLeidos, setSoloNoLeidos] = useState(false);
 
   const p = usePaginado<Aviso>(
-    (desde, hasta) => user
-      ? supabase.from("avisos").select("id,tipo,titulo,cuerpo,url,leido_en,created_at", { count: "exact" })
-          .eq("profile_id", user.id).order("created_at", { ascending: false }).order("id").range(desde, hasta)
-      : Promise.resolve({ data: [], count: 0, error: null }),
-    [user?.id], 20,
+    (desde, hasta) => {
+      if (!user) return Promise.resolve({ data: [], count: 0, error: null });
+      let q = supabase.from("avisos").select("id,tipo,titulo,cuerpo,url,leido_en,created_at", { count: "exact" })
+        .eq("profile_id", user.id);
+      if (soloNoLeidos) q = q.is("leido_en", null);
+      return q.order("created_at", { ascending: false }).order("id").range(desde, hasta);
+    },
+    [user?.id, soloNoLeidos], 20,
   );
   const hayNoLeidos = p.filas.some((a) => !a.leido_en);
 
@@ -49,7 +55,8 @@ export default function Avisos() {
     const ahora = new Date().toISOString();
     const { error } = await supabase.from("avisos").update({ leido_en: ahora }).eq("profile_id", user.id).is("leido_en", null);
     if (error) { setAviso("No se pudieron marcar. Inténtalo otra vez."); return; }
-    p.cambiar(() => true, { leido_en: ahora });
+    // En «No leídos» ya no queda ninguno: se vuelve a pedir la lista (vacía).
+    if (soloNoLeidos) p.recargar(); else p.cambiar(() => true, { leido_en: ahora });
     window.dispatchEvent(new Event("avisos-leidos")); // la campana (equipo A) puede escucharlo para recontar
   };
 
@@ -83,8 +90,12 @@ export default function Avisos() {
     <div className="min-h-screen bg-white pb-28">
       <CabeceraApp titulo="Avisos" />
       <main className="mx-auto max-w-lg px-4 pt-4">
+        <div className="mb-3">
+          <Filtros valor={soloNoLeidos ? "no_leidos" : "todos"} onCambiar={(k) => setSoloNoLeidos(k === "no_leidos")}
+            opciones={[{ clave: "todos" as const, label: "Todos" }, { clave: "no_leidos" as const, label: "No leídos" }]} />
+        </div>
         <div className="mb-3 flex items-center justify-between gap-2">
-          <p className="text-[15px] text-tinta-suave">{p.total ? `${p.total} avisos` : ""}</p>
+          <p className="text-[15px] text-tinta-suave">{p.total ? `${p.total} ${soloNoLeidos ? "sin leer" : "avisos"}` : ""}</p>
           {hayNoLeidos && (
             <button onClick={marcarTodos} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 text-[15px] font-semibold text-magenta hover:bg-magenta-50">
               <CheckCheck size={18} aria-hidden /> Marcar todos como leídos
@@ -93,7 +104,7 @@ export default function Avisos() {
         </div>
         {aviso && <p role="alert" className="mb-3 rounded-xl bg-error-fondo p-3 text-[15px] font-semibold text-error">{aviso}</p>}
         <EstadoLista cargando={p.cargando} error={p.error ? (/avisos/.test(p.error) ? "falta el lote 63" : p.error) : null}
-          filas={p.filas.length} vacio="No tienes avisos. Aquí te llegarán los recordatorios de tus planes." />
+          filas={p.filas.length} vacio={soloNoLeidos ? "No tienes avisos sin leer. Todo al día." : "No tienes avisos. Aquí te llegarán los recordatorios de tus planes."} />
         <ul className="flex flex-col gap-2">
           {p.filas.map((a) => {
             const Ic = ICONO[a.tipo] ?? Bell;

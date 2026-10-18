@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Star, ExternalLink } from "lucide-react";
 import { SeccionPanel } from "@/components/panel/PanelShell";
 import Paginacion, { EstadoLista } from "@/components/panel/Paginacion";
+import PanelFiltros, { CampoFiltro, claseFiltro, SelectorOrden } from "@/components/panel/PanelFiltros";
 import { useFicha } from "../_panel/PanelLocal";
 import { getResenasAprobadas, type Resena } from "@/lib/resenas";
 
 const POR_PAGINA = 25;
+type Orden = "recientes" | "antiguas" | "mejores" | "peores";
 
 /**
  * Lo que dice la gente del local: solo las reseñas ya aprobadas, que son las
@@ -19,6 +21,13 @@ export default function ResenasLocal() {
   const { ficha, esPromotor } = useFicha();
   const [resenas, setResenas] = useState<Resena[] | null>(null);
   const [pagina, setPagina] = useState(1);
+  // Filtros sobre la lista ya cargada (son todas las aprobadas del local), así
+  // que no se pierde ninguna fuera de la página visible.
+  const [nota, setNota] = useState("");
+  const [conTexto, setConTexto] = useState(false);
+  const [orden, setOrden] = useState<Orden>("recientes");
+  const activos = [nota, conTexto, orden !== "recientes"].filter(Boolean).length;
+  const limpiarFiltros = () => { setNota(""); setConTexto(false); setOrden("recientes"); setPagina(1); };
 
   useEffect(() => {
     let vivo = true;
@@ -27,9 +36,17 @@ export default function ResenasLocal() {
     return () => { vivo = false; };
   }, [ficha.id]);
 
-  const lista = resenas ?? [];
+  const lista = useMemo(() => resenas ?? [], [resenas]);
   const media = lista.length ? lista.reduce((s, r) => s + r.puntuacion, 0) / lista.length : 0;
-  const pag = lista.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
+  const filtrada = useMemo(() => {
+    const f = lista.filter((r) => (!nota || r.puntuacion === Number(nota)) && (!conTexto || !!r.comentario?.trim()));
+    const fecha = (a: Resena, b: Resena) => b.created_at.localeCompare(a.created_at);
+    if (orden === "antiguas") return [...f].sort((a, b) => fecha(b, a));
+    if (orden === "mejores") return [...f].sort((a, b) => b.puntuacion - a.puntuacion || fecha(a, b));
+    if (orden === "peores") return [...f].sort((a, b) => a.puntuacion - b.puntuacion || fecha(a, b));
+    return [...f].sort(fecha);
+  }, [lista, nota, conTexto, orden]);
+  const pag = filtrada.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
 
   return (
     <SeccionPanel
@@ -52,11 +69,36 @@ export default function ResenasLocal() {
         </div>
       )}
 
+      {lista.length > 0 && (
+        <div className="mb-4">
+          <PanelFiltros clave="local-resenas" activos={activos} onLimpiar={limpiarFiltros}>
+            <CampoFiltro etiqueta="Puntuación">
+              <select value={nota} onChange={(e) => { setNota(e.target.value); setPagina(1); }} className={claseFiltro}>
+                <option value="">Todas</option>
+                {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} {n === 1 ? "estrella" : "estrellas"}</option>)}
+              </select>
+            </CampoFiltro>
+            <SelectorOrden<Orden> valor={orden} onCambiar={(o) => { setOrden(o); setPagina(1); }} opciones={[
+              { clave: "recientes", label: "Más recientes" },
+              { clave: "antiguas", label: "Más antiguas" },
+              { clave: "mejores", label: "Mejor puntuación" },
+              { clave: "peores", label: "Peor puntuación" },
+            ]} />
+            <label className="flex min-h-[44px] items-center gap-2 self-end rounded-xl border border-linea-fuerte bg-white px-3 text-[15px]">
+              <input type="checkbox" checked={conTexto} onChange={(e) => { setConTexto(e.target.checked); setPagina(1); }} className="h-5 w-5 accent-magenta" />
+              Solo con comentario
+            </label>
+          </PanelFiltros>
+        </div>
+      )}
+
       <EstadoLista
         cargando={resenas === null}
         error={null}
-        vacio="Todavía no tienes reseñas. Las deja la gente desde tu ficha pública después de ir: compártela tras cada tardeo."
-        filas={lista.length}
+        vacio={lista.length > 0
+          ? "Ninguna reseña con estos filtros."
+          : "Todavía no tienes reseñas. Las deja la gente desde tu ficha pública después de ir: compártela tras cada tardeo."}
+        filas={filtrada.length}
       />
 
       {pag.length > 0 && (
@@ -77,7 +119,7 @@ export default function ResenasLocal() {
           ))}
         </ul>
       )}
-      <Paginacion pagina={pagina} total={lista.length} porPagina={POR_PAGINA} onCambiar={setPagina} />
+      <Paginacion pagina={pagina} total={filtrada.length} porPagina={POR_PAGINA} onCambiar={setPagina} />
     </SeccionPanel>
   );
 }

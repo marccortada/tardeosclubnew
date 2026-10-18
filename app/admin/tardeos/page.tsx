@@ -14,8 +14,11 @@ import { finDelDiaMadrid, partesFecha } from "@/components/admin/fechas";
 import { refrescarPortada } from "@/components/admin/revalidar";
 import { descargarCsv, leerPorLotes, hoyFichero } from "@/components/admin/csv";
 import { useFiltroZona, SelectorZona, esperar } from "@/components/admin/FiltroZona";
+import PanelFiltros, { CampoFiltro, claseFiltro, SelectorOrden, RangoFechas } from "@/components/panel/PanelFiltros";
+import SelectorLocal from "@/components/SelectorLocal";
+import { rangoFecha } from "@/lib/filtrosLista";
 import {
-  MoreHorizontal, Download, CheckCircle2, FileEdit, Ban, Flag, Star, StarOff, Pencil, ExternalLink, Trash2, Clock, Plus, Users,
+  MoreHorizontal, Download, CheckCircle2, FileEdit, Ban, Flag, Star, StarOff, Pencil, ExternalLink, Trash2, Clock, Plus, Users, ClipboardCheck, X,
 } from "lucide-react";
 
 type Estado = "borrador" | "programado" | "publicado" | "finalizado" | "cancelado";
@@ -36,6 +39,12 @@ type Fila = {
 /** "visibles" y "destacados" eran contadores sueltos: ahora también filtran. */
 type FiltroEstado = "todos" | "visibles" | "destacados" | Estado;
 type FiltroTiempo = "todos" | "proximos" | "pasados";
+/** "auto" = lo de siempre: próximos del más cercano al más lejano; el resto, lo más reciente primero. */
+type Orden = "auto" | "fecha_asc" | "fecha_desc" | "creados";
+type ConSin = "" | "con" | "sin";
+/** Filtros del bloque plegable. Se aplican a la lista, al CSV y a los contadores. */
+type Extras = { desde: string; hasta: string; localId: string; flyer: ConSin; aforo: ConSin };
+type LocalMini = { id: string; nombre: string; zona: string | null; tipo: string | null };
 
 const COLUMNAS = "id,titulo,fecha,hora_inicio,estado,zona,publicar_en,destacado_hasta,destacado_orden,locales(nombre,zona)";
 /** Con el lote 69 se pide también la zona normalizada (para marcar "solo lectura"). */
@@ -64,6 +73,7 @@ const limpiar = (s: string) => s.replace(/[,()*%\\"']/g, " ").replace(/\s+/g, " 
 type ConFiltros = {
   eq(c: string, v: string): ConFiltros; gt(c: string, v: string): ConFiltros; or(f: string): ConFiltros;
   gte(c: string, v: string): ConFiltros; lt(c: string, v: string): ConFiltros;
+  is(c: string, v: null): ConFiltros; not(c: string, op: string, v: null): ConFiltros; neq(c: string, v: string): ConFiltros;
 };
 
 /** Aplica el filtro de estado (incluidos "visibles" y "destacados") a una consulta. */
@@ -76,11 +86,25 @@ function filtrarEstado<Q>(consulta: Q, f: FiltroEstado): Q {
     : q.eq("estado", f);
   return r as unknown as Q;
 }
-function filtrarTiempo<Q>(consulta: Q, t: FiltroTiempo): Q {
+function filtrarTiempo<Q>(consulta: Q, t: FiltroTiempo, x?: Extras): Q {
+  // Con un rango de fechas puesto manda el rango: «Próximos» + «desde marzo
+  // de 2025» no tendría sentido y daría listas vacías que despistan.
+  if (x && (x.desde || x.hasta)) return rangoFecha(consulta, "fecha", x.desde, x.hasta);
   const q = consulta as unknown as ConFiltros;
   const hoy = hoyISO();
   const r = t === "proximos" ? q.gte("fecha", hoy) : t === "pasados" ? q.lt("fecha", hoy) : q;
   return r as unknown as Q;
+}
+/** Local, flyer y aforo (el rango de fechas va con `filtrarTiempo`). */
+function filtrarExtras<Q>(consulta: Q, x: Extras): Q {
+  let q = consulta as unknown as ConFiltros;
+  if (x.localId) q = q.eq("local_id", x.localId);
+  // "Sin flyer" incluye el texto vacío: algunos migrados guardaron "" en vez de null.
+  if (x.flyer === "sin") q = q.or("flyer_url.is.null,flyer_url.eq.");
+  if (x.flyer === "con") q = q.not("flyer_url", "is", null).neq("flyer_url", "");
+  if (x.aforo === "con") q = q.not("aforo", "is", null);
+  if (x.aforo === "sin") q = q.is("aforo", null);
+  return q as unknown as Q;
 }
 
 /**
@@ -96,6 +120,15 @@ export default function GestionTardeos() {
   const busca = useDiferido(texto);
   const [estado, setEstado] = useState<FiltroEstado>("todos");
   const [tiempo, setTiempo] = useState<FiltroTiempo>("proximos");
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
+  const [localId, setLocalId] = useState("");
+  const [flyer, setFlyer] = useState<ConSin>("");
+  const [aforo, setAforo] = useState<ConSin>("");
+  const [orden, setOrden] = useState<Orden>("auto");
+  const [locales, setLocales] = useState<LocalMini[]>([]);
+  const extras: Extras = { desde: fechaDesde, hasta: fechaHasta, localId, flyer, aforo };
+  const claveExtras = JSON.stringify(extras);
   const [cEstado, setCEstado] = useState<Partial<Record<FiltroEstado, number>>>({});
   const [cTiempo, setCTiempo] = useState<Partial<Record<FiltroTiempo, number>>>({});
   const [errCont, setErrCont] = useState("");
@@ -111,12 +144,17 @@ export default function GestionTardeos() {
   const zona = useFiltroZona();
   const cols = columnas(zona.activo);
 
+  // Locales y promotores para el filtro «Local»: unas decenas, se piden una vez.
+  useEffect(() => {
+    supabase.from("locales").select("id,nombre,zona,tipo").order("nombre").then(({ data }) => setLocales((data ?? []) as LocalMini[]));
+  }, []);
+
   /**
    * La consulta con los filtros puestos, ya ordenada. La usan la lista y el
    * CSV: así lo exportado es exactamente lo filtrado.
    */
   const consultaFiltrada = async () => {
-    let q = zona.aplicar(filtrarTiempo(filtrarEstado(supabase.from("tardeos").select(cols, { count: "exact" }), estado), tiempo));
+    let q = zona.aplicar(filtrarExtras(filtrarTiempo(filtrarEstado(supabase.from("tardeos").select(cols, { count: "exact" }), estado), tiempo, extras), extras));
     const l = limpiar(busca);
     if (l) {
       // El nombre del local está en otra tabla: primero se buscan sus ids
@@ -128,10 +166,11 @@ export default function GestionTardeos() {
       if (ids.length) partes.push(`local_id.in.(${ids.join(",")})`);
       q = q.or(partes.join(","));
     }
-    // Próximos: el más cercano primero. Resto: lo más reciente primero.
-    const asc = tiempo === "proximos";
     // .order("id") de desempate: cientos de tardeos migrados comparten fecha y
     // hora, y sin él la paginación repetía o se saltaba filas.
+    if (orden === "creados") return { q: q.order("created_at", { ascending: false }).order("id"), error: null };
+    // Automático: próximos (sin rango), el más cercano primero; resto, lo más reciente primero.
+    const asc = orden === "fecha_asc" || (orden === "auto" && tiempo === "proximos" && !fechaDesde && !fechaHasta);
     return { q: q.order("fecha", { ascending: asc }).order("hora_inicio", { ascending: asc }).order("id"), error: null };
   };
 
@@ -144,7 +183,7 @@ export default function GestionTardeos() {
       const r = await q.range(desde, hasta);
       return { data: (r.data ?? null) as unknown as Fila[] | null, count: r.count, error: r.error };
     },
-    [estado, tiempo, busca, zona.clave],
+    [estado, tiempo, busca, zona.clave, claveExtras, orden],
     25,
   );
 
@@ -175,19 +214,19 @@ export default function GestionTardeos() {
    */
   const contar = useCallback(async () => {
     if (!zona.listo) return;
-    const cuenta = () => zona.aplicar(supabase.from("tardeos").select("id", { count: "exact", head: true }));
+    const cuenta = () => zona.aplicar(filtrarExtras(supabase.from("tardeos").select("id", { count: "exact", head: true }), extras));
     const estados: FiltroEstado[] = ["todos", "borrador", "programado", "publicado", "visibles", "destacados", "cancelado", "finalizado"];
     const tiempos: FiltroTiempo[] = ["todos", "proximos", "pasados"];
     const [re, rt] = await Promise.all([
-      Promise.all(estados.map((e) => filtrarTiempo(filtrarEstado(cuenta(), e), tiempo))),
-      Promise.all(tiempos.map((t) => filtrarTiempo(filtrarEstado(cuenta(), estado), t))),
+      Promise.all(estados.map((e) => filtrarTiempo(filtrarEstado(cuenta(), e), tiempo, extras))),
+      Promise.all(tiempos.map((t) => filtrarTiempo(filtrarEstado(cuenta(), estado), t, extras))),
     ]);
     const fallo = [...re, ...rt].find((r) => r.error);
     if (fallo?.error) { setErrCont("No se pudieron contar los tardeos: " + fallo.error.message); return; }
     setErrCont("");
     setCEstado(Object.fromEntries(estados.map((e, i) => [e, re[i].count ?? 0])));
     setCTiempo(Object.fromEntries(tiempos.map((t, i) => [t, rt[i].count ?? 0])));
-  }, [estado, tiempo, zona.clave]); // eslint-disable-line react-hooks/exhaustive-deps -- `zona.clave` resume todo lo que cambia el filtro de zona
+  }, [estado, tiempo, zona.clave, claveExtras]); // eslint-disable-line react-hooks/exhaustive-deps -- `zona.clave` y `claveExtras` resumen los filtros
   useEffect(() => { contar(); }, [contar]);
 
   const cerrar = () => { setSel(null); setConfirmar(null); setErrHoja(""); };
@@ -199,7 +238,7 @@ export default function GestionTardeos() {
       : estado === "destacados" ? estaDestacado(g)
       : g.estado === estado;
     const hoy = hoyISO();
-    const okTiempo = tiempo === "todos" || (tiempo === "proximos" ? g.fecha >= hoy : g.fecha < hoy);
+    const okTiempo = fechaDesde || fechaHasta ? true : tiempo === "todos" || (tiempo === "proximos" ? g.fecha >= hoy : g.fecha < hoy);
     return okEstado && okTiempo;
   };
 
@@ -254,7 +293,11 @@ export default function GestionTardeos() {
     contar(); refrescarPortada();
   };
 
-  const hayFiltro = estado !== "todos" || tiempo !== "todos" || busca.trim() !== "" || zona.filtra;
+  // Cuántos filtros del bloque plegable hay puestos (el rango cuenta como uno).
+  const activos = [fechaDesde || fechaHasta, localId, flyer, aforo, orden !== "auto"].filter(Boolean).length;
+  const quitarExtras = () => { setFechaDesde(""); setFechaHasta(""); setLocalId(""); setFlyer(""); setAforo(""); setOrden("auto"); };
+  const localElegido = locales.find((l) => l.id === localId) ?? null;
+  const hayFiltro = estado !== "todos" || tiempo !== "todos" || busca.trim() !== "" || zona.filtra || activos > 0;
   // Fuera de su zona el admin de zona solo mira: la base no le dejaría guardar (lote 69).
   const soloLectura = (f: Fila) => zona.activo && !zona.puedeEditar(f.zona_slug);
 
@@ -282,7 +325,7 @@ export default function GestionTardeos() {
         </div>
         <Filtros<FiltroTiempo>
           valor={tiempo}
-          onCambiar={setTiempo}
+          onCambiar={(t) => { setTiempo(t); setFechaDesde(""); setFechaHasta(""); }}
           opciones={[
             { clave: "proximos", label: "Próximos", n: cTiempo.proximos },
             { clave: "pasados", label: "Pasados", n: cTiempo.pasados },
@@ -303,6 +346,49 @@ export default function GestionTardeos() {
             { clave: "finalizado", label: "Finalizados", n: cEstado.finalizado },
           ]}
         />
+        {(fechaDesde || fechaHasta) && (
+          <p className="text-[15px] text-tinta-suave">Con fechas puestas en «Filtros» manda ese rango, no Próximos / Pasados.</p>
+        )}
+        <PanelFiltros clave="admin-tardeos" activos={activos} onLimpiar={quitarExtras}>
+          <RangoFechas desde={fechaDesde} hasta={fechaHasta} onDesde={setFechaDesde} onHasta={setFechaHasta} etiqueta="Fecha del tardeo" />
+          <SelectorOrden<Orden> valor={orden} onCambiar={setOrden} opciones={[
+            { clave: "auto", label: "Automático (por fecha)" },
+            { clave: "fecha_asc", label: "Fecha: antiguos primero" },
+            { clave: "fecha_desc", label: "Fecha: recientes primero" },
+            { clave: "creados", label: "Creados hace poco" },
+          ]} />
+          <CampoFiltro etiqueta="Flyer">
+            <select value={flyer} onChange={(e) => setFlyer(e.target.value as ConSin)} className={claseFiltro}>
+              <option value="">Con o sin flyer</option>
+              <option value="sin">Sin flyer</option>
+              <option value="con">Con flyer</option>
+            </select>
+          </CampoFiltro>
+          <CampoFiltro etiqueta="Aforo">
+            <select value={aforo} onChange={(e) => setAforo(e.target.value as ConSin)} className={claseFiltro}>
+              <option value="">Con o sin aforo</option>
+              <option value="con">Con aforo (plazas limitadas)</option>
+              <option value="sin">Sin aforo</option>
+            </select>
+          </CampoFiltro>
+          {/* No es un <label>: el buscador de locales tiene botones dentro. */}
+          <div className="flex flex-col gap-1 sm:col-span-2 lg:col-span-3">
+            <span className="text-[14px] font-semibold text-tinta-suave">Local o promotor</span>
+            {localElegido ? (
+              <p className="flex min-h-[44px] items-center gap-2 rounded-xl bg-magenta-50 px-3 text-[15px] font-semibold">
+                <span className="min-w-0 flex-1 truncate">{localElegido.nombre}{localElegido.zona ? ` · ${localElegido.zona}` : ""}</span>
+                <button type="button" onClick={() => setLocalId("")} aria-label="Quitar el filtro de local"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-tinta-suave hover:bg-white">
+                  <X size={18} aria-hidden />
+                </button>
+              </p>
+            ) : locales.length > 0 ? (
+              <SelectorLocal locales={locales} valor={localId} onCambio={setLocalId} />
+            ) : (
+              <p className="text-[15px] text-tinta-suave">Cargando locales…</p>
+            )}
+          </div>
+        </PanelFiltros>
       </div>
 
       <div aria-live="polite">
@@ -395,8 +481,14 @@ export default function GestionTardeos() {
                 <Link href={`/local/tardeos/${sel.id}/editar`} className={claseBoton("suave", "normal", true, "!justify-start")}>
                   <Pencil size={20} aria-hidden /> Editar
                 </Link>
+                {/* Dos sitios distintos: el registro del admin (confirmados, lista
+                    de espera, mover o promover) y la lista de la ficha para pasar
+                    lista el día del tardeo. */}
+                <Link href={`/admin/registro?tardeo=${sel.id}`} className={claseBoton("suave", "normal", true, "!justify-start")}>
+                  <Users size={20} aria-hidden /> Asistentes y espera
+                </Link>
                 <Link href={`/local/tardeos/${sel.id}/editar#apuntados`} className={claseBoton("suave", "normal", true, "!justify-start")}>
-                  <Users size={20} aria-hidden /> Ver apuntados y pasar lista
+                  <ClipboardCheck size={20} aria-hidden /> Pasar lista en la ficha
                 </Link>
                 <Link href={`/tardeos/${sel.id}`} target="_blank" rel="noopener noreferrer" className={claseBoton("suave", "normal", true, "!justify-start")}>
                   <ExternalLink size={20} aria-hidden /> Ver ficha pública

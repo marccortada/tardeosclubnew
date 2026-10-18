@@ -103,7 +103,7 @@ export default function ResumenLocal() {
             : publica ? <Etiqueta tono="ok">Publicada</Etiqueta> : <Etiqueta tono="aviso">Sin publicar</Etiqueta>}
           <Link href={`/locales/${ficha.id}`} target="_blank"
             className="inline-flex min-h-[44px] items-center gap-1 text-[15px] font-semibold text-magenta-700 underline-offset-2 hover:underline">
-            Ver mi ficha <ExternalLink size={14} aria-hidden />
+            {publica ? "Ver mi ficha" : "Vista previa de mi ficha"} <ExternalLink size={14} aria-hidden />
           </Link>
         </>
       }

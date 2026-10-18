@@ -5,16 +5,18 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { SeccionPanel } from "@/components/panel/PanelShell";
-import Paginacion, { usePaginado, Filtros, EstadoLista } from "@/components/panel/Paginacion";
+import Paginacion, { usePaginado, Filtros, EstadoLista, Buscador, useDiferido } from "@/components/panel/Paginacion";
+import PanelFiltros, { CampoFiltro, claseFiltro, RangoFechas } from "@/components/panel/PanelFiltros";
 import Boton from "@/components/Boton";
 import Hoja from "@/components/ui/Hoja";
 import Aviso from "@/components/admin/Aviso";
 import { Etiqueta } from "@/components/ui/Chip";
 import {
-  consultaResenasPendientes, moderarResena, MOTIVOS_RECHAZO, etiquetaMotivo,
+  moderarResena, MOTIVOS_RECHAZO, etiquetaMotivo,
   type MotivoRechazo, type Resena,
 } from "@/lib/resenas";
-import { consultaDenunciasPendientes, resolverDenuncia, MOTIVOS, type Denuncia } from "@/lib/denuncias";
+import { resolverDenuncia, MOTIVOS, type Denuncia } from "@/lib/denuncias";
+import { limpiarBusqueda, rangoTimestamp } from "@/lib/filtrosLista";
 import { Check, X, Star, Flag, ExternalLink, Undo2 } from "lucide-react";
 
 type Tab = "resenas" | "flyers";
@@ -63,8 +65,41 @@ function AdminModeracion() {
 
 /* ------------------------------ Reseñas ------------------------------ */
 
+/** Columnas de la cola (sin `*`: solo lo que se pinta). Igual que lib/resenas.ts. */
+const COLS_RESENA =
+  "id,puntuacion,comentario,created_at,estado,objetivo_tipo,objetivo_id,motivo_rechazo,apelacion,apelada_en,profiles:autor_profile_id(display_name)";
+
 function ColaResenas({ alCambiar }: { alCambiar: () => void }) {
-  const p = usePaginado<Resena>(consultaResenasPendientes, ["resenas"], 25);
+  // Filtros en el servidor: con muchas reseñas, filtrar solo la página visible
+  // diría «no hay» con resultados en la página siguiente.
+  const [texto, setTexto] = useState("");
+  const busca = useDiferido(texto);
+  const [cual, setCual] = useState<"" | "pendiente" | "apelada">("");
+  const [objetivo, setObjetivo] = useState<"" | "dj" | "local">("");
+  const [nota, setNota] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const activos = [cual, objetivo, nota, desde, hasta].filter(Boolean).length;
+  const limpiarFiltros = () => { setCual(""); setObjetivo(""); setNota(""); setDesde(""); setHasta(""); };
+
+  const p = usePaginado<Resena>((d, h) => {
+    let q = supabase.from("resenas").select(COLS_RESENA, { count: "exact" });
+    q = cual ? q.eq("estado", cual) : q.in("estado", ["pendiente", "apelada"]);
+    if (objetivo) q = q.eq("objetivo_tipo", objetivo);
+    if (nota) q = q.eq("puntuacion", Number(nota));
+    q = rangoTimestamp(q, "created_at", desde, hasta);
+    const l = limpiarBusqueda(busca);
+    if (l) q = q.ilike("comentario", `%${l}%`);
+    // Apeladas primero ('apelada' < 'pendiente'): llevan más tiempo esperando.
+    return q.order("estado").order("created_at", { ascending: false }).order("id").range(d, h)
+      .then(({ data, count, error }) => ({
+        data: (data as unknown as Resena[]) ?? [],
+        count,
+        error: error
+          ? { message: error.code === "42703" || error.code === "PGRST204" ? "Falta pegar el lote 44 (supabase/44_resenas_moderacion.sql)." : error.message }
+          : null,
+      }));
+  }, ["resenas", busca, cual, objetivo, nota, desde, hasta], 25);
   const [accion, setAccion] = useState<{ r: Resena; aprobar: boolean } | null>(null);
   const [motivo, setMotivo] = useState<MotivoRechazo | null>(null);
   const [obrando, setObrando] = useState(false);
@@ -96,7 +131,34 @@ function ColaResenas({ alCambiar }: { alCambiar: () => void }) {
     <>
       {error && <Aviso>{error}</Aviso>}
       {ok && <Aviso tono="ok">{ok}</Aviso>}
-      <EstadoLista cargando={p.cargando} error={p.error} filas={p.filas.length} vacio="No hay reseñas por moderar. Todo al día." />
+      <div className="mb-4 flex flex-col gap-3">
+        <Buscador valor={texto} onCambiar={setTexto} placeholder="Buscar en el comentario…" />
+        <PanelFiltros clave="admin-moderacion-resenas" activos={activos} onLimpiar={limpiarFiltros}>
+          <CampoFiltro etiqueta="Estado">
+            <select value={cual} onChange={(e) => setCual(e.target.value as typeof cual)} className={claseFiltro}>
+              <option value="">Nuevas y apeladas</option>
+              <option value="pendiente">Solo nuevas</option>
+              <option value="apelada">Solo apeladas</option>
+            </select>
+          </CampoFiltro>
+          <CampoFiltro etiqueta="Reseña a">
+            <select value={objetivo} onChange={(e) => setObjetivo(e.target.value as typeof objetivo)} className={claseFiltro}>
+              <option value="">Locales y DJs</option>
+              <option value="local">Locales</option>
+              <option value="dj">DJs</option>
+            </select>
+          </CampoFiltro>
+          <CampoFiltro etiqueta="Puntuación">
+            <select value={nota} onChange={(e) => setNota(e.target.value)} className={claseFiltro}>
+              <option value="">Todas</option>
+              {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} {n === 1 ? "estrella" : "estrellas"}</option>)}
+            </select>
+          </CampoFiltro>
+          <RangoFechas desde={desde} hasta={hasta} onDesde={setDesde} onHasta={setHasta} etiqueta="Escrita" />
+        </PanelFiltros>
+      </div>
+      <EstadoLista cargando={p.cargando} error={p.error} filas={p.filas.length}
+        vacio={activos || busca ? "Ninguna reseña por moderar con estos filtros." : "No hay reseñas por moderar. Todo al día."} />
 
       <ul className={`flex flex-col gap-3 ${p.cargando ? "opacity-60" : ""}`}>
         {p.filas.map((r) => {
@@ -177,7 +239,35 @@ function ColaResenas({ alCambiar }: { alCambiar: () => void }) {
 /* ------------------------------ Flyers ------------------------------ */
 
 function ColaFlyers({ alCambiar }: { alCambiar: () => void }) {
-  const p = usePaginado<Denuncia>(consultaDenunciasPendientes, ["flyers"], 25);
+  const [texto, setTexto] = useState("");
+  const busca = useDiferido(texto);
+  const [motivoF, setMotivoF] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const activos = [motivoF, desde, hasta].filter(Boolean).length;
+  const limpiarFiltros = () => { setMotivoF(""); setDesde(""); setHasta(""); };
+
+  const p = usePaginado<Denuncia>((d, h) => {
+    const l = limpiarBusqueda(busca);
+    // `!inner` solo al buscar por título: sin búsqueda, una denuncia de un
+    // tardeo ya inaccesible sigue saliendo en la cola.
+    const emb = l ? "tardeos!inner(titulo,fecha,flyer_url,local_id)" : "tardeos(titulo,fecha,flyer_url,local_id)";
+    let q = supabase.from("denuncias_flyer")
+      .select(`id,tardeo_id,motivo,mensaje,flyer_url,estado,created_at,${emb}`, { count: "exact" })
+      .eq("estado", "pendiente");
+    if (motivoF) q = q.eq("motivo", motivoF);
+    q = rangoTimestamp(q, "created_at", desde, hasta);
+    if (l) q = q.ilike("tardeos.titulo", `%${l}%`);
+    return q.order("created_at", { ascending: false }).order("id").range(d, h)
+      .then(({ data, count, error }) => {
+        const falta = error && (error.code === "42P01" || error.code === "PGRST205");
+        return {
+          data: (data ?? []) as unknown as Denuncia[],
+          count,
+          error: error ? { message: falta ? "Falta pegar el lote 42 (supabase/42_denuncias_flyer.sql)." : error.message } : null,
+        };
+      });
+  }, ["flyers", busca, motivoF, desde, hasta], 25);
   const [accion, setAccion] = useState<{ d: Denuncia; estado: "retirado" | "desestimado" } | null>(null);
   const [obrando, setObrando] = useState(false);
   const [error, setError] = useState("");
@@ -206,7 +296,20 @@ function ColaFlyers({ alCambiar }: { alCambiar: () => void }) {
     <>
       {error && <Aviso>{error}</Aviso>}
       {ok && <Aviso tono="ok">{ok}</Aviso>}
-      <EstadoLista cargando={p.cargando} error={p.error} filas={p.filas.length} vacio="No hay flyers denunciados. Todo al día." />
+      <div className="mb-4 flex flex-col gap-3">
+        <Buscador valor={texto} onCambiar={setTexto} placeholder="Buscar por título del tardeo…" />
+        <PanelFiltros clave="admin-moderacion-flyers" activos={activos} onLimpiar={limpiarFiltros}>
+          <CampoFiltro etiqueta="Motivo">
+            <select value={motivoF} onChange={(e) => setMotivoF(e.target.value)} className={claseFiltro}>
+              <option value="">Todos</option>
+              {MOTIVOS.map((m) => <option key={m.k} value={m.k}>{m.label}</option>)}
+            </select>
+          </CampoFiltro>
+          <RangoFechas desde={desde} hasta={hasta} onDesde={setDesde} onHasta={setHasta} etiqueta="Denunciado" />
+        </PanelFiltros>
+      </div>
+      <EstadoLista cargando={p.cargando} error={p.error} filas={p.filas.length}
+        vacio={activos || busca ? "Ningún flyer denunciado con estos filtros." : "No hay flyers denunciados. Todo al día."} />
 
       <ul className={`flex flex-col gap-3 ${p.cargando ? "opacity-60" : ""}`}>
         {p.filas.map((d) => {

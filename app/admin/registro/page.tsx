@@ -7,11 +7,13 @@ import Boton from "@/components/Boton";
 import Aviso from "@/components/admin/Aviso";
 import Hoja from "@/components/ui/Hoja";
 import { Etiqueta } from "@/components/ui/Chip";
-import { claseCampo } from "@/components/ui/Campo";
 import { supabase } from "@/lib/supabase";
 import { marcarAsistencia } from "@/lib/tardeos";
 import { useFiltroZona, SelectorZona, esperar, type FiltroZona } from "@/components/admin/FiltroZona";
-import { Download, Users, CheckCircle2, XCircle, Clock, X } from "lucide-react";
+import PanelFiltros, { CampoFiltro, RangoFechas, claseFiltro } from "@/components/panel/PanelFiltros";
+import PasarLista from "@/app/local/_panel/PasarLista";
+import Link from "next/link";
+import { Download, Users, CheckCircle2, XCircle, Clock, X, CalendarDays, ExternalLink, Search } from "lucide-react";
 
 /**
  * Registro de asistencias: quién se ha apuntado a qué tardeo y si vino.
@@ -35,7 +37,8 @@ type Bruta = {
   tardeos: { titulo: string | null; fecha: string | null; hora_inicio: string | null; zona_slug?: string | null; locales: { nombre: string | null } | null } | null;
 };
 
-type Filtro = { estado: Estado; asist: "todas" | Asist; periodo: Periodo; dia: string; busca: string; buscaEn: BuscarEn; sinAsistencia: boolean };
+type Filtro = { estado: Estado; asist: "todas" | Asist; periodo: Periodo; desde: string; hasta: string; busca: string; buscaEn: BuscarEn; sinAsistencia: boolean };
+type TardeoElegido = { id: string; titulo: string | null; fecha: string | null; hora_inicio: string | null; local: string | null };
 
 const hoyMadrid = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
 const fechaCorta = (f: string) =>
@@ -57,7 +60,7 @@ const esColumnaQueFalta = (e: unknown) => {
  */
 function consulta(f: Filtro, contar: boolean, zona: FiltroZona) {
   const porPersona = !!f.busca && f.buscaEn === "persona";
-  const porTardeo = (!!f.busca && f.buscaEn === "tardeo") || f.periodo !== "todos" || !!f.dia || zona.filtra;
+  const porTardeo = (!!f.busca && f.buscaEn === "tardeo") || f.periodo !== "todos" || !!f.desde || !!f.hasta || zona.filtra;
   const cols = [
     "id,tardeo_id,estado,created_at",
     f.sinAsistencia ? "" : "asistencia",
@@ -69,8 +72,11 @@ function consulta(f: Filtro, contar: boolean, zona: FiltroZona) {
   let q: any = supabase.from("inscripciones").select(cols, contar ? { count: "exact" } : undefined);
   if (f.estado !== "todos") q = q.eq("estado", f.estado);
   if (!f.sinAsistencia && f.asist !== "todas") q = q.eq("asistencia", f.asist);
-  if (f.dia) q = q.eq("tardeos.fecha", f.dia);
-  else if (f.periodo === "proximos") q = q.gte("tardeos.fecha", hoyMadrid());
+  // Un rango de fechas manda sobre Próximos / Pasados.
+  if (f.desde || f.hasta) {
+    if (f.desde) q = q.gte("tardeos.fecha", f.desde);
+    if (f.hasta) q = q.lte("tardeos.fecha", f.hasta);
+  } else if (f.periodo === "proximos") q = q.gte("tardeos.fecha", hoyMadrid());
   else if (f.periodo === "pasados") q = q.lt("tardeos.fecha", hoyMadrid());
   const l = limpiar(f.busca);
   if (l && f.buscaEn === "persona") q = q.or(`display_name.ilike.%${l}%,email.ilike.%${l}%`, { referencedTable: "profiles" });
@@ -99,7 +105,13 @@ export default function Registro() {
   const [buscaEn, setBuscaEn] = useState<BuscarEn>("persona");
   const [estado, setEstado] = useState<Estado>("apuntado");
   const [periodo, setPeriodo] = useState<Periodo>("todos");
-  const [dia, setDia] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  // Un tardeo concreto: en vez de la tabla general se ve su lista completa
+  // (resumen, espera con puesto, dar plaza, cancelar…), la misma de su ficha.
+  // Llega por ?tardeo=<id> (desde Tardeos), por el buscador de tardeos o
+  // tocando el título en una fila.
+  const [tardeo, setTardeo] = useState<TardeoElegido | null>(null);
   const [asist, setAsist] = useState<"todas" | Asist>("todas");
   const [sinAsistencia, setSinAsistencia] = useState(false);
   const [resumen, setResumen] = useState<{ apuntados?: number; asistio?: number; no_asistio?: number; pendiente?: number }>({});
@@ -112,7 +124,23 @@ export default function Registro() {
   // Filtro de zona (lote 69), por la zona del tardeo de cada inscripción.
   const zona = useFiltroZona();
 
-  const filtro: Filtro = { estado, asist, periodo, dia, busca, buscaEn, sinAsistencia };
+  const filtro: Filtro = { estado, asist, periodo, desde, hasta, busca, buscaEn, sinAsistencia };
+
+  const elegirTardeo = async (id: string) => {
+    const { data } = await supabase.from("tardeos").select("id,titulo,fecha,hora_inicio,locales(nombre)").eq("id", id).maybeSingle();
+    if (!data) { setError("No se encontró ese tardeo."); return; }
+    const d = data as unknown as { id: string; titulo: string | null; fecha: string | null; hora_inicio: string | null; locales: { nombre: string | null } | null };
+    setTardeo({ id: d.id, titulo: d.titulo, fecha: d.fecha, hora_inicio: d.hora_inicio, local: d.locales?.nombre ?? null });
+    setError(""); setOk("");
+    // La URL lo recuerda: recargar o compartir el enlace abre el mismo tardeo.
+    window.history.replaceState(null, "", `/admin/registro?tardeo=${d.id}`);
+    window.scrollTo({ top: 0 });
+  };
+  const soltarTardeo = () => { setTardeo(null); window.history.replaceState(null, "", "/admin/registro"); };
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("tardeo");
+    if (id && /^[0-9a-f-]{36}$/i.test(id)) elegirTardeo(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const p = usePaginado<Bruta>(
     (desde, hasta) => !zona.listo ? esperar() :
@@ -125,7 +153,7 @@ export default function Registro() {
         }
         return r;
       }),
-    [estado, asist, periodo, dia, busca, buscaEn, sinAsistencia, zona.clave],
+    [estado, asist, periodo, desde, hasta, busca, buscaEn, sinAsistencia, zona.clave],
     25,
   );
 
@@ -222,12 +250,14 @@ export default function Registro() {
     setOk(`Exportadas ${todas.length.toLocaleString("es-ES")} inscripciones.`);
   };
 
-  const hayFiltros = !!busca || estado !== "apuntado" || periodo !== "todos" || !!dia || asist !== "todas";
+  const nPanel = (periodo !== "todos" ? 1 : 0) + (desde ? 1 : 0) + (hasta ? 1 : 0) + (asist !== "todas" ? 1 : 0);
+  const hayFiltros = !!busca || estado !== "apuntado" || nPanel > 0;
   // Fuera de su zona el admin de zona solo mira: mover o promover lo rechaza
   // la base (lote 69), y la asistencia se deja igual de quieta para que la
   // fila sea de verdad "solo lectura".
   const soloLectura = (f: Bruta) => zona.activo && !zona.puedeEditar(f.tardeos?.zona_slug);
-  const limpiarFiltros = () => { setTexto(""); setEstado("apuntado"); setPeriodo("todos"); setDia(""); setAsist("todas"); };
+  const limpiarPanel = () => { setPeriodo("todos"); setDesde(""); setHasta(""); setAsist("todas"); };
+  const limpiarFiltros = () => { setTexto(""); setEstado("apuntado"); limpiarPanel(); };
 
   return (
     <SeccionPanel
@@ -240,7 +270,9 @@ export default function Registro() {
       }
       ancho="ancho"
     >
-      <section className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4" aria-label={zona.filtra ? "Resumen de las inscripciones de la zona elegida" : "Resumen de todas las inscripciones"}>
+      {/* Con un tardeo elegido manda SU resumen (dentro de la lista): el general
+          (todas las inscripciones) al lado confundía. */}
+      <section className={`mb-5 grid grid-cols-2 gap-3 md:grid-cols-4 ${tardeo ? "hidden" : ""}`} aria-label={zona.filtra ? "Resumen de las inscripciones de la zona elegida" : "Resumen de todas las inscripciones"}>
         {[
           { icono: Users, t: "Apuntados", v: resumen.apuntados },
           { icono: CheckCircle2, t: "Vinieron", v: resumen.asistio },
@@ -263,6 +295,33 @@ export default function Registro() {
       {error && <Aviso>{error}</Aviso>}
       {ok && <Aviso tono="ok">{ok}</Aviso>}
 
+      <SelectorTardeo onElegir={elegirTardeo} />
+
+      {tardeo ? (
+        <section aria-label="Asistentes del tardeo elegido" className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta md:p-6">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start">
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-bold uppercase tracking-wide text-magenta-700">Tardeo elegido</p>
+              <h2 className="text-[20px] font-extrabold leading-tight">{tardeo.titulo || "Tardeo"}</h2>
+              <p className="flex items-center gap-1.5 text-[15px] text-tinta-suave">
+                <CalendarDays size={15} aria-hidden />
+                {tardeo.fecha ? fechaCorta(tardeo.fecha) : "Sin fecha"}{tardeo.hora_inicio ? ` · ${tardeo.hora_inicio.slice(0, 5)}` : ""}{tardeo.local ? ` · ${tardeo.local}` : ""}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href={`/local/tardeos/${tardeo.id}/editar#apuntados`}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-linea-fuerte px-3 text-[15px] font-semibold">
+                <ExternalLink size={16} aria-hidden /> Ficha del tardeo
+              </Link>
+              <button type="button" onClick={soltarTardeo}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-linea-fuerte px-3 text-[15px] font-semibold">
+                <X size={16} aria-hidden /> Ver todos
+              </button>
+            </div>
+          </div>
+          <PasarLista key={tardeo.id} tardeoId={tardeo.id} />
+        </section>
+      ) : (<>
       <div className="mb-4 flex flex-col gap-3">
         <div className="flex flex-col gap-2 md:flex-row md:items-center">
           <Buscador valor={texto} onCambiar={setTexto}
@@ -290,34 +349,26 @@ export default function Registro() {
           ]}
         />
 
-        <div className="flex flex-col gap-3 md:flex-row md:items-end">
-          <Filtros<Periodo>
-            valor={dia ? ("" as Periodo) : periodo}
-            onCambiar={(v) => { setPeriodo(v); setDia(""); }}
-            opciones={[
-              { clave: "todos", label: "Cualquier fecha" },
-              { clave: "proximos", label: "Próximos" },
-              { clave: "pasados", label: "Pasados" },
-            ]}
-          />
-          <label className="flex items-center gap-2 text-[15px] font-semibold">
-            <span className="shrink-0">Día del tardeo</span>
-            <input type="date" value={dia} onChange={(e) => setDia(e.target.value)} className={`${claseCampo} !min-h-[44px] !py-2 md:w-auto`} />
-          </label>
-        </div>
-
-        {!sinAsistencia && (
-          <Filtros<"todas" | Asist>
-            valor={asist}
-            onCambiar={setAsist}
-            opciones={[
-              { clave: "todas", label: "Toda asistencia" },
-              { clave: "pendiente", label: "Sin marcar" },
-              { clave: "asistio", label: "Vinieron" },
-              { clave: "no_asistio", label: "No vinieron" },
-            ]}
-          />
-        )}
+        <PanelFiltros clave="admin-registro" activos={nPanel} onLimpiar={limpiarPanel}>
+          <CampoFiltro etiqueta="Cuándo es el tardeo">
+            <select value={periodo} onChange={(e) => setPeriodo(e.target.value as Periodo)} className={claseFiltro} disabled={!!desde || !!hasta}>
+              <option value="todos">Cualquier fecha</option>
+              <option value="proximos">Próximos</option>
+              <option value="pasados">Pasados</option>
+            </select>
+          </CampoFiltro>
+          <RangoFechas etiqueta="Día del tardeo" desde={desde} hasta={hasta} onDesde={setDesde} onHasta={setHasta} />
+          {!sinAsistencia && (
+            <CampoFiltro etiqueta="Asistencia">
+              <select value={asist} onChange={(e) => setAsist(e.target.value as "todas" | Asist)} className={claseFiltro}>
+                <option value="todas">Toda asistencia</option>
+                <option value="pendiente">Sin marcar</option>
+                <option value="asistio">Vinieron</option>
+                <option value="no_asistio">No vinieron</option>
+              </select>
+            </CampoFiltro>
+          )}
+        </PanelFiltros>
 
         {hayFiltros && (
           <button type="button" onClick={limpiarFiltros}
@@ -349,7 +400,11 @@ export default function Registro() {
                     {f.profiles?.email && <p className="truncate text-sm text-tinta-suave">{f.profiles.email}</p>}
                   </td>
                   <td className="md:px-4 md:py-3">
-                    <p className="font-semibold leading-tight">{f.tardeos?.titulo || "(tardeo borrado)"}</p>
+                    {/* Tocar el tardeo abre su lista completa (con la espera y las acciones). */}
+                    <button type="button" onClick={() => elegirTardeo(f.tardeo_id)}
+                      className="min-h-[32px] text-left font-semibold leading-tight text-magenta-700 underline-offset-2 hover:underline">
+                      {f.tardeos?.titulo || "(tardeo borrado)"}
+                    </button>
                     <p className="text-sm text-tinta-suave">
                       {f.tardeos?.fecha ? fechaCorta(f.tardeos.fecha) : "Sin fecha"}
                       {f.tardeos?.hora_inicio ? ` · ${f.tardeos.hora_inicio.slice(0, 5)}` : ""}
@@ -403,6 +458,7 @@ export default function Registro() {
       )}
 
       <Paginacion pagina={p.pagina} total={p.total} porPagina={p.porPagina} onCambiar={p.setPagina} cargando={p.cargando} />
+      </>)}
 
       {/* Mover a alguien cambia su plaza (y puede avisarle o subir a otro de la
           espera): se confirma antes, para que un toque sin querer no lo haga. */}
@@ -425,5 +481,49 @@ export default function Registro() {
         )}
       </Hoja>
     </SeccionPanel>
+  );
+}
+
+/**
+ * Buscar un tardeo por título para ver sus asistentes. Primero los de hoy en
+ * adelante (lo que se gestiona), luego los pasados más recientes.
+ */
+function SelectorTardeo({ onElegir }: { onElegir: (id: string) => void }) {
+  const [t, setT] = useState("");
+  const q = useDiferido(t, 250);
+  const [res, setRes] = useState<{ id: string; titulo: string | null; fecha: string | null; locales: { nombre: string | null } | null }[]>([]);
+  useEffect(() => {
+    const l = limpiar(q);
+    if (l.length < 2) { setRes([]); return; }
+    let vivo = true;
+    const hoy = hoyMadrid();
+    Promise.all([
+      supabase.from("tardeos").select("id,titulo,fecha,locales(nombre)").ilike("titulo", `%${l}%`).gte("fecha", hoy).order("fecha").limit(6),
+      supabase.from("tardeos").select("id,titulo,fecha,locales(nombre)").ilike("titulo", `%${l}%`).lt("fecha", hoy).order("fecha", { ascending: false }).limit(4),
+    ]).then(([a, b]) => { if (vivo) setRes([...((a.data ?? []) as never[]), ...((b.data ?? []) as never[])]); });
+    return () => { vivo = false; };
+  }, [q]);
+  return (
+    <div className="relative mb-4">
+      <label className="mb-1 block text-[15px] font-semibold">Ver los asistentes de un tardeo</label>
+      <div className="relative">
+        <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-tinta-suave" aria-hidden />
+        <input type="search" value={t} onChange={(e) => setT(e.target.value)} placeholder="Escribe el nombre del tardeo…"
+          className="min-h-[48px] w-full rounded-xl border border-linea-fuerte bg-white pl-10 pr-3 text-[16px] outline-none focus:border-magenta focus:ring-4 focus:ring-magenta/15" />
+      </div>
+      {res.length > 0 && (
+        <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-linea bg-white shadow-elevada">
+          {res.map((r) => (
+            <li key={r.id}>
+              <button type="button" onClick={() => { onElegir(r.id); setT(""); setRes([]); }}
+                className="flex min-h-[48px] w-full flex-col items-start px-3 py-2 text-left hover:bg-marfil-100">
+                <span className="text-[15px] font-semibold">{r.titulo || "Tardeo"}</span>
+                <span className="text-sm text-tinta-suave">{r.fecha ? fechaCorta(r.fecha) : "Sin fecha"}{r.locales?.nombre ? ` · ${r.locales.nombre}` : ""}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

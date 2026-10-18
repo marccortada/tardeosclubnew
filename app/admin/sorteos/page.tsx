@@ -5,7 +5,10 @@ import Link from "next/link";
 import { Trash2, Dices, ExternalLink, Pencil, Plus, Send, UserCheck, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { SeccionPanel } from "@/components/panel/PanelShell";
-import Paginacion, { usePaginado, useDiferido, EstadoLista, Filtros } from "@/components/panel/Paginacion";
+import Paginacion, { usePaginado, useDiferido, EstadoLista, Filtros, Buscador } from "@/components/panel/Paginacion";
+import PanelFiltros, { CampoFiltro, claseFiltro } from "@/components/panel/PanelFiltros";
+import { ZONAS_MADRE } from "@/components/admin/roles";
+import { limpiarBusqueda } from "@/lib/filtrosLista";
 import Boton from "@/components/Boton";
 import Hoja from "@/components/ui/Hoja";
 import Campo, { claseCampo } from "@/components/ui/Campo";
@@ -33,6 +36,10 @@ const aLocal = (iso: string) => { const d = new Date(iso); return new Date(d.get
  */
 export default function AdminSorteos() {
   const [filtro, setFiltro] = useState<Filtro>("todos");
+  const [texto, setTexto] = useState("");
+  const busca = useDiferido(texto);
+  /** `sorteos.zona_madre` (lote 67): "" = todas, "sin" = sorteos para todas las zonas (null). */
+  const [zonaMadre, setZonaMadre] = useState("");
   const [aviso, setAviso] = useState<{ tono: "ok" | "error"; texto: string } | null>(null);
   const [form, setForm] = useState<(typeof VACIO & { id?: string }) | null>(null);
   const [guardando, setGuardando] = useState(false);
@@ -47,8 +54,12 @@ export default function AdminSorteos() {
   const p = usePaginado<Sorteo>((d, h) => {
     let q = supabase.from("sorteos").select(COLS_SORTEO, { count: "exact" });
     if (filtro !== "todos") q = q.eq("estado", filtro);
+    const l = limpiarBusqueda(busca);
+    if (l) q = q.or(`titulo.ilike.%${l}%,premio.ilike.%${l}%`);
+    if (zonaMadre === "sin") q = q.is("zona_madre", null);
+    else if (zonaMadre) q = q.eq("zona_madre", zonaMadre);
     return q.order("created_at", { ascending: false }).order("id").range(d, h);
-  }, [filtro]);
+  }, [filtro, busca, zonaMadre]);
 
   const guardar = async () => {
     if (!form) return;
@@ -87,14 +98,25 @@ export default function AdminSorteos() {
   return (
     <SeccionPanel titulo="Sorteos" descripcion="Crear, revisar participantes, elegir y publicar ganador. Cada paso queda en la auditoría."
       acciones={<Boton tamano="pequeno" onClick={() => abrirForm({ ...VACIO })}><Plus size={18} aria-hidden /> Nuevo sorteo</Boton>} ancho="ancho">
-      <div className="mb-4">
+      <div className="mb-4 flex flex-col gap-3">
+        <Buscador valor={texto} onCambiar={setTexto} placeholder="Buscar por título o premio…" />
         <Filtros<Filtro> valor={filtro} onCambiar={setFiltro} opciones={[
           { clave: "todos", label: "Todos" }, { clave: "borrador", label: "Borradores" }, { clave: "abierto", label: "Abiertos" },
           { clave: "cerrado", label: "Cerrados" }, { clave: "resuelto", label: "Con ganador" },
         ]} />
+        <PanelFiltros clave="admin-sorteos" activos={zonaMadre ? 1 : 0} onLimpiar={() => setZonaMadre("")}>
+          <CampoFiltro etiqueta="Zona">
+            <select value={zonaMadre} onChange={(e) => setZonaMadre(e.target.value)} className={claseFiltro}>
+              <option value="">Todas</option>
+              {ZONAS_MADRE.map((z) => <option key={z.clave} value={z.clave}>{z.label}</option>)}
+              <option value="sin">Sin zona (para todos)</option>
+            </select>
+          </CampoFiltro>
+        </PanelFiltros>
       </div>
       <div aria-live="polite">{aviso && <Aviso tono={aviso.tono}>{aviso.texto}</Aviso>}</div>
-      <EstadoLista cargando={p.cargando} error={p.error} filas={p.filas.length} vacio="Todavía no hay sorteos." />
+      <EstadoLista cargando={p.cargando} error={p.error} filas={p.filas.length}
+        vacio={busca || zonaMadre || filtro !== "todos" ? "Ningún sorteo con esos filtros." : "Todavía no hay sorteos."} />
       <ul className="flex flex-col gap-2">
         {p.filas.map((s) => (
           <li key={s.id} className="flex flex-col gap-3 rounded-2xl border border-linea bg-white p-4 md:flex-row md:items-center md:justify-between">

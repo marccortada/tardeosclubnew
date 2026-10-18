@@ -65,9 +65,13 @@ const config: Config = {
         fondo: "rgb(var(--c-fondo) / <alpha-value>)",
         // Bordes y separadores.
         linea: { DEFAULT: "rgb(var(--c-linea) / <alpha-value>)", fuerte: "rgb(var(--c-linea-fuerte) / <alpha-value>)" },
-        ok: { DEFAULT: "#15803D", fondo: "#E8F6EE" },
-        aviso: { DEFAULT: "#8A5A00", fondo: "#FFF4D6" },
-        error: { DEFAULT: "#B91C3C", fondo: "#FDECEF" },
+        // Estados. El color base es FIJO (sirve de fondo de botón con texto blanco
+        // en los dos temas); su uso como TEXTO se aclara en oscuro desde
+        // globals.css. Los fondos suaves (`*-fondo`) van por variable: en oscuro
+        // eran cajas crema con letra clara encima y no se leía nada.
+        ok: { DEFAULT: "#15803D", fondo: "rgb(var(--c-ok-fondo) / <alpha-value>)" },
+        aviso: { DEFAULT: "#8A5A00", fondo: "rgb(var(--c-aviso-fondo) / <alpha-value>)" },
+        error: { DEFAULT: "#B91C3C", fondo: "rgb(var(--c-error-fondo) / <alpha-value>)" },
       },
       minHeight: { tacto: "3rem" }, // 48 px: lo mínimo que se acierta con el pulgar
       minWidth: { tacto: "3rem" },

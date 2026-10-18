@@ -11,6 +11,8 @@ import Boton, { claseBoton } from "@/components/Boton";
 import Aviso from "@/components/admin/Aviso";
 import { Etiqueta } from "@/components/ui/Chip";
 import { claseCampo } from "@/components/ui/Campo";
+import PanelFiltros, { CampoFiltro, claseFiltro, RangoFechas } from "@/components/panel/PanelFiltros";
+import { rangoTimestamp } from "@/lib/filtrosLista";
 import { Mail, MessageCircle, ExternalLink, UserRound, ChevronRight } from "lucide-react";
 
 /**
@@ -90,15 +92,25 @@ export default function AdminIncidencias() {
   const [cuentas, setCuentas] = useState<Partial<Record<Filtro, number | null>>>({});
   const [abierta, setAbierta] = useState<Fila | null>(null);
   const [aviso, setAviso] = useState<{ tono: "ok" | "error"; texto: string } | null>(null);
+  // Filtros plegables (en el servidor, como la búsqueda).
+  const [tipo, setTipo] = useState("");
+  const [rol, setRol] = useState("");
+  const [fDesde, setFDesde] = useState("");
+  const [fHasta, setFHasta] = useState("");
+  const activos = [tipo, rol, fDesde, fHasta].filter(Boolean).length;
+  const limpiarFiltros = () => { setTipo(""); setRol(""); setFDesde(""); setFHasta(""); };
 
   const p = usePaginado<Fila>((desde, hasta) => {
     let q = supabase.from("incidencias")
       .select("id,profile_id,email_contacto,rol,tipo,mensaje,url,user_agent,estado,nota_admin,created_at,resuelta_en", { count: "exact" });
     if (filtro !== "todas") q = q.eq("estado", filtro);
+    if (tipo) q = q.eq("tipo", tipo);
+    if (rol) q = q.eq("rol", rol);
+    q = rangoTimestamp(q, "created_at", fDesde, fHasta);
     const b = limpiar(busca);
     if (b) q = q.or(`mensaje.ilike.*${b}*,email_contacto.ilike.*${b}*,url.ilike.*${b}*`);
     return q.order("created_at", { ascending: filtro === "abierta" }).order("id").range(desde, hasta);
-  }, [filtro, busca]);
+  }, [filtro, busca, tipo, rol, fDesde, fHasta]);
 
   const contar = useCallback(() => {
     const n = (e?: Estado) => {
@@ -130,6 +142,21 @@ export default function AdminIncidencias() {
     >
       <div className="mb-4 flex flex-col gap-3">
         <Buscador valor={texto} onCambiar={setTexto} placeholder="Buscar en el mensaje, email o página…" />
+        <PanelFiltros clave="admin-incidencias" activos={activos} onLimpiar={limpiarFiltros}>
+          <CampoFiltro etiqueta="Tipo">
+            <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={claseFiltro}>
+              <option value="">Todos</option>
+              {(Object.entries(TIPO) as [Fila["tipo"], string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </CampoFiltro>
+          <CampoFiltro etiqueta="Quién avisa">
+            <select value={rol} onChange={(e) => setRol(e.target.value)} className={claseFiltro}>
+              <option value="">Todos</option>
+              {Object.entries(ROL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </CampoFiltro>
+          <RangoFechas desde={fDesde} hasta={fHasta} onDesde={setFDesde} onHasta={setFHasta} etiqueta="Recibida" />
+        </PanelFiltros>
         <Filtros<Filtro>
           valor={filtro}
           onCambiar={setFiltro}
@@ -148,7 +175,7 @@ export default function AdminIncidencias() {
         <Aviso tono="aviso">Falta pegar el lote 57 (supabase/57_incidencias_y_errores.sql) en Supabase. Hasta entonces no se guardan los avisos.</Aviso>
       ) : (
         <EstadoLista cargando={p.cargando} error={p.error} filas={p.filas.length}
-          vacio={busca ? "Ningún aviso con esa búsqueda." : filtro === "abierta" ? "No hay avisos abiertos. Todo al día." : "No hay avisos aquí."} />
+          vacio={busca || activos ? "Ningún aviso con esa búsqueda o filtros." : filtro === "abierta" ? "No hay avisos abiertos. Todo al día." : "No hay avisos aquí."} />
       )}
 
       {p.filas.length > 0 && (

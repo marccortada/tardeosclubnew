@@ -214,23 +214,36 @@ export default function MisTardeosDj() {
   );
 }
 
+const INV_POR_TANDA = 100;
+type EstadoInv = "todas" | Invitacion["estado"];
+
 /**
- * Bandeja de invitaciones. Son pocas por DJ, así que se piden hasta 100 sin
- * paginar. Se leen con la función del lote 55 porque el tardeo puede estar en
- * borrador y la RLS no le dejaría ver ni el título.
+ * Bandeja de invitaciones. Son pocas por DJ: se piden de 100 en 100 con «Ver
+ * más» (antes se cortaba en 100 sin avisar). Se leen con la función del lote
+ * 55 porque el tardeo puede estar en borrador y la RLS no le dejaría ver ni el
+ * título. El filtro de estado va sobre el resultado de la función, en el
+ * servidor (PostgREST deja filtrar lo que devuelve una función de tabla).
  */
 function Invitaciones({ djId, modoAdmin, onCambio }: { djId: string; modoAdmin: boolean; onCambio: () => void }) {
   const [lista, setLista] = useState<Invitacion[] | null>(null);
   const [error, setError] = useState<"" | "falta" | string>("");
   const [ocupada, setOcupada] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ tono: "ok" | "error"; texto: string } | null>(null);
+  const [estadoF, setEstadoF] = useState<EstadoInv>("todas");
+  const [tope, setTope] = useState(INV_POR_TANDA);
+  const [hayMas, setHayMas] = useState(false);
 
   const cargar = useCallback(async () => {
-    const { data, error: e } = await supabase.rpc("invitaciones_de_dj", { p_dj: djId }).range(0, 99);
+    let q = supabase.rpc("invitaciones_de_dj", { p_dj: djId });
+    if (estadoF !== "todas") q = q.eq("estado", estadoF);
+    // Una de más para saber si queda algo detrás.
+    const { data, error: e } = await q.range(0, tope);
     if (e) { setError(faltaLote55(e) ? "falta" : e.message); setLista([]); return; }
     setError("");
-    setLista((data as Invitacion[]) ?? []);
-  }, [djId]);
+    const filas = (data as Invitacion[]) ?? [];
+    setHayMas(filas.length > tope);
+    setLista(filas.slice(0, tope));
+  }, [djId, estadoF, tope]);
 
   useEffect(() => {
     // Carga inicial desde la base (sistema externo).
@@ -265,9 +278,20 @@ function Invitaciones({ djId, modoAdmin, onCambio }: { djId: string; modoAdmin: 
   return (
     <>
       {msg && <Aviso tono={msg.tono}>{msg.texto}</Aviso>}
+      <div className="mb-3">
+        <Filtros<EstadoInv> valor={estadoF} onCambiar={(k) => { setEstadoF(k); setTope(INV_POR_TANDA); }}
+          opciones={[
+            { clave: "todas", label: "Todas" },
+            { clave: "pendiente", label: "Pendientes" },
+            { clave: "aceptada", label: "Aceptadas" },
+            { clave: "rechazada", label: "Rechazadas" },
+          ]} />
+      </div>
       {lista.length === 0 ? (
         <EstadoLista cargando={false} error={null} filas={0}
-          vacio="No tienes invitaciones. Cuando un local te invite a pinchar en un tardeo, la verás aquí para aceptarla o rechazarla." />
+          vacio={estadoF === "todas"
+            ? "No tienes invitaciones. Cuando un local te invite a pinchar en un tardeo, la verás aquí para aceptarla o rechazarla."
+            : "No tienes invitaciones en este estado."} />
       ) : (
         <ul className="flex flex-col gap-2">
           {lista.map((inv) => (
@@ -297,6 +321,9 @@ function Invitaciones({ djId, modoAdmin, onCambio }: { djId: string; modoAdmin: 
             </li>
           ))}
         </ul>
+      )}
+      {hayMas && (
+        <Boton className="mt-3" variante="contorno" ancho onClick={() => setTope((t) => t + INV_POR_TANDA)}>Ver más</Boton>
       )}
     </>
   );

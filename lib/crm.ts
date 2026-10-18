@@ -42,6 +42,8 @@ export type FichaCrm = {
   id: string;
   nombre: string;
   zona: string | null;
+  /** Zona del catálogo (lote 69) para filtrar por zona madre; null si no tiene o falta el lote. */
+  zonaSlug: string | null;
   /** Lo que hiciste tú. */
   seg: Seguimiento;
   /** Cuándo y quién tocó el seguimiento por última vez (solo lectura). */
@@ -147,12 +149,17 @@ async function todas<T>(
 export async function cargarCrm(): Promise<{ fichas: FichaCrm[]; error: string | null }> {
   type FilaLocal = {
     id: string; nombre: string; zona: string | null; redes: unknown; email: string | null; telefono: string | null;
-    owner_id: string | null; plan: string | null; plan_estado: string | null;
+    owner_id: string | null; plan: string | null; plan_estado: string | null; zona_slug?: string | null;
   };
-  const { data: locales, error } = await todas<FilaLocal>((d, h) => supabase
+  const leerLocales = (cols: string) => todas<FilaLocal>((d, h) => supabase
     .from("locales")
-    .select("id,nombre,zona,redes,email,telefono,owner_id,plan,plan_estado")
-    .order("nombre").order("id").range(d, h) as unknown as PromiseLike<{ data: FilaLocal[] | null; error: { message: string } | null }>);
+    .select(cols)
+    .order("nombre").order("id").range(d, h) as unknown as PromiseLike<{ data: FilaLocal[] | null; error: { message: string; code?: string } | null }>);
+  const COLS = "id,nombre,zona,redes,email,telefono,owner_id,plan,plan_estado";
+  // `zona_slug` (lote 69) sirve para el filtro de zona. Si la base aún no la
+  // tiene, se lee sin ella: el CRM funciona igual, solo sin ese filtro.
+  let { data: locales, error } = await leerLocales(`${COLS},zona_slug`);
+  if (error && (error.code === "42703" || error.code === "PGRST204")) ({ data: locales, error } = await leerLocales(COLS));
   if (error) return { fichas: [], error: error.message };
 
   type FilaSeg = Seguimiento & { local_id: string; actualizado_en: string | null; actualizado_por: string | null };
@@ -194,6 +201,7 @@ export async function cargarCrm(): Promise<{ fichas: FichaCrm[]; error: string |
       id: l.id,
       nombre: l.nombre,
       zona: l.zona,
+      zonaSlug: l.zona_slug ?? null,
       seg: s?.seg ?? SEG_VACIO,
       meta: s?.meta ?? { actualizado_en: null, actualizado_por: null },
       reclamado: Boolean(l.owner_id),

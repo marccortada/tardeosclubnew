@@ -15,6 +15,7 @@ import { responderSolicitud, limitarSolicitudes, type Solicitud } from "@/lib/me
 import { fechaCorta, perfilesPublicos, textoError, type PerfilPublico } from "@/lib/meet";
 
 type Pestana = "pendiente" | "aceptada" | "rechazada";
+const POR_TANDA = 50;
 
 /**
  * Bandeja del DJ: solicitudes de mensaje (aceptar, rechazar, bloquear),
@@ -33,6 +34,10 @@ export default function BandejaDj() {
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [confirmar, setConfirmar] = useState<Solicitud | null>(null);
   const [denunciar, setDenunciar] = useState<string | null>(null);
+  // «Ver más» en vez de cortar callado en 50: cuántas se piden y si quedan más.
+  const [tope, setTope] = useState(POR_TANDA);
+  const [hayMas, setHayMas] = useState(false);
+  const cambiarPestana = (p: Pestana) => { setPestana(p); setTope(POR_TANDA); };
 
   // Última carga pedida: si se cambia de pestaña antes de que llegue la
   // anterior, la vieja se descarta y no pisa la lista nueva.
@@ -64,15 +69,19 @@ export default function BandejaDj() {
     })();
   }, [user]);
 
-  const cargar = useCallback(async (djId: string, p: Pestana) => {
+  const cargar = useCallback(async (djId: string, p: Pestana, limite: number) => {
     const yo = ++turno.current;
-    setFilas(null);
+    // Al pedir más se deja la lista a la vista (no parpadea el «Cargando»).
+    if (limite <= POR_TANDA) setFilas(null);
+    // Una de más para saber si queda algo detrás sin contar todo.
     const { data, error } = await supabase.from("solicitudes_mensaje").select("id,de,dj_id,texto,estado,respondida_en,created_at")
-      .eq("dj_id", djId).eq("estado", p).order("created_at", { ascending: false }).limit(50);
+      .eq("dj_id", djId).eq("estado", p).order("created_at", { ascending: false }).order("id").limit(limite + 1);
     if (yo !== turno.current) return; // llegó tarde: hay otra más nueva
     if (error) { setError(textoError(error)); setFilas([]); return; }
     setError(null);
-    const f = (data as Solicitud[]) ?? [];
+    const todas = (data as Solicitud[]) ?? [];
+    setHayMas(todas.length > limite);
+    const f = todas.slice(0, limite);
     setFilas(f);
     const pp = await perfilesPublicos([...new Set(f.map((x) => x.de))]);
     setPerfiles((prev) => ({ ...prev, ...pp }));
@@ -80,16 +89,16 @@ export default function BandejaDj() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (dj) cargar(dj.id, pestana);
-  }, [dj, pestana, cargar]);
+    if (dj) cargar(dj.id, pestana, tope);
+  }, [dj, pestana, tope, cargar]);
 
   async function responder(s: Solicitud, accion: "aceptar" | "rechazar" | "bloquear") {
     setOcupado(s.id); setError(null);
     const r = await responderSolicitud(s.id, accion);
     setOcupado(null); setConfirmar(null);
     if (r.error) { setError(textoError(r.error)); return; }
-    if (accion === "aceptar") { setAbierta(s.id); setPestana("aceptada"); }
-    else if (dj) cargar(dj.id, pestana);
+    if (accion === "aceptar") { setAbierta(s.id); cambiarPestana("aceptada"); }
+    else if (dj) cargar(dj.id, pestana, tope);
   }
 
   async function cambiarLimite() {
@@ -121,7 +130,7 @@ export default function BandejaDj() {
               <p className="text-[15px]">{acepta ? "Recibes solicitudes nuevas." : "Solicitudes nuevas en pausa. Las conversaciones abiertas siguen."}</p>
               <Boton tamano="pequeno" variante="contorno" onClick={cambiarLimite}>{acepta ? "Pausar solicitudes" : "Volver a recibir"}</Boton>
             </div>
-            <Filtros<Pestana> valor={pestana} onCambiar={setPestana}
+            <Filtros<Pestana> valor={pestana} onCambiar={cambiarPestana}
               opciones={[{ clave: "pendiente", label: "Pendientes" }, { clave: "aceptada", label: "Conversaciones" }, { clave: "rechazada", label: "Rechazadas" }]} />
             {error && <p role="alert" className="rounded-2xl bg-error-fondo p-3 text-[15px] text-error">{error}</p>}
             {filas === null ? (
@@ -172,6 +181,9 @@ export default function BandejaDj() {
                 </section>
               );
             })}
+            {filas && hayMas && (
+              <Boton variante="contorno" ancho onClick={() => setTope((t) => t + POR_TANDA)}>Ver más</Boton>
+            )}
           </>
         )}
       </div>

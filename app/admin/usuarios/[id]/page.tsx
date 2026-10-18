@@ -12,6 +12,7 @@ import Boton, { claseBoton } from "@/components/Boton";
 import Aviso from "@/components/admin/Aviso";
 import AsignarDueno from "@/components/AsignarDueno";
 import { claseCampo } from "@/components/ui/Campo";
+import { Filtros } from "@/components/panel/Paginacion";
 import {
   ArrowLeft, Shield, Store, Megaphone, Disc3, User, Mail, Phone, KeyRound, Trash2, Copy, Check,
   MessageCircle, Link2, Ticket, Heart, Star, Sparkles, ExternalLink, Pencil, Plus, Loader2, Search,
@@ -46,6 +47,18 @@ type Accion = { tipo: "clave" } | { tipo: "borrar"; paso: 1 | 2 } | { tipo: "asi
 type Res<T> = { data: T[] | null; count: number | null; error: { message: string; code?: string } | null };
 
 const PASO = 20;
+
+/**
+ * Estados de `inscripciones.estado` (lote 64 añadió 'espera'). Antes todo lo
+ * que no era «cancelado» salía como «Apuntado», y uno en lista de espera
+ * parecía tener plaza.
+ */
+type FiltroInscripcion = "todas" | "apuntado" | "espera" | "cancelado";
+const ESTADO_INSCRIPCION: Record<string, { t: string; tono: "ok" | "aviso" | "error" }> = {
+  apuntado: { t: "Confirmado", tono: "ok" },
+  espera: { t: "En espera", tono: "aviso" },
+  cancelado: { t: "Cancelado", tono: "error" },
+};
 const COLS_PERFIL = "id,display_name,email,phone,is_admin,created_at,acepta_ofertas,acepta_ofertas_en,musica,ambiente,tipos_evento,dress_codes,zonas,publico,precio_max,adn_en";
 const limpiar = (s: string) => s.replace(/[,()*%\\"']/g, " ").replace(/\s+/g, " ").trim();
 
@@ -186,14 +199,18 @@ export default function FichaUsuario() {
   }, [id, versionFichas]);
 
   // Inscripciones. `asistencia` llega con el lote 48; si aún no está, se pide sin ella.
+  // El filtro por estado va en la consulta (no se filtra lo ya cargado).
+  const [filtroIns, setFiltroIns] = useState<FiltroInscripcion>("todas");
   const inscripciones = useListaCreciente<Inscripcion>(async (hasta) => {
-    const pedir = (cols: string) =>
-      supabase.from("inscripciones").select(cols, { count: "exact" }).eq("profile_id", id)
-        .order("created_at", { ascending: false }).range(0, hasta);
+    const pedir = (cols: string) => {
+      let q = supabase.from("inscripciones").select(cols, { count: "exact" }).eq("profile_id", id);
+      if (filtroIns !== "todas") q = q.eq("estado", filtroIns);
+      return q.order("created_at", { ascending: false }).range(0, hasta);
+    };
     let r = await pedir("id,estado,created_at,asistencia,tardeo:tardeos(id,titulo,fecha)");
     if (r.error?.code === "42703") r = await pedir("id,estado,created_at,tardeo:tardeos(id,titulo,fecha)");
     return r as unknown as Res<Inscripcion>;
-  }, [id]);
+  }, [id, filtroIns]);
 
   const favoritos = useListaCreciente<Favorito>((hasta) =>
     supabase.from("favoritos").select("tardeo_id,created_at,tardeo:tardeos(id,titulo,fecha)", { count: "exact" })
@@ -500,7 +517,15 @@ export default function FichaUsuario() {
       <h2 className="mb-3 mt-8 text-xl font-bold">Actividad</h2>
       <div className="grid gap-4 lg:grid-cols-2">
         <Bloque titulo="Inscripciones" icono={<Ticket size={18} aria-hidden />} n={inscripciones.total}>
-          <Lista l={inscripciones} vacio="No se ha apuntado a ningún tardeo.">
+          <div className="mb-3">
+            <Filtros<FiltroInscripcion> valor={filtroIns} onCambiar={setFiltroIns} opciones={[
+              { clave: "todas", label: "Todas" },
+              { clave: "apuntado", label: "Confirmadas" },
+              { clave: "espera", label: "En espera" },
+              { clave: "cancelado", label: "Canceladas" },
+            ]} />
+          </div>
+          <Lista l={inscripciones} vacio={filtroIns === "todas" ? "No se ha apuntado a ningún tardeo." : "Ninguna inscripción en ese estado."}>
             {inscripciones.filas.map((i) => (
               <li key={i.id} className="flex items-start justify-between gap-3 py-2.5">
                 <div className="min-w-0">
@@ -508,7 +533,7 @@ export default function FichaUsuario() {
                   <p className="text-sm text-tinta-suave">Tardeo: {fechaDia(i.tardeo?.fecha)} · se apuntó el {fechaDia(i.created_at)}</p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
-                  <Etiqueta tono={i.estado === "cancelado" ? "error" : "ok"}>{i.estado === "cancelado" ? "Cancelada" : "Apuntado"}</Etiqueta>
+                  <Etiqueta tono={ESTADO_INSCRIPCION[i.estado]?.tono ?? "neutro"}>{ESTADO_INSCRIPCION[i.estado]?.t ?? i.estado}</Etiqueta>
                   {i.asistencia && i.asistencia !== "pendiente" && (
                     <Etiqueta tono={i.asistencia === "asistio" ? "ok" : "aviso"}>{i.asistencia === "asistio" ? "Asistió" : "No vino"}</Etiqueta>
                   )}
