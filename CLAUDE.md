@@ -530,7 +530,10 @@ salvo `.env.example`.
 
 ## 11. Pendiente
 
-**Del cliente (no se puede cerrar sin ellos):**
+**Del cliente (no se puede cerrar sin ellos):** guion de reunión con todas las preguntas y la
+demo en `docs/REUNION_CLIENTE.md`.
+- **CRM / HubSpot**: respondido al cliente (doc «Flujo del cliente y HubSpot: respuesta»). Plan
+  por fases en `docs/PLAN_CRM_HUBSPOT.md`, **sin empezar hasta su OK**.
 - Nombre y marca (domingo 18‑oct). Si cambian: tokens de `tailwind.config.ts` /
   `globals.css`, logos de `public/branding/`, textos con "TardeosClub".
 - URL del stream de Nexo (`NEXT_PUBLIC_NEXO_STREAM_URL`) y quién recibe los envíos.
@@ -588,5 +591,6 @@ salvo `.env.example`.
 - Probar en móviles reales (Android Chrome + iPhone Safari): piloto de 2 semanas
   del dossier (pág. 19). El reproductor en segundo plano depende del navegador.
 
-Documentos: `README.md` (arranque), `ANALISIS.md` (producto),
+Documentos: `docs/REUNION_CLIENTE.md` (qué enseñar y preguntar), `docs/PLAN_CRM_HUBSPOT.md`,
+`README.md` (arranque), `ANALISIS.md` (producto),
 `PEDIR_AL_DUENO.md` (lo que falta del dueño), `TEST_PLAN.md`.
