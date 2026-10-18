@@ -236,3 +236,14 @@ silencio estado y orden de destacados). L8 oculta las 3 fichas de prueba.
   clara (no se leían). «Ver mi ficha» con la ficha en revisión daba 404: ahora vista previa
   para el dueño. Las páginas «no encontrado» salían en claro: arreglado.
 - **Documento de la empresa (CRM / HubSpot)**: respondido punto por punto (ver artifact).
+
+## 18‑oct‑2026 (tarde) · Limpieza aplicada y SQL sin pegar a mano
+
+- `scripts/aplicar-sql.sh` + conexión en `.env.local`: los lotes probados en local los aplica
+  Claude (autorización escrita del usuario; lo que borra datos sigue pidiendo "sí").
+- Lote 75 aplicado y verificado. Lote 76: copias `_bak_limpieza_*` sin permisos para el público.
+- **Limpieza aplicada** (sí del usuario): 794 tardeos, 59 locales y 30 DJs duplicados fuera;
+  métricas 598 = 598; 2 inscripciones y 2 favoritos pasados al gemelo; 3 fichas de prueba
+  ocultas; zonas unificadas; 819 tardeos pasados → finalizado. Quedan 821 / 71 / 33.
+- Consecuencia: 0 tardeos próximos. Eventos dice «Nuevos tardeos en camino» en vez de «quita
+  algún filtro». Pendiente del cliente: cargar oferta y decidir la ficha buena de «Fatima Kahlo».

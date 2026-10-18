@@ -364,8 +364,10 @@ Paquetes para pegar de una vez: `PEGAR_45_a_62.sql`, `PEGAR_63_a_69.sql`,
   admins). El aforo se sigue respetando. **No confundir** con `gestiona_tardeo()` (lote 55,
   «cualquier admin o dueño»), que usan las políticas de invitaciones/solicitudes de DJs.
   Probado en local: 23 comprobaciones bien.
+- `76` Copias de la limpieza (`_bak_limpieza_*`) sin permisos para el público + «solo admin
+  lee» (**aplicado el 18‑oct‑2026**).
 
-El siguiente lote libre es el **76**.
+El siguiente lote libre es el **77**.
 
 **Permisos por columna en Supabase:** anon y authenticated tienen por defecto permiso de
 TABLA en `public`, así que un `grant (col)` o `revoke (col)` NO restringe nada mientras
@@ -374,8 +376,9 @@ authenticated` y luego `grant insert/update (cols) on t to authenticated` (patr�
 lotes 73-74). Columna nueva en `nexo_envios`, `sets`, `eb_anuncios`, `encuestas` o
 `sorteos` que escriba el navegador = darle su grant de columna, o fallará con
 «permission denied».
-`supabase/limpieza/` = limpieza de duplicados de la migración (**"sí" del cliente el 17‑oct,
-pendiente de pegar `PEGAR_LIMPIEZA.sql`**; recuentos con `node --env-file=.env.local scripts/limpieza-recuentos.mjs`,
+`supabase/limpieza/` = limpieza de duplicados de la migración (**aplicada en producción el
+18‑oct‑2026**: quedan 821 tardeos, 71 locales y 33 DJs, 0 duplicados, métricas 598 = 598; copia
+en las tablas `_bak_limpieza_*`, borrables cuando el cliente confirme; recuentos con `node --env-file=.env.local scripts/limpieza-recuentos.mjs`,
 solo lectura). Orden, efecto y garantías en `supabase/limpieza/LEEME.md`. Revisada el
 17‑oct contra los lotes 01‑72: reasigna las métricas en vez de abortar y marca cada
 transacción como escritura del servidor.
@@ -535,10 +538,9 @@ salvo `.env.example`.
   `instagram.com/tardeosclub`, supuesto).
 - Email de Sergi → `/admin/equipo`: tarea Zona, zona Tarragona (+ su local).
   Nombre del responsable de Girona.
-- Limpieza de duplicados: **"sí" dado el 17‑oct**; `supabase/limpieza/PEGAR_LIMPIEZA.sql`
-  listo para pegar (794 tardeos, 59 locales, 30 DJs; reasigna sus métricas, 2 inscripciones y 2 favoritos).
-  Cuando esté pegado, marcarlo aquí y en §8. Queda fuera: «Fatima Kahlo» tiene dos fichas
-  de DJ (una con cuenta) que no son copia por origen: decidir cuál se queda.
+- Limpieza de duplicados **aplicada el 18‑oct**. Queda: «Fatima Kahlo» tiene dos fichas de DJ,
+  cada una con su propia cuenta (alta 10‑ago con foto y alta 4‑oct sin foto): decidir cuál se
+  queda. Las copias `_bak_limpieza_*` se pueden borrar cuando el cliente vea que todo está bien.
 - «Fiesta Sevillanas» (Granollers): en la antigua estaba inactiva y con fechas rotas; tras
   la limpieza queda en borrador. Si es real (el flyer dice 21 feb), que el local la publique
   con la fecha buena. 1 persona apuntada (se conserva).
@@ -547,7 +549,8 @@ salvo `.env.example`.
   dónde fue y avisarle de que revise la dirección al publicar.
 - Decidir: aviso de 1 h también a guardados (hoy no); valorar si el local te marcó
   "no vino" (hoy no); acceso sin cuenta / corte de 5 minutos.
-- Cargar oferta real: hoy solo hay 1 tardeo próximo.
+- **Cargar oferta real: tras la limpieza hay 0 tardeos próximos** (los 819 migrados son pasados;
+  «Fiesta Sevillanas» quedó en borrador). Sin tardeos, la web enseña sus estados vacíos.
 
 **Técnico:**
 - Pasarela de pago con **PayPal** (suscripciones Basic/Pro/Premium, Fundador, recargas de
@@ -555,8 +558,7 @@ salvo `.env.example`.
   confirme el pago → `coins_movimientos` tipo compra / alta de plan) y encender
   `planes_activos` / `coins_activos`. Hasta entonces la UI dice "Próximamente".
 - Borrar las cuentas `@prueba.tardeosclub.com` al lanzar; dejar un solo admin global.
-- Ocultar fichas de prueba (gnerai, Interdesign, localp): `L8`, va dentro de
-  `PEGAR_LIMPIEZA.sql`. "oletu" (sin dueño, 0 tardeos) sin confirmar si es prueba.
+- Fichas de prueba (gnerai, Interdesign, localp): ocultas desde el 18‑oct (L8). "oletu" (sin dueño, 0 tardeos) sin confirmar si es prueba.
 - Claves VAPID: la del historial público del repo NO es la de producción (comprobado el
   17‑oct por huella); no hace falta rotar. Hasta el 17‑oct el build desplegado no llevaba
   la clave pública y no se podían activar notificaciones (arreglado en `desplegar.sh`).

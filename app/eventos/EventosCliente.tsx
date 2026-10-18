@@ -260,7 +260,7 @@ export default function EventosCliente({ todos }: { todos: Tardeo[] }) {
           </div>
         )}
 
-        {vista === "lista" && <ListaPlanes lista={lista} afin={afin} vacio={() => { explicitos.current = true; setF(VACIOS); setCuando(""); setQ(""); }} />}
+        {vista === "lista" && <ListaPlanes lista={lista} hayAlguno={todos.length > 0} afin={afin} vacio={() => { explicitos.current = true; setF(VACIOS); setCuando(""); setQ(""); }} />}
 
         {vista === "mes" && (
           <Calendario base={base} mes={mes} setMes={setMes} dia={dia} setDia={setDia} hoy={hoy} afin={afin} />
@@ -340,7 +340,21 @@ function Pildora({ on, onClick, children }: { on: boolean; onClick: () => void; 
   );
 }
 
-function ListaPlanes({ lista, afin, vacio }: { lista: Tardeo[]; afin: (t: Tardeo) => boolean; vacio: () => void }) {
+function ListaPlanes({ lista, hayAlguno, afin, vacio }: { lista: Tardeo[]; hayAlguno: boolean; afin: (t: Tardeo) => boolean; vacio: () => void }) {
+  // Sin NINGÚN tardeo anunciado (p. ej. entre temporadas) no tiene sentido decir
+  // «quita algún filtro»: se dice lo que pasa y se ofrece lo que sí hay.
+  if (!lista.length && !hayAlguno) {
+    return (
+      <div className="mt-6 rounded-3xl border border-linea bg-superficie p-6 text-center">
+        <p className="text-[18px] font-bold text-tinta">Nuevos tardeos en camino</p>
+        <p className="mt-1 text-[15px] text-tinta-suave">Los locales están subiendo sus próximas fechas. Mientras, descubre DJs y locales.</p>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <Link href="/djs" className="inline-flex min-h-[48px] items-center rounded-2xl bg-magenta px-6 font-bold text-white">Ver DJs</Link>
+          <Link href="/directorio" className="inline-flex min-h-[48px] items-center rounded-2xl border border-linea-fuerte px-6 font-bold text-tinta">Ver locales</Link>
+        </div>
+      </div>
+    );
+  }
   if (!lista.length) {
     return (
       <div className="mt-6 rounded-3xl border border-linea bg-superficie p-6 text-center">
