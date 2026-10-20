@@ -522,6 +522,22 @@ termina en "▸ Listo." si todas las comprobaciones dan ok. Servidor:
 "Failed to find Server Action" en los logs tras desplegar son de pestañas abiertas
 con la versión anterior: normales.
 
+**Mantenimiento con llave de equipo (desde el 20‑oct‑2026):** tardeosclub.com (+ www) y
+crm.gnerai.com sirven la MISMA app (puerto 3005), pero el público ve en todas las rutas la
+página de mantenimiento estática de `/var/www/tardeosclub.com`, con **503** + `Retry-After`. El
+equipo ve la app tras abrir UNA vez `https://tardeosclub.com/llave-equipo?k=<LLAVE>` (cookie
+`tc_acceso`, un año, por dominio: crm.gnerai.com necesita su propio enlace); salir:
+`/llave-equipo?salir=1`. `/api/` queda siempre abierta (cron, errores). La llave solo está en el
+servidor: `/root/tardeos-llave-equipo.txt`. Ficheros: `/etc/nginx/snippets/tardeos-app.conf`
+(lógica), `/etc/nginx/conf.d/tardeos-llave.conf` (map), y los dos sites; plantillas sin llave en
+`docs/nginx-*.conf`. Copia anterior en `/root/nginx-antes-llave-*`. `desplegar.sh` comprueba
+con la llave. **Cambiar la llave** = generar otra, sustituirla en los dos ficheros de nginx y en
+el .txt, recargar. **Lanzar** = quitar el `if ($tc_equipo = 0)` de `location /`, compilar con
+`NEXT_PUBLIC_SITE_URL=https://tardeosclub.com` y `PERMITIR_INDEXACION=true`, añadir
+`https://tardeosclub.com/**` a las Redirect URLs de Supabase Auth y redirigir crm → tardeosclub.
+Mientras tanto, los enlaces de los correos (recuperar contraseña, invitaciones) solo abren la
+app a quien tenga la llave.
+
 Git: rama de trabajo `rediseno`; `main` es la estable. No subir
 `AUDITORIA_Y_PLAN.md` (datos de seguridad de la web vieja) ni ningún `.env*`
 salvo `.env.example`.

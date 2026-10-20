@@ -96,11 +96,16 @@ echo "▸ Reiniciando"
 ssh "$SERVIDOR" "pm2 restart $PROCESO --update-env >/dev/null && sleep 4"
 
 echo "▸ Comprobando"
+# Mientras la web esté en mantenimiento (snippets/tardeos-app.conf), el público recibe
+# un 503 en todo: las comprobaciones entran con la llave del equipo, que solo vive en el
+# servidor. Sin llave (ya lanzado), la cookie vacía no cambia nada.
+LLAVE=$(ssh "$SERVIDOR" 'cat /root/tardeos-llave-equipo.txt 2>/dev/null' || true)
+COOKIE="tc_acceso=$LLAVE"
 FALLOS=0
 comprobar() {
   local ruta="$1" espera="$2"
   local codigo
-  codigo=$(curl -s -o /dev/null -w '%{http_code}' "https://crm.gnerai.com$ruta")
+  codigo=$(curl -s -b "$COOKIE" -o /dev/null -w '%{http_code}' "https://crm.gnerai.com$ruta")
   if [ "$codigo" = "$espera" ]; then
     printf '   ok   %-46s %s\n' "$ruta" "$codigo"
   else
@@ -121,7 +126,7 @@ comprobar "/api/buscar-sitio" 200
 
 # Que el optimizador OPTIMICE, no solo que responda 200. Cuando sharp no carga
 # devuelve el original tal cual con un 200 tan válido como este.
-TIPO=$(curl -s -H 'Accept: image/avif,image/webp,*/*' -o /dev/null -w '%{content_type}' \
+TIPO=$(curl -s -b "$COOKIE" -H 'Accept: image/avif,image/webp,*/*' -o /dev/null -w '%{content_type}' \
   'https://crm.gnerai.com/_next/image?url=%2Fimg%2Fhero.jpg&w=640&q=75')
 if [ "$TIPO" = "image/webp" ] || [ "$TIPO" = "image/avif" ]; then
   printf '   ok   %-46s %s\n' "optimizador de imágenes" "$TIPO"
@@ -130,7 +135,7 @@ else
   FALLOS=$((FALLOS + 1))
 fi
 
-echo "   canónica: $(curl -s https://crm.gnerai.com/ | grep -oE 'rel="canonical" href="[^"]*"' | head -1)"
+echo "   canónica: $(curl -s -b "$COOKIE" https://crm.gnerai.com/ | grep -oE 'rel="canonical" href="[^"]*"' | head -1)"
 
 if [ "$FALLOS" -gt 0 ]; then
   echo "▸ $FALLOS comprobación(es) mal. NO te fíes de este despliegue."

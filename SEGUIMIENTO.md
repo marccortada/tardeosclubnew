@@ -247,3 +247,55 @@ silencio estado y orden de destacados). L8 oculta las 3 fichas de prueba.
   ocultas; zonas unificadas; 819 tardeos pasados → finalizado. Quedan 821 / 71 / 33.
 - Consecuencia: 0 tardeos próximos. Eventos dice «Nuevos tardeos en camino» en vez de «quita
   algún filtro». Pendiente del cliente: cargar oferta y decidir la ficha buena de «Fatima Kahlo».
+
+---
+
+## 20‑oct‑2026 · tardeosclub.com sirve la app nueva (portada en mantenimiento)
+
+- DNS de tardeosclub.com en DigitalOcean (registrador Nominalia); el dominio ya apuntaba al
+  droplet, donde nginx servía la web de mantenimiento estática.
+- Nuevo nginx (`docs/nginx-tardeosclub.com.conf`): `/` exacta = mantenimiento; `/assets/`,
+  `/favicon.png`, `/manifest.webmanifest` = sus ficheros; todo lo demás → app (puerto 3005).
+  Copia previa en `/root/nginx-tardeosclub.com.antes-app.bak`. `nginx -t` ok y recargado.
+- Comprobado: `/` 200 «Estamos en mantenimiento» (también en navegador); `/eventos`, `/djs`,
+  `/perfil`, `/sitemap.xml`, `/robots.txt`, optimizador de imágenes 200; www también;
+  sin errores de consola; crm.gnerai.com sigue igual.
+- Sigue `noindex` y canónica a crm.gnerai.com (el build no ha cambiado): bien mientras haya
+  mantenimiento. Pasos de lanzamiento en `CLAUDE.md` §10.
+- Ojo: el logo / «Inicio» de la app llevan a `/`, que en tardeosclub.com es el mantenimiento.
+
+---
+
+## 20‑oct‑2026 · Copia del Supabase ANTIGUO (obevrycebhqdqtvxnxoy) antes de pausarlo
+
+- Proyecto «TardeosClub» de *msanjuan04's Org* (plan PRO). En 24 h solo recibía las
+  comprobaciones de salud del propio Supabase: la app nueva no depende de él (0 imágenes de la
+  base nueva apuntan a su Storage).
+- Copia hecha con la service role (solo lectura) en
+  `/Users/marccortada/tardeos/backup-supabase-antiguo-2026-10-20/` (604 MB, fuera del repo):
+  28 tablas de la API en JSON + `openapi.json` (columnas) + todos los ficheros de Storage,
+  0 errores. Resumen en `RESUMEN.json`.
+- Límite: es copia de DATOS. No incluye funciones, políticas ni usuarios de `auth` (la API no
+  los expone). Para una copia completa: descargar el backup diario desde el panel
+  (Database › Backups) antes de borrar.
+- Pausar/borrar: lo hace el usuario en el panel (el modo automático bloquea tocar la cuenta).
+  Recordar: el plan PRO es de la organización; solo baja la factura si no queda otro proyecto.
+- **20‑oct: el usuario BORRÓ el proyecto antiguo** en el panel (pausar no se podía: plan de pago).
+  Comprobado después: el dominio `obevrycebhqdqtvxnxoy.supabase.co` ya no responde;
+  tardeosclub.com (portada de mantenimiento incluida), /eventos y crm.gnerai.com siguen en 200.
+  La única copia que queda es la de `backup-supabase-antiguo-2026-10-20/`. Pendiente: bajar
+  *msanjuan04's Org* a Free si no le quedan proyectos, y quitar el host antiguo de
+  `next.config.mjs` / `lib/fotos.ts` y los `OLD_SUPABASE_*` del `.env`.
+
+---
+
+## 20‑oct‑2026 · Mantenimiento para el público, app para el equipo (llave)
+
+- tardeosclub.com y crm.gnerai.com: sin llave → mantenimiento en TODAS las rutas (503 +
+  Retry-After); con la cookie `tc_acceso` → app entera. `/api/` siempre abierta.
+- Llave en `/root/tardeos-llave-equipo.txt` (no está en el repo). Enlace para el equipo:
+  `https://tardeosclub.com/llave-equipo?k=<LLAVE>` (y lo mismo en crm.gnerai.com).
+- Comprobado: público 503 en `/`, `/eventos`, `/admin` de los dos dominios; con llave 200;
+  `/api/buscar-sitio` 200; llave mala no da cookie; cron `avisos` sigue en 200.
+- `scripts/desplegar.sh` comprueba ahora con la llave (la lee del servidor).
+- Plantillas en `docs/nginx-*.conf`; copia de antes en `/root/nginx-antes-llave-*`.
