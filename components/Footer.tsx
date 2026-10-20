@@ -1,4 +1,5 @@
 import Image from "next/image";
+import PoweredByGnerai from "@/components/PoweredByGnerai";
 import Link from "next/link";
 import ReportarProblema from "@/components/ReportarProblema";
 import { MARCA } from "@/lib/marca";
@@ -92,10 +93,7 @@ export default function Footer() {
             <Link href="/legal/privacidad" className="min-h-[44px] content-center transition hover:text-white">Privacidad</Link>
             <Link href="/legal/cookies" className="min-h-[44px] content-center transition hover:text-white">Cookies</Link>
             <ReportarProblema etiqueta="Avisar de un problema" className="min-h-[44px] content-center text-left transition hover:text-white" />
-            <a href="https://gnerai.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 transition hover:opacity-70">
-              <span className="text-[13px] font-semibold uppercase tracking-wide">Powered by</span>
-              <Image src="/branding/gnerailogo.png" alt="Gnerai" width={28} height={28} className="h-7 w-7 rounded bg-[#fff] p-0.5" />
-            </a>
+            <PoweredByGnerai />
           </div>
         </div>
       </div>

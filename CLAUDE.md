@@ -255,6 +255,11 @@ servidor local no está en el 3000.
 - Cabeceras de seguridad en `next.config.mjs` (`headers()`): sin iframes ajenos,
   `nosniff`, `Referrer-Policy`, `Permissions-Policy` (sin bloquear `payment`, que
   PayPal necesitará) y sin `x-powered-by`.
+- **«Powered by GNERAI»** (firma del estudio, enlace a gnerai.com): `components/PoweredByGnerai.tsx`,
+  en el pie público, el pie de los paneles (escritorio y menú del móvil) y al final de Perfil.
+  La página de mantenimiento del servidor (`/var/www/tardeosclub.com/index.html`) la lleva
+  escrita en su HTML con el logo en `/assets/gnerai-logo.png` (copia previa en
+  `/root/mantenimiento-index.antes-powered.html`).
 - No poner carruseles nuevos salvo el de DJs (el cliente no los quiere).
 - Fotos de stock: `lib/fotos.ts` (Unsplash, `unoptimized`).
 

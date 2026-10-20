@@ -1,5 +1,6 @@
 "use client";
 
+import PoweredByGnerai from "@/components/PoweredByGnerai";
 import { imagenParaSubir } from "@/app/local/_panel/reducirImagen";
 
 import Image from "next/image";
@@ -180,6 +181,9 @@ export default function PerfilTardicola({ uid }: { uid: string }) {
             </button>
           </li>
         </ul>
+        <div className="mt-6 flex justify-center text-tinta-suave">
+          <PoweredByGnerai />
+        </div>
       </div>
     </main>
   );

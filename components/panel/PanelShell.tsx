@@ -1,5 +1,6 @@
 "use client";
 
+import PoweredByGnerai from "@/components/PoweredByGnerai";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -148,12 +149,14 @@ export default function PanelShell({
           <span className="flex-1 truncate">Salir <span className="font-normal">· {user.email}</span></span>
         </button>
       )}
+      <PoweredByGnerai className="mt-1 px-3 text-tinta-suave" />
     </div>
   );
 
   // En el cajón del móvil el pie va en una sola fila: con el menú completo y
   // dos filas de pie, en un teléfono normal el último bloque quedaba tapado.
   const pieMovil = (
+    <>
     <div className="flex items-center gap-1 border-t border-linea px-2 py-2">
       <ReportarProblema
         etiqueta={<><LifeBuoy size={18} aria-hidden /><span className="truncate">¿Algo no funciona?</span></>}
@@ -166,6 +169,9 @@ export default function PanelShell({
         </button>
       )}
     </div>
+    {/* Fila propia: en la de arriba no cabía sin cortar «¿Algo no funciona?». */}
+    <div className="flex justify-center pb-2 text-tinta-suave"><PoweredByGnerai /></div>
+    </>
   );
 
   // Volver a la web, arriba del todo y con texto: con el icono solo, nadie
