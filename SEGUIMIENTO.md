@@ -321,3 +321,15 @@ silencio estado y orden de destacados). L8 oculta las 3 fichas de prueba.
   servidor con entrada por contraseña de root, sin cortafuegos ni fail2ban (21.446 intentos en
   24 h); `.gitignore` sin `.env` ni `AUDITORIA_Y_PLAN.md` (el protector de comandos no dejó
   editarlo); unificar nombres (Apuntados/Asistentes/Confirmados) y constante de marca.
+
+---
+
+## 20‑oct‑2026 · Inicio con sesión con carrusel de DJs
+
+- Con sesión (también admin), el Inicio era hero + «Nuevos tardeos en camino» vacío + ADN,
+  mapa, Nexo y Entre Beats: con 0 tardeos parecía vacío y no salían DJs. Nunca había tenido DJs
+  (el carrusel solo estaba en la portada pública).
+- Añadido «Quién pone la música» (`CarruselDjs`) tras los tardeos, con los mismos DJs que la
+  portada (`app/page.tsx` → `InicioSegunSesion` → `InicioApp`).
+- Probado en local como admin de prueba (fotos cargan), tipos y lint limpios, desplegado
+  («▸ Listo.»; incluye el commit 0770650 del compañero, traído con git pull).

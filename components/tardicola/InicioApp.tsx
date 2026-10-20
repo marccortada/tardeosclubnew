@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useState, type ReactNode, type ImgHTMLAttributes } from "react";
+import { useEffect, useMemo, useState, type ReactNode, type ImgHTMLAttributes, type ComponentProps } from "react";
 import { Instagram, MessageCircle, Play, SlidersHorizontal, Map as MapaIcono, CalendarDays, MapPin, Sparkles, ChevronRight, Users } from "lucide-react";
 import dynamic from "next/dynamic";
 import TarjetaPlan from "@/components/tardicola/TarjetaPlan";
+import CarruselDjs from "@/components/CarruselDjs";
 import CabeceraApp, { useZona } from "@/components/CabeceraApp";
 import { useAuth } from "@/lib/useAuth";
 import { getAdn, tieneAdn, type AdnTardicola } from "@/lib/tardicola";
@@ -40,18 +41,19 @@ const centroDe = (zona: string) => (zona ? CENTROS[clave(zona)] ?? CENTROS[clave
 
 /** Atributos de la foto del hero, ya calculados en el servidor (propsFoto). */
 type FotoHero = ImgHTMLAttributes<HTMLImageElement>;
+type DjsCarrusel = ComponentProps<typeof CarruselDjs>["djs"];
 
 /**
  * Con sesión, `/` es el Inicio de la app; sin sesión, la landing de siempre
  * (decisión 4 de CONTRATOS). Mientras se resuelve la sesión se enseña la
  * landing: es lo que ya venía en el HTML y no deja la pantalla en blanco.
  */
-export function InicioSegunSesion({ landing, tardeos, foto, hoy, finde }: {
-  landing: ReactNode; tardeos: Tardeo[]; foto: FotoHero; hoy: string; finde: string[];
+export function InicioSegunSesion({ landing, tardeos, foto, hoy, finde, djs = [] }: {
+  landing: ReactNode; tardeos: Tardeo[]; foto: FotoHero; hoy: string; finde: string[]; djs?: DjsCarrusel;
 }) {
   const { user, loading } = useAuth();
   if (loading || !user) return <>{landing}</>;
-  return <InicioApp tardeos={tardeos} foto={foto} hoy={hoy} finde={finde} />;
+  return <InicioApp tardeos={tardeos} foto={foto} hoy={hoy} finde={finde} djs={djs} />;
 }
 
 /**
@@ -62,7 +64,7 @@ export function InicioSegunSesion({ landing, tardeos, foto, hoy, finde }: {
  * caja vacía; si no hay destacados se enseñan los próximos, y si no hay nada,
  * una tarjeta con foto que lleva a DJs y a Nexo.
  */
-function InicioApp({ tardeos, foto, hoy, finde }: { tardeos: Tardeo[]; foto: FotoHero; hoy: string; finde: string[] }) {
+function InicioApp({ tardeos, foto, hoy, finde, djs }: { tardeos: Tardeo[]; foto: FotoHero; hoy: string; finde: string[]; djs: DjsCarrusel }) {
   const { user } = useAuth();
   const [zona] = useZona();
   const [adn, setAdn] = useState<AdnTardicola | null>(null);
@@ -130,6 +132,16 @@ function InicioApp({ tardeos, foto, hoy, finde }: { tardeos: Tardeo[]; foto: Fot
             <SinPlanes zona={zona} />
           )}
         </section>
+
+        {/* DJs: el mismo carrusel que la portada pública. El Inicio con sesión no
+            lo tenía y, con pocos tardeos cargados, se quedaba en una tarjeta vacía
+            y cuatro filas: lo que más contenido real tiene hoy son los DJs. */}
+        {djs.length > 0 && (
+          <section>
+            <Titulo href="/djs" enlace="Ver DJs">Quién pone la música</Titulo>
+            <CarruselDjs djs={djs} />
+          </section>
+        )}
 
         {/* 2. ADN Tardícola: lo personalizado, sin otro "Para ti" duplicado. */}
         {!tieneAdn(adn) ? (

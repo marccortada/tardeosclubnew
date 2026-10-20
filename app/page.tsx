@@ -292,7 +292,7 @@ export default async function Inicio() {
   );
   return (
     <>
-      <InicioSegunSesion landing={landing} tardeos={[...tardeos, ...masAdelante]} foto={fotoHero} hoy={hoy} finde={[...finde]} />
+      <InicioSegunSesion landing={landing} tardeos={[...tardeos, ...masAdelante]} foto={fotoHero} hoy={hoy} finde={[...finde]} djs={djs} />
       <PopupCliente />
     </>
   );

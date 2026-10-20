@@ -240,7 +240,7 @@ servidor local no está en el 3000.
   Fotos con `propsFoto()` de `lib/fotos.ts` (tamaño según pantalla).
 - Con sesión, `/` es el Inicio de app (`components/tardicola/InicioApp.tsx`): hero con
   la misma foto y degradados que la portada pública (la foto la calcula `app/page.tsx` y
-  se pasa como prop) → destacados o, si no hay, próximos → ADN → mapa → Nexo → Entre
+  se pasa como prop) → destacados o, si no hay, próximos → **carrusel de DJs** (`CarruselDjs`, los mismos `djs` que la portada pública; para todos los roles, admin incluido) → ADN → mapa → Nexo → Entre
   Beats. **Nunca cajas vacías**: sin planes sale una tarjeta con foto hacia DJs y Nexo.
   El mapa se carga con `next/dynamic` solo ahí.
 - Ficha del tardeo en móvil: barra fija «Asistiré / Guardar» encima de la barra
