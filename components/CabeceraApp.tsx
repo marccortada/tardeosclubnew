@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Bell, MapPin, ChevronDown, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { contarAvisosSinLeer, getZonas, leerZona, guardarZona, type Zona } from "@/lib/tardicola";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Cabecera de cada pestaña de la app (vídeo 0:00): logo a la izquierda, título
@@ -26,8 +27,8 @@ export default function CabeceraApp({ titulo, conZona = false, volver, sinH1 = f
           <ArrowLeft size={22} aria-hidden />
         </Link>
       ) : (
-        <Link href="/" aria-label="TardeosClub, inicio" className="grid h-11 w-11 place-items-center overflow-hidden rounded-full">
-          <Image src="/branding/logo-transp.png" alt="TardeosClub" width={88} height={52} priority className="h-auto w-11" />
+        <Link href="/" aria-label={`${MARCA.nombre}, inicio`} className="grid h-11 w-11 place-items-center overflow-hidden rounded-full">
+          <Image src="/branding/logo-transp.png" alt={MARCA.nombre} width={88} height={52} priority className="h-auto w-11" />
         </Link>
       )}
       <div className="flex min-w-0 justify-center">

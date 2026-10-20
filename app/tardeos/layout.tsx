@@ -1,4 +1,5 @@
 import { metadataPublica } from "@/lib/seo";
+import { MARCA } from "@/lib/marca";
 
 /**
  * El listado es un componente de cliente y no puede exportar `metadata`, así
@@ -10,7 +11,7 @@ import { metadataPublica } from "@/lib/seo";
  * indexe. Por eso cada ficha declara la suya en su generateMetadata.
  */
 export const metadata = metadataPublica(
-  "Tardeos en la costa catalana · TardeosClub",
+  `Tardeos en la costa catalana · ${MARCA.nombre}`,
   "Todos los tardeos de hoy y de este finde: Barcelona, Maresme, Costa Brava y alrededores. Filtra por zona, estilo de música y precio.",
   "/tardeos"
 );

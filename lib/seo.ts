@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { Tardeo } from "./types";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Dirección pública del sitio. Todo lo que Google necesita en absoluto
@@ -40,7 +41,7 @@ export const INDEXABLE = process.env.PERMITIR_INDEXACION === "true";
  */
 export function metadataPrivada(titulo: string): Metadata {
   return {
-    title: `${titulo} · TardeosClub`,
+    title: `${titulo} · ${MARCA.nombre}`,
     robots: { index: false, follow: false },
   };
 }
@@ -278,7 +279,7 @@ export function jsonLdSitio() {
         "@type": "WebSite",
         "@id": `${SITE_URL}/#web`,
         url: SITE_URL,
-        name: "TardeosClub",
+        name: MARCA.nombre,
         inLanguage: "es-ES",
         potentialAction: {
           "@type": "SearchAction",
@@ -289,7 +290,7 @@ export function jsonLdSitio() {
       {
         "@type": "Organization",
         "@id": `${SITE_URL}/#organizacion`,
-        name: "TardeosClub",
+        name: MARCA.nombre,
         url: SITE_URL,
         logo: urlAbsoluta("/branding/icon-512.png"),
         description: "El buscador de tardeos de la costa catalana.",

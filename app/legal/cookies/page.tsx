@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import { metadataPublica } from "@/lib/seo";
 import PaginaLegal from "@/components/PaginaLegal";
 import { RESPONSABLE } from "@/lib/legal";
+import { MARCA } from "@/lib/marca";
 
 // Con canónica e imagen al compartir (helper común de lib/seo.ts).
 export const metadata: Metadata = metadataPublica(
-  "Política de cookies — TardeosClub",
-  "TardeosClub no usa cookies de publicidad ni de seguimiento. Aquí te explicamos qué guardamos.",
+  `Política de cookies — ${MARCA.nombre}`,
+  `${MARCA.nombre} no usa cookies de publicidad ni de seguimiento. Aquí te explicamos qué guardamos.`,
   "/legal/cookies"
 );
 
@@ -20,7 +21,7 @@ export default function Cookies() {
     >
       <h2>1. Qué guardamos en tu dispositivo</h2>
       <p>
-        TardeosClub <strong>no usa cookies publicitarias ni de seguimiento</strong>. Lo único que
+        {MARCA.nombre} <strong>no usa cookies publicitarias ni de seguimiento</strong>. Lo único que
         guardamos en tu navegador es lo imprescindible para que la web funcione:
       </p>
       <div className="tabla-scroll">

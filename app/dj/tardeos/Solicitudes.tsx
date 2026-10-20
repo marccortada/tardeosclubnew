@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import { mensajeAmable } from "@/lib/mensajeError";
 import { faltaLote68, hoyISO } from "@/lib/tardeos";
 import { formatFecha } from "@/lib/formato";
+import { MARCA } from "@/lib/marca";
 
 type Sol = {
   id: string; tipo: "vinculo" | "propuesta"; estado: string; created_at: string; mensaje: string | null;
@@ -137,7 +138,7 @@ export default function SolicitudesDj({ djId }: { djId: string }) {
 
       <section className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta">
         <h2 className="flex items-center gap-2 text-lg font-bold"><Plus size={18} className="text-magenta" aria-hidden /> Proponer evento nuevo</h2>
-        <p className="text-[15px] text-tinta-suave">Si el evento no está en TardeosClub, mándanoslo. El equipo lo revisa antes de publicarlo.</p>
+        <p className="text-[15px] text-tinta-suave">Si el evento no está en {MARCA.nombre}, mándanoslo. El equipo lo revisa antes de publicarlo.</p>
         {!proponer ? (
           <Boton className="mt-3" variante="contorno" onClick={() => setProponer(true)}>Proponer evento</Boton>
         ) : (

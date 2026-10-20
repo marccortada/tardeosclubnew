@@ -5,6 +5,7 @@ import { SeccionPanel } from "@/components/panel/PanelShell";
 import { claseBoton } from "@/components/Boton";
 import ServiciosExternos, { whatsappTardeos, emailTardeos } from "@/components/ServiciosExternos";
 import { useDj } from "../contexto";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Preguntas que hace cualquier DJ al entrar (y que antes acababan en un
@@ -26,7 +27,7 @@ const PREGUNTAS: { p: string; r: string }[] = [
   },
   {
     p: "¿Cómo consigo el sello de verificado?",
-    r: "Lo pone el equipo de TardeosClub cuando comprueba que el perfil es tuyo. Si aún no lo tienes, escríbenos y lo revisamos.",
+    r: `Lo pone el equipo de ${MARCA.nombre} cuando comprueba que el perfil es tuyo. Si aún no lo tienes, escríbenos y lo revisamos.`,
   },
   {
     p: "¿De dónde salen las reseñas?",
@@ -44,10 +45,10 @@ const PREGUNTAS: { p: string; r: string }[] = [
 
 export default function AyudaDj() {
   const { dj, modoAdmin } = useDj();
-  const texto = `Hola, soy ${dj.nombre_artistico} (DJ en TardeosClub). Tengo una duda: `;
+  const texto = `Hola, soy ${dj.nombre_artistico} (DJ en ${MARCA.nombre}). Tengo una duda: `;
 
   return (
-    <SeccionPanel titulo="Ayuda" descripcion="Respuestas rápidas y cómo hablar con el equipo de TardeosClub." ancho="estrecho">
+    <SeccionPanel titulo="Ayuda" descripcion={`Respuestas rápidas y cómo hablar con el equipo de ${MARCA.nombre}.`} ancho="estrecho">
       <section className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta md:p-5">
         <h2 className="text-lg font-bold">Habla con nosotros</h2>
         <p className="mt-1 text-[15px] text-tinta-suave">Te contesta una persona del equipo. Cuéntanos qué pasa y el nombre de tu ficha.</p>
@@ -55,7 +56,7 @@ export default function AyudaDj() {
           <a href={whatsappTardeos(texto)} target="_blank" rel="noopener noreferrer" className={claseBoton("primario", "normal", true)}>
             <MessageCircle size={20} aria-hidden /> WhatsApp
           </a>
-          <a href={emailTardeos("Duda de DJ en TardeosClub", texto)} className={claseBoton("contorno", "normal", true)}>
+          <a href={emailTardeos(`Duda de DJ en ${MARCA.nombre}`, texto)} className={claseBoton("contorno", "normal", true)}>
             <Mail size={20} aria-hidden /> Correo
           </a>
         </div>

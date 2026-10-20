@@ -128,7 +128,7 @@ export default function ListaApuntados({ user }: { user: { id: string } }) {
                   ) : f.asistencia === "no_asistio" ? (
                     <Etiqueta tono="aviso">No asististe</Etiqueta>
                   ) : vista === "pasadas" ? (
-                    <Etiqueta tono="neutro">Apuntado</Etiqueta>
+                    <Etiqueta tono="neutro">Confirmado</Etiqueta>
                   ) : (
                     <>
                       <Etiqueta tono="ok">Plaza reservada</Etiqueta>

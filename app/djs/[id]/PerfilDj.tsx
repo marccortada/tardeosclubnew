@@ -18,6 +18,7 @@ import {
 } from "@/lib/sets";
 import type { Tardeo } from "@/lib/types";
 import { optimizable } from "@/lib/fotos";
+import { MARCA } from "@/lib/marca";
 
 type Dj = {
   id: string; nombre: string; bio: string | null; avatar: string | null; banner: string | null;
@@ -132,7 +133,7 @@ export default function PerfilDj({
           <ArrowLeft size={22} aria-hidden />
         </Link>
         <p className="min-w-0 flex-1 truncate text-center text-[18px] font-bold">{dj.nombre}</p>
-        <CompartirBtn titulo={dj.nombre} texto={`Escucha a ${dj.nombre} en TardeosClub`} url={`/djs/${dj.id}`}
+        <CompartirBtn titulo={dj.nombre} texto={`Escucha a ${dj.nombre} en ${MARCA.nombre}`} url={`/djs/${dj.id}`}
           className="grid h-12 w-12 place-items-center rounded-full hover:bg-fondo" />
       </div>
 
@@ -143,7 +144,7 @@ export default function PerfilDj({
           <Image src={dj.banner} alt="" fill priority sizes="(max-width: 768px) 100vw, 768px" unoptimized={!optimizable(dj.banner)}
             className="object-cover" />
         ) : <div className="h-full w-full bg-[linear-gradient(135deg,#141014,#930E72_55%,#D61AA8)]" />}
-        <CompartirBtn titulo={dj.nombre} texto={`Escucha a ${dj.nombre} en TardeosClub`} url={`/djs/${dj.id}`}
+        <CompartirBtn titulo={dj.nombre} texto={`Escucha a ${dj.nombre} en ${MARCA.nombre}`} url={`/djs/${dj.id}`}
           className="absolute right-3 top-3 hidden h-12 w-12 place-items-center rounded-full bg-black/45 text-white backdrop-blur transition hover:bg-black/60 md:grid" />
       </div>
 

@@ -55,7 +55,7 @@ export default function FilaTardeo({ t, enlace }: { t: Tardeo; enlace: (r: strin
           <Copy size={18} aria-hidden />
         </Link>
         {t.tipoEntrada === "gratis" && (
-          <Link href={enlace(`/local/apuntados?tardeo=${t.id}`)} aria-label={`Apuntados a ${t.titulo}`}
+          <Link href={enlace(`/local/apuntados?tardeo=${t.id}`)} aria-label={`Asistentes de ${t.titulo}`}
             className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-linea-fuerte px-3 text-tinta hover:bg-marfil-100">
             <Users size={18} aria-hidden />
           </Link>

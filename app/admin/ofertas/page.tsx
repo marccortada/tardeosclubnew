@@ -11,6 +11,7 @@ import Chip from "@/components/ui/Chip";
 import Hoja from "@/components/ui/Hoja";
 import Tarjeta from "@/components/ui/Tarjeta";
 import Aviso from "@/components/admin/Aviso";
+import { MARCA } from "@/lib/marca";
 
 type Promo = { id: string; nombre: string; tipo: string; precio: number | null };
 type Local = { id: string; nombre: string; registrado: boolean };
@@ -61,7 +62,7 @@ export default function AdminOfertas() {
     setTitulo(`Oferta en ${p.nombre}`);
     setMensaje(
       `¡Aprovecha! ${p.nombre}${p.precio != null ? ` (normalmente ${p.precio} €)` : ""} con condiciones especiales esta semana. ` +
-      `Entra en tu panel de TardeosClub y promociona tus tardeos.`
+      `Entra en tu panel de ${MARCA.nombre} y promociona tus tardeos.`
     );
   };
 

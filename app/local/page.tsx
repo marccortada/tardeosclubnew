@@ -14,6 +14,7 @@ import {
   getMetricasLocal, contarTardeosDeLocal, getInscritosLocal, getTardeosDeLocal, hoyISO,
 } from "@/lib/tardeos";
 import type { Tardeo } from "@/lib/types";
+import { MARCA } from "@/lib/marca";
 
 type Datos = {
   visitas: number | null;
@@ -74,7 +75,7 @@ export default function ResumenLocal() {
     setCompartido("");
     try {
       if (navigator.share) {
-        await navigator.share({ title: ficha.nombre, text: `${ficha.nombre} en TardeosClub`, url: urlFicha });
+        await navigator.share({ title: ficha.nombre, text: `${ficha.nombre} en ${MARCA.nombre}`, url: urlFicha });
         return;
       }
       await navigator.clipboard.writeText(urlFicha);
@@ -88,7 +89,7 @@ export default function ResumenLocal() {
 
   // Sin subtítulos: la etiqueta ya dice qué es y el detalle está en su sección.
   const kpis = [
-    { label: "Apuntados", valor: d?.apuntados, href: "/local/apuntados" },
+    { label: "Confirmados", valor: d?.apuntados, href: "/local/apuntados" },
     { label: "Próximos", valor: d?.proximos, href: "/local/tardeos" },
     { label: "Visitas", valor: d?.visitas, href: "/local/estadisticas" },
   ];

@@ -10,6 +10,7 @@ import { usePermisosAdmin } from "@/components/admin/roles";
 import PanelShell, { type GrupoPanel } from "@/components/panel/PanelShell";
 import { leerContadores, type Contadores } from "@/lib/adminContadores";
 import Link from "next/link";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Barra lateral del admin.
@@ -75,7 +76,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           href: "/admin/tardeos", label: "Eventos", icon: CalendarDays,
           hijas: [
             { href: "/admin/tardeos", label: "Tardeos" },
-            { href: "/admin/registro", label: "Asistencias y espera" },
+            { href: "/admin/registro", label: "Asistentes y espera" },
             { href: "/admin/destacados", label: "Destacados" },
           ],
         },
@@ -146,7 +147,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   return (
     <PanelShell
       rol={permisos.global || permisos.cargando ? "Administración" : `Admin · ${(permisos.zonas ?? []).join(", ") || "tareas"}`}
-      nombre="TardeosClub"
+      nombre={MARCA.nombre}
       grupos={grupos}
       cabecera={
         <Link href="/admin/crear"

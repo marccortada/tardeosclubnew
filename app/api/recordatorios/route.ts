@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { secretoCronValido } from "@/lib/apiAuth";
 import { registrar } from "@/lib/registro";
+import { MARCA } from "@/lib/marca";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -18,8 +19,8 @@ async function handler(req: Request) {
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
   const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const FROM = process.env.RESEND_FROM || "TardeosClub <onboarding@resend.dev>";
-  const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://tardeosclub.com";
+  const FROM = process.env.RESEND_FROM || `${MARCA.nombre} <onboarding@resend.dev>`;
+  const SITE = process.env.NEXT_PUBLIC_SITE_URL || `https://${MARCA.dominio}`;
   const CRON_SECRET = process.env.CRON_SECRET;
 
   if (!CRON_SECRET) return NextResponse.json({ error: "Falta CRON_SECRET en el servidor." }, { status: 500 });
@@ -110,14 +111,14 @@ async function handler(req: Request) {
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto">
         <div style="background:linear-gradient(135deg,#FF3DCF,#FAC72E);padding:28px;border-radius:20px 20px 0 0;color:#fff">
-          <p style="margin:0;font-weight:800;letter-spacing:.5px">TARDEOSCLUB · RECORDATORIO</p>
+          <p style="margin:0;font-weight:800;letter-spacing:.5px">${MARCA.nombre.toUpperCase()} · RECORDATORIO</p>
           <h1 style="margin:6px 0 0;font-size:26px">¡Mañana es tu tardeo!</h1>
         </div>
         <div style="background:#fff;padding:24px;border:1px solid #eee;border-top:0;border-radius:0 0 20px 20px">
           <h2 style="margin:0 0 4px;color:#2A1721;font-size:22px">${escapeHtml(t.titulo)}</h2>
           <p style="font-size:16px;color:#555;margin:0">${escapeHtml(localNombre)}${hora ? ` · ${hora}h` : ""}</p>
           <a href="${SITE}/tardeos/${t.id}" style="display:inline-block;margin-top:16px;background:#D61AA8;color:#fff;text-decoration:none;font-weight:800;padding:12px 22px;border-radius:14px">Ver el tardeo</a>
-          <p style="margin-top:20px;font-size:12px;color:#999">Te apuntaste en TardeosClub. Sal, conecta y vive el tardeo.</p>
+          <p style="margin-top:20px;font-size:12px;color:#999">Te apuntaste en ${MARCA.nombre}. ${MARCA.lema}</p>
         </div>
       </div>`;
 

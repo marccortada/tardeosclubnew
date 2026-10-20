@@ -288,6 +288,9 @@ recuerda si estaba abierto por pantalla. Piezas: `CampoFiltro`, `RangoFechas`,
 `SelectorOrden`, `claseFiltro`; ayudas de consulta en `lib/filtrosLista.ts`. Siempre
 en la consulta del servidor y en las dependencias de `usePaginado`.
 
+**Nombres en la interfaz:** «Asistentes» (sección), «Confirmados» (con plaza), «Lista de
+espera», botón público «Asistiré». Las rutas y valores de la base siguen siendo `apuntado(s)`.
+
 **Asistencia de un tardeo:** `app/local/_panel/PasarLista.tsx` (en la ficha del tardeo
 del local y en `/admin/registro?tardeo=<id>`): resumen, buscador, filtros (por marcar,
 vinieron, espera, cancelados…), dar plaza / a espera / cancelar / volver a confirmar.
@@ -567,8 +570,9 @@ salvo `.env.example`.
 demo en `docs/REUNION_CLIENTE.md`.
 - **CRM / HubSpot**: respondido al cliente (doc «Flujo del cliente y HubSpot: respuesta»). Plan
   por fases en `docs/PLAN_CRM_HUBSPOT.md`, **sin empezar hasta su OK**.
-- Nombre y marca (domingo 18‑oct). Si cambian: tokens de `tailwind.config.ts` /
-  `globals.css`, logos de `public/branding/`, textos con "TardeosClub".
+- Nombre y marca (domingo 18‑oct). El nombre vive en **`lib/marca.ts`** (`MARCA`); la lista
+  completa de lo que cambiar (tokens, logos, manifest, sw.js, emails…) está en
+  `docs/CAMBIO_DE_MARCA.md`.
 - URL del stream de Nexo (`NEXT_PUBLIC_NEXO_STREAM_URL`) y quién recibe los envíos.
 - Enlaces oficiales de Instagram y comunidad WhatsApp por zona (Inicio usa
   `instagram.com/tardeosclub`, supuesto).

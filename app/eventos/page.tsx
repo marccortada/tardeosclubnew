@@ -2,12 +2,13 @@ import EventosCliente from "./EventosCliente";
 import RegistrarPantalla from "@/components/RegistrarPantalla";
 import { getTardeosPublicados, getTardeosMasAdelante } from "@/lib/tardeos";
 import { metadataPublica } from "@/lib/seo";
+import { MARCA } from "@/lib/marca";
 
 // Se pinta en cada visita (ver el porqué en app/page.tsx).
 export const dynamic = "force-dynamic";
 
 export const metadata = metadataPublica(
-  "Eventos y tardeos · TardeosClub",
+  `Eventos y tardeos · ${MARCA.nombre}`,
   "Tardeos de hoy, mañana y este finde en mapa, lista o calendario. Filtra por zona, música, tipo de plan y precio.",
   "/eventos"
 );

@@ -9,6 +9,7 @@ import { mensajeAmable } from "@/lib/mensajeError";
 import { entrarYVolver } from "@/lib/volver";
 import { Store, Check, Loader2, AlertTriangle, LogIn, BadgeCheck, ArrowRight } from "lucide-react";
 import Boton, { claseBoton } from "@/components/Boton";
+import { MARCA } from "@/lib/marca";
 
 type Resultado = { ok: true; tipo: "local" | "dj"; nombre: string } | { ok: false; error: string };
 
@@ -35,7 +36,7 @@ function ReclamarContent() {
   if (!token) {
     return (
       <Aviso titulo="Enlace incompleto">
-        A este enlace le falta el código de invitación. Pide al equipo de TardeosClub que te mande uno nuevo.
+        A este enlace le falta el código de invitación. Pide al equipo de {MARCA.nombre} que te mande uno nuevo.
       </Aviso>
     );
   }
@@ -45,7 +46,7 @@ function ReclamarContent() {
   // esta se entera sola.
   if (!user) {
     return (
-      <Caja icono={<LogIn size={28} aria-hidden />} titulo="Te han invitado a TardeosClub">
+      <Caja icono={<LogIn size={28} aria-hidden />} titulo={`Te han invitado a ${MARCA.nombre}`}>
         <p className="text-[16px] text-tinta-suave">
           Entra con tu cuenta (o créala) y te traemos de vuelta aquí para quedarte con tu ficha.
         </p>

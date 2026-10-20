@@ -1,3 +1,4 @@
+import { MARCA } from "@/lib/marca";
 /**
  * Datos del responsable del tratamiento.
  *
@@ -7,7 +8,7 @@
  * tres páginas legales quedan actualizadas.
  */
 export const RESPONSABLE = {
-  nombreComercial: "TardeosClub",
+  nombreComercial: MARCA.nombre,
   /** Razón social. Vacío = aún sin constituir (ver PEDIR_AL_DUENO.md §3). */
   razonSocial: "",
   /** NIF / CIF. Vacío = pendiente. */

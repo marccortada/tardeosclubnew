@@ -6,6 +6,7 @@ import { BadgeCheck, Disc3 } from "lucide-react";
 import Campo from "@/components/ui/Campo";
 import { useDiferido } from "@/components/panel/Paginacion";
 import { buscarDjsDirectorio, type DjDirectorio } from "@/lib/tardeos";
+import { MARCA } from "@/lib/marca";
 
 /** Separadores que entiende vincularDjsPorNombre: «·», comas, «&» y « y ». */
 const SEPARADOR = /[,·&]|\sy\s/i;
@@ -102,7 +103,7 @@ export default function CampoDjs({
               </button>
             </li>
           ))}
-          <li className="border-t border-linea px-3 py-2 text-[13px] text-tinta-suave">Del directorio de DJs de TardeosClub</li>
+          <li className="border-t border-linea px-3 py-2 text-[13px] text-tinta-suave">Del directorio de DJs de {MARCA.nombre}</li>
         </ul>
       )}
     </div>

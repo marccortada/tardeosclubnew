@@ -63,7 +63,7 @@ const NOMBRE_ASIST: Record<string, string> = { pendiente: "Sin marcar", asistio:
 async function descargarCsv(nombre: string, grupos: Grupo[]) {
   const listas = await Promise.all(grupos.map((g) => cargarLista(g.id)));
   const conAsist = listas.length > 0 && listas.every((l) => !l.error);
-  const cab = ["Tardeo", "Fecha", "Nombre", "Apuntado el", ...(conAsist ? ["Asistencia"] : [])];
+  const cab = ["Tardeo", "Fecha", "Nombre", "Se apuntó el", ...(conAsist ? ["Asistencia"] : [])];
   const fecha = (iso: string) => (iso ? new Date(iso).toLocaleString("es-ES") : "");
   const filas = grupos.flatMap((g, i) => conAsist
     ? listas[i].filas.map((f) => [g.titulo, g.fecha, f.nombre, fecha(f.apuntado_en), NOMBRE_ASIST[f.asistencia] ?? ""].map(celda).join(";"))
@@ -170,11 +170,11 @@ export default function Apuntados() {
 
   return (
     <SeccionPanel
-      titulo="Apuntados"
+      titulo="Asistentes"
       descripcion="Quién ha pulsado «Asistiré» en tus tardeos gratis. Si se llenan las plazas, los siguientes quedan en lista de espera y suben solos cuando alguien se borra."
       acciones={
         <Boton tamano="pequeno" variante="contorno" disabled={lista.length === 0} cargando={exportando === "todo"}
-          onClick={() => exportar("todo", `apuntados-${periodo}-${hoy}.csv`, lista)}>
+          onClick={() => exportar("todo", `asistentes-${periodo}-${hoy}.csv`, lista)}>
           {exportando !== "todo" && <Download size={18} aria-hidden />} Exportar CSV
         </Boton>
       }
@@ -182,7 +182,7 @@ export default function Apuntados() {
       {ajena && (
         <p className="mb-4 flex items-start gap-2 rounded-xl border border-aviso/25 bg-aviso-fondo p-4 text-[15px] text-aviso">
           <Info size={18} className="mt-0.5 shrink-0" aria-hidden />
-          Como administrador solo verás apuntados aquí cuando esté pegado el SQL
+          Como administrador solo verás asistentes aquí cuando esté pegado el SQL
           «50_panel_local_admin.sql». Mientras, cada tardeo enseña los suyos en su ficha de edición.
         </p>
       )}
@@ -229,7 +229,7 @@ export default function Apuntados() {
           error={errorCarga}
           vacio={busca ? "Ningún tardeo con ese nombre." : periodo === "proximos"
             ? "Nadie ha dicho «Asistiré» todavía a tus próximos tardeos. Compártelos para que se vayan llenando."
-            : "Ningún tardeo pasado con apuntados."}
+            : "Ningún tardeo pasado con asistentes."}
           filas={lista.length}
         />
         {errorCarga && (
@@ -258,7 +258,7 @@ export default function Apuntados() {
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
-                      <button type="button" disabled={exportando === g.id} onClick={() => exportar(g.id, `apuntados-${slug(g.titulo)}-${g.fecha}.csv`, [g])}
+                      <button type="button" disabled={exportando === g.id} onClick={() => exportar(g.id, `asistentes-${slug(g.titulo)}-${g.fecha}.csv`, [g])}
                         aria-label={`Exportar CSV de ${g.titulo}`}
                         className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-linea-fuerte px-3 text-[15px] font-semibold hover:bg-marfil-100 disabled:opacity-60">
                         <Download size={16} aria-hidden /> {exportando === g.id ? "Preparando…" : "CSV"}
@@ -276,7 +276,7 @@ export default function Apuntados() {
                       <PasarLista tardeoId={g.id} nombresRespaldo={g.filas.map((f) => f.nombre)} />
                     </div>
                   ) : (
-                    <ul className="mt-3 flex flex-wrap gap-1.5" aria-label={`Apuntados a ${g.titulo}`}>
+                    <ul className="mt-3 flex flex-wrap gap-1.5" aria-label={`Asistentes de ${g.titulo}`}>
                       {nombres.map((n, i) => (
                         <li key={i} className="rounded-full bg-marfil-100 px-3 py-1 text-[15px] font-medium">{n.nombre}</li>
                       ))}

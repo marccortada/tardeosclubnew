@@ -221,7 +221,7 @@ export default function PanelLocal({ children }: { children: ReactNode }) {
           hijas: [
             { href: enlace("/local/tardeos"), label: "Todos" },
             { href: enlace("/local/crear"), label: "Crear tardeo" },
-            { href: enlace("/local/apuntados"), label: "Apuntados" },
+            { href: enlace("/local/apuntados"), label: "Asistentes" },
             { href: enlace("/local/solicitudes"), label: "Solicitudes de DJs" },
           ],
         },
@@ -256,7 +256,7 @@ export default function PanelLocal({ children }: { children: ReactNode }) {
     {
       items: [
         { href: "/local/crear", label: "Crear tardeo", icon: CalendarPlus },
-        { href: "/admin/locales", label: "Elegir un local", icon: Store },
+        { href: "/admin/locales", label: "Elige un local", icon: Store },
         { href: "/admin", label: "Volver al admin", icon: ShieldCheck },
       ],
     },

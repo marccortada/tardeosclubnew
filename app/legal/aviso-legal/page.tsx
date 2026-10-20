@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import { metadataPublica } from "@/lib/seo";
 import PaginaLegal from "@/components/PaginaLegal";
 import { RESPONSABLE } from "@/lib/legal";
+import { MARCA } from "@/lib/marca";
 
 // Con canónica e imagen al compartir (helper común de lib/seo.ts).
 export const metadata: Metadata = metadataPublica(
-  "Aviso legal — TardeosClub",
-  "Quién está detrás de TardeosClub y condiciones de uso de la web.",
+  `Aviso legal — ${MARCA.nombre}`,
+  `Quién está detrás de ${MARCA.nombre} y condiciones de uso de la web.`,
   "/legal/aviso-legal"
 );
 
@@ -16,7 +17,7 @@ export default function AvisoLegal() {
   return (
     <PaginaLegal
       titulo="Aviso legal"
-      entradilla="Quién está detrás de TardeosClub y bajo qué condiciones puedes usar la web."
+      entradilla={`Quién está detrás de ${MARCA.nombre} y bajo qué condiciones puedes usar la web.`}
     >
       <h2>1. Quiénes somos</h2>
       <p>
@@ -59,7 +60,7 @@ export default function AvisoLegal() {
       </ul>
 
       <h2>3. Uso de la web</h2>
-      <p>Al usar TardeosClub te comprometes a:</p>
+      <p>Al usar {MARCA.nombre} te comprometes a:</p>
       <ul>
         <li>Dar datos verdaderos cuando te registres o publiques un tardeo.</li>
         <li>Ser mayor de edad. Los tardeos son eventos para adultos.</li>
@@ -74,14 +75,14 @@ export default function AvisoLegal() {
       <h2>4. Contenido de locales y DJs</h2>
       <p>
         Cuando un local o un DJ sube textos, fotos o flyers sigue siendo su propietario, pero nos
-        autoriza a mostrarlos en TardeosClub y en nuestras redes para promocionar su tardeo. Si
+        autoriza a mostrarlos en {MARCA.nombre} y en nuestras redes para promocionar su tardeo. Si
         alguien sube algo sobre lo que no tiene derechos, debe retirarlo, y puede pedírnoslo
         escribiendo al correo de contacto.
       </p>
 
       <h2>5. Propiedad intelectual</h2>
       <p>
-        La marca TardeosClub, el logotipo, el sello y el diseño de la web son nuestros. El resto
+        La marca {MARCA.nombre}, el logotipo, el sello y el diseño de la web son nuestros. El resto
         de contenidos pertenece a quien los publica.
       </p>
 

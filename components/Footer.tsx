@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import ReportarProblema from "@/components/ReportarProblema";
+import { MARCA } from "@/lib/marca";
 
 const COLUMNAS: { titulo: string; enlaces: { href: string; label: string; externo?: boolean }[] }[] = [
   {
@@ -53,7 +54,7 @@ export default function Footer() {
             {/* El logo va sobre una placa blanca: tiene partes oscuras que
                 sobre el fondo negro se perderían. */}
             <span className="inline-block rounded-2xl bg-[#fff] px-3 py-2">
-              <Image src="/branding/logo-transp.png" alt="TardeosClub" width={150} height={90} className="h-11 w-auto" />
+              <Image src="/branding/logo-transp.png" alt={MARCA.nombre} width={150} height={90} className="h-11 w-auto" />
             </span>
             <p className="mt-4 font-display text-[22px] font-bold leading-snug">
               Los tardeos de la costa de Catalunya, en un solo sitio.
@@ -85,7 +86,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-8 flex flex-col gap-4 border-t border-white/15 pt-6 text-[14px] text-white/70 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} TardeosClub · Costa de Catalunya</p>
+          <p>© {new Date().getFullYear()} {MARCA.nombre} · Costa de Catalunya</p>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <Link href="/legal/aviso-legal" className="min-h-[44px] content-center transition hover:text-white">Aviso legal</Link>
             <Link href="/legal/privacidad" className="min-h-[44px] content-center transition hover:text-white">Privacidad</Link>

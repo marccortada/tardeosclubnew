@@ -24,6 +24,7 @@ import MiniMapa from "@/components/MiniMapa";
 import { LogoLocal, tipoDeLocal } from "@/components/LocalCard";
 import { sinMarcas } from "@/lib/texto";
 import FichaNoPublicaPropia from "./FichaNoPublicaPropia";
+import { MARCA } from "@/lib/marca";
 
 export const dynamic = "force-dynamic";
 
@@ -32,15 +33,15 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const local = await getLocalById(id);
   // Sin ficha pública (no existe o está en revisión): nunca indexar. La vista
   // previa del dueño se pinta en el navegador y no debe acabar en Google.
-  if (!local) return { title: "Local no encontrado · TardeosClub", robots: { index: false, follow: false } };
+  if (!local) return { title: `Local no encontrado · ${MARCA.nombre}`, robots: { index: false, follow: false } };
   // Una línea, sin emojis y a ~155: la descripción del local suele ser larga.
-  const desc = descripcionMeta(`Tardeos en ${local.nombre}${local.zona ? ` · ${local.zona}` : ""}. ${local.descripcion || "Descúbrelos en TardeosClub."}`);
+  const desc = descripcionMeta(`Tardeos en ${local.nombre}${local.zona ? ` · ${local.zona}` : ""}. ${local.descripcion || `Descúbrelos en ${MARCA.nombre}.`}`);
   const fotos: string[] = Array.isArray(local.fotos) ? local.fotos.filter((f: unknown) => typeof f === "string" && f) : [];
   // Al compartir: la foto, si no el logo, si no la imagen general (sin
   // `images` el enlace salía sin imagen: el openGraph de aquí anula el del layout).
   const imagen = fotos[0] || local.logo_url || null;
   return {
-    title: `${local.nombre} · TardeosClub`,
+    title: `${local.nombre} · ${MARCA.nombre}`,
     description: desc,
     alternates: { canonical: urlAbsoluta(`/locales/${id}`) },
     openGraph: {
@@ -144,7 +145,7 @@ export default async function PaginaLocal({ params }: { params: Promise<{ id: st
             </Link>
             <CompartirBtn
               titulo={local.nombre}
-              texto={`Mira los tardeos de ${local.nombre} en TardeosClub`}
+              texto={`Mira los tardeos de ${local.nombre} en ${MARCA.nombre}`}
               className="grid h-12 w-12 place-items-center rounded-full bg-white/15 text-white backdrop-blur transition hover:bg-white/25 active:scale-95"
             />
           </div>

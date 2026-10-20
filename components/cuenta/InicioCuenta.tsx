@@ -12,6 +12,7 @@ import { MarcoCuenta, type DatosCuenta } from "@/components/panel/CuentaNav";
 import {
   ArrowRight, Bell, Check, Disc3, Heart, Loader2, MapPin, Megaphone, ShieldCheck, Sparkles, Store, Ticket,
 } from "lucide-react";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Inicio de "Mi cuenta" del tardícola. El cliente decía que no entendía
@@ -109,7 +110,7 @@ export default function InicioCuenta({ datos, email, uid }: { datos: DatosCuenta
   const paneles = [
     datos?.ficha && { href: "/local", icono: datos.ficha.tipo === "promotor" ? Megaphone : Store, titulo: datos.ficha.tipo === "promotor" ? "Mis eventos" : "Mi local", texto: datos.ficha.nombre },
     datos?.esDj && { href: "/dj", icono: Disc3, titulo: "Mi perfil DJ", texto: "Perfil, sesiones y PressKit" },
-    datos?.esAdmin && { href: "/admin", icono: ShieldCheck, titulo: "Administración", texto: "Gestión de TardeosClub" },
+    datos?.esAdmin && { href: "/admin", icono: ShieldCheck, titulo: "Administración", texto: `Gestión de ${MARCA.nombre}` },
   ].filter(Boolean) as { href: string; icono: typeof Store; titulo: string; texto: string }[];
 
   return (

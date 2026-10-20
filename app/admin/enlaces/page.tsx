@@ -13,6 +13,7 @@ import { Etiqueta } from "@/components/ui/Chip";
 import PanelFiltros, { CampoFiltro, claseFiltro, RangoFechas } from "@/components/panel/PanelFiltros";
 import { rangoTimestamp } from "@/lib/filtrosLista";
 import { Copy, Check, MessageCircle, Plus, Store, Megaphone, Disc3, Link2, Loader2 } from "lucide-react";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Enlaces para dar de alta locales, promotores y DJs: lo que en el admin
@@ -34,9 +35,9 @@ type Filtro = "pendientes" | "usadas" | "caducadas" | "todas";
 type Resultado = { id: string; nombre: string; zona: string | null };
 
 const TIPOS: { k: Tipo; label: string; icono: typeof Store; texto: string }[] = [
-  { k: "local", label: "Local", icono: Store, texto: "Da de alta tu local en TardeosClub y publica tus tardeos gratis" },
-  { k: "promotor", label: "Promotor", icono: Megaphone, texto: "Da de alta tus tardeos como promotor en TardeosClub" },
-  { k: "dj", label: "DJ", icono: Disc3, texto: "Crea tu ficha de DJ en TardeosClub" },
+  { k: "local", label: "Local", icono: Store, texto: `Da de alta tu local en ${MARCA.nombre} y publica tus tardeos gratis` },
+  { k: "promotor", label: "Promotor", icono: Megaphone, texto: `Da de alta tus tardeos como promotor en ${MARCA.nombre}` },
+  { k: "dj", label: "DJ", icono: Disc3, texto: `Crea tu ficha de DJ en ${MARCA.nombre}` },
 ];
 
 const limpiar = (s: string) => s.replace(/[,()*%\\"']/g, " ").replace(/\s+/g, " ").trim();
@@ -228,7 +229,7 @@ function AdminEnlaces() {
                     <div className="mt-3 grid grid-cols-2 gap-2 md:mt-0 md:flex">
                       <BotonCopiar texto={url} />
                       <Boton tamano="pequeno" variante="contorno" externo
-                        href={wa(`Hola. Este es tu enlace para gestionar la ficha de ${nombre} en TardeosClub (entra con tu cuenta o créala): ${url}`)}>
+                        href={wa(`Hola. Este es tu enlace para gestionar la ficha de ${nombre} en ${MARCA.nombre} (entra con tu cuenta o créala): ${url}`)}>
                         <MessageCircle size={18} aria-hidden /> WhatsApp
                       </Boton>
                     </div>
@@ -374,7 +375,7 @@ function NuevaInvitacion({
           <div className="mt-3 grid grid-cols-2 gap-2">
             <BotonCopiar texto={enlace} />
             <Boton tamano="pequeno" variante="contorno" externo
-              href={wa(`Hola. Este es tu enlace para gestionar la ficha de ${elegida?.nombre ?? ""} en TardeosClub (entra con tu cuenta o créala): ${enlace}`)}>
+              href={wa(`Hola. Este es tu enlace para gestionar la ficha de ${elegida?.nombre ?? ""} en ${MARCA.nombre} (entra con tu cuenta o créala): ${enlace}`)}>
               <MessageCircle size={18} aria-hidden /> WhatsApp
             </Boton>
           </div>

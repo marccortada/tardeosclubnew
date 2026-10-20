@@ -44,7 +44,7 @@ export const NOMBRES: Record<string, string> = {
   para_ti_visto: "«Para ti» enseñado",
   para_ti_clic: "«Para ti» pulsado",
   favorito: "Guardados",
-  inscripcion: "Apuntados",
+  inscripcion: "Confirmados",
   clic_entrada: "Clic a comprar",
   clic_lista: "Clic a lista",
   seguir: "Seguir DJ",

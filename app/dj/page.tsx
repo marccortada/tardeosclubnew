@@ -16,6 +16,7 @@ import { hoyISO } from "@/lib/tardeos";
 import { formatFecha } from "@/lib/formato";
 import { tieneValoracion, valoracion } from "@/lib/reputacion";
 import { useDj, consultaTardeosDj, type TardeoDj } from "./contexto";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Inicio del panel DJ, corto: quién eres y cómo se te ve, las dos acciones
@@ -108,9 +109,9 @@ export default function ResumenDj() {
           </p>
         )}
         {dj.oculto && !modoAdmin && (
-          <a href={whatsappTardeos(`Hola, soy ${dj.nombre_artistico} (DJ) y mi ficha de TardeosClub aparece oculta. ¿Podéis revisarla?`)}
+          <a href={whatsappTardeos(`Hola, soy ${dj.nombre_artistico} (DJ) y mi ficha de ${MARCA.nombre} aparece oculta. ¿Podéis revisarla?`)}
             target="_blank" rel="noopener noreferrer" className={claseBoton("contorno", "pequeno", true, "mt-2")}>
-            <MessageCircle size={18} aria-hidden /> Escribir a TardeosClub
+            <MessageCircle size={18} aria-hidden /> Escribir a {MARCA.nombre}
           </a>
         )}
         <div className="mt-4 grid grid-cols-2 gap-2">
@@ -215,7 +216,7 @@ function BotonCompartir({ nombre, url }: { nombre: string; url: string }) {
   const [hecho, setHecho] = useState<"" | "copiado" | "error">("");
   const compartir = async () => {
     const abs = window.location.origin + url;
-    const texto = `Mira mi perfil de DJ en TardeosClub: ${nombre}`;
+    const texto = `Mira mi perfil de DJ en ${MARCA.nombre}: ${nombre}`;
     if (navigator.share) {
       try { await navigator.share({ title: nombre, text: texto, url: abs }); } catch { /* canceló */ }
       return;

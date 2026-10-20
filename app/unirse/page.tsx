@@ -14,6 +14,7 @@ import AltaPortal from "@/components/cuenta/AltaPortal";
 import {
   PartyPopper, Store, Disc3, ArrowRight, ArrowLeft, Check, Loader2, Megaphone, MapPin,
 } from "lucide-react";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Alta de colaborador en tres caminos: tardícola, DJ, o local/evento.
@@ -159,9 +160,9 @@ function UnirseContent() {
   if (paso === "fin") {
     const titulo = finRol === "local" ? "¡Local creado!" : finRol === "promotor" ? "¡Perfil de eventos creado!" : "¡Perfil de DJ creado!";
     const texto = finRol === "local"
-      ? "Aún no sale en la web: el equipo de TardeosClub lo revisa y lo publica. Mientras, ya puedes preparar tus tardeos desde tu panel."
+      ? `Aún no sale en la web: el equipo de ${MARCA.nombre} lo revisa y lo publica. Mientras, ya puedes preparar tus tardeos desde tu panel.`
       : finRol === "promotor"
-        ? "Aún no sale en la web: el equipo de TardeosClub lo revisa y lo publica. Al crear cada tardeo te pediremos dónde se hace."
+        ? `Aún no sale en la web: el equipo de ${MARCA.nombre} lo revisa y lo publica. Al crear cada tardeo te pediremos dónde se hace.`
         : "Ya sales en el listado de DJs. Completa tu perfil (foto, estilos, sesiones) para que se vea bien.";
     // Local y promotor comparten panel; el DJ tiene el suyo.
     return <Final titulo={titulo} texto={texto} href={finRol === "dj" ? "/dj" : "/local"} boton="Ir a mi panel" />;
@@ -193,7 +194,7 @@ function UnirseContent() {
 
       {paso === "rol" && (
         <>
-          <h1 className="text-[28px] font-bold leading-tight tracking-tight md:text-[34px]">¿Cómo quieres usar TardeosClub?</h1>
+          <h1 className="text-[28px] font-bold leading-tight tracking-tight md:text-[34px]">¿Cómo quieres usar {MARCA.nombre}?</h1>
           <p className="mt-1 text-[16px] text-tinta-suave">Elige una opción. Con la misma cuenta puedes tener local y perfil de DJ.</p>
           <div className="mt-6 flex flex-col gap-3">
             {/* Va a su cuenta, NO al formulario de gustos: primero ve para qué
@@ -204,7 +205,7 @@ function UnirseContent() {
               : <Opcion onClick={() => { setPaso("dj"); setError(""); }} icono={<Disc3 size={26} aria-hidden />} titulo="Soy DJ" texto="Quiero dar a conocer mi música y que los locales me encuentren." />}
             {yaTiene.local
               ? <Opcion href="/local" icono={<Store size={26} aria-hidden />} titulo="Mi local o evento" texto="Ya lo tienes. Toca para ir a tu panel." />
-              : <Opcion onClick={() => { setPaso("local-tipo"); setError(""); }} icono={<Store size={26} aria-hidden />} titulo="Soy un Local o Evento" texto="Quiero publicar mis tardeos en TardeosClub." />}
+              : <Opcion onClick={() => { setPaso("local-tipo"); setError(""); }} icono={<Store size={26} aria-hidden />} titulo="Soy un Local o Evento" texto={`Quiero publicar mis tardeos en ${MARCA.nombre}.`} />}
           </div>
         </>
       )}

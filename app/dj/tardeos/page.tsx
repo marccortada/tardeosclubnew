@@ -15,6 +15,7 @@ import { hoyISO } from "@/lib/tardeos";
 import { formatFecha } from "@/lib/formato";
 import { useDj, consultaTardeosDj, type TardeoDj } from "../contexto";
 import SolicitudesDj from "./Solicitudes";
+import { MARCA } from "@/lib/marca";
 
 type Filtro = "proximos" | "pasados" | "invitaciones" | "solicitudes";
 
@@ -131,7 +132,7 @@ export default function MisTardeosDj() {
           <Aviso tono={aviso.tono}>{aviso.texto}</Aviso>
           {aviso.contacto && (
             <a href={aviso.contacto} target="_blank" rel="noopener noreferrer" className={claseBoton("contorno", "pequeno")}>
-              <MessageCircle size={18} aria-hidden /> Escribir a TardeosClub
+              <MessageCircle size={18} aria-hidden /> Escribir a {MARCA.nombre}
             </a>
           )}
         </div>

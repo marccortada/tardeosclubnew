@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { SeccionPanel } from "@/components/panel/PanelShell";
 import Paginacion, { usePaginado, useDiferido, Buscador, Filtros, EstadoLista } from "@/components/panel/Paginacion";
 import Boton from "@/components/Boton";
@@ -496,6 +496,10 @@ export default function Registro() {
 function SelectorTardeo({ onElegir }: { onElegir: (id: string) => void }) {
   const [t, setT] = useState("");
   const q = useDiferido(t, 250);
+  // Texto actual (sin esperar al diferido): si se eligió un tardeo mientras una
+  // búsqueda seguía en camino, su respuesta no debe volver a abrir la lista.
+  const actual = useRef("");
+  useEffect(() => { actual.current = t; }, [t]);
   const [res, setRes] = useState<{ id: string; titulo: string | null; fecha: string | null; locales: { nombre: string | null } | null }[]>([]);
   useEffect(() => {
     const l = limpiar(q);
@@ -505,7 +509,7 @@ function SelectorTardeo({ onElegir }: { onElegir: (id: string) => void }) {
     Promise.all([
       supabase.from("tardeos").select("id,titulo,fecha,locales(nombre)").ilike("titulo", `%${l}%`).gte("fecha", hoy).order("fecha").limit(6),
       supabase.from("tardeos").select("id,titulo,fecha,locales(nombre)").ilike("titulo", `%${l}%`).lt("fecha", hoy).order("fecha", { ascending: false }).limit(4),
-    ]).then(([a, b]) => { if (vivo) setRes([...((a.data ?? []) as never[]), ...((b.data ?? []) as never[])]); });
+    ]).then(([a, b]) => { if (vivo && limpiar(actual.current).length >= 2) setRes([...((a.data ?? []) as never[]), ...((b.data ?? []) as never[])]); });
     return () => { vivo = false; };
   }, [q]);
   return (

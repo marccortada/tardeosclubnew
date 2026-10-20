@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, BadgeCheck } from "lucide-react";
 import { degradadoDe, inicialesDe, estilosDe } from "@/components/DjCard";
+import { MARCA } from "@/lib/marca";
 
 type Dj = { id: string; nombre_artistico: string; estilos?: string[] | string | null; avatar_url?: string | null; verificado?: boolean };
 
@@ -76,7 +77,7 @@ export default function CarruselDjs({ djs }: { djs: Dj[] }) {
       onKeyDown={(e) => { if (e.key === "ArrowLeft") ir(i - 1); if (e.key === "ArrowRight") ir(i + 1); }}
       role="region"
       aria-roledescription="carrusel"
-      aria-label="DJs de TardeosClub"
+      aria-label={`DJs de ${MARCA.nombre}`}
     >
       {/* Móvil: tarjeta al 60 % del ancho y 4:5 → el contenedor mide 0,8 del
           ancho (0,75 de la tarjeta + aire para la sombra). Desde sm, tarjeta fija de 300 px. */}

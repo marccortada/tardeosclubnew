@@ -2,6 +2,7 @@
 
 import "./globals.css";
 import PantallaError from "@/components/PantallaError";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Error en el propio layout raíz: sustituye a TODO el documento, por eso
@@ -14,7 +15,8 @@ export default function ErrorGlobal({
   return (
     <html lang="es">
       <body className="min-h-dvh bg-marfil font-sans text-tinta antialiased">
-        <title>Algo ha fallado · TardeosClub</title>
+        {/* Un solo texto: <title> no admite varios hijos. */}
+        <title>{`Algo ha fallado · ${MARCA.nombre}`}</title>
         <PantallaError error={error} reintentar={retry ?? reset} />
       </body>
     </html>

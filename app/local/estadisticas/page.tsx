@@ -7,6 +7,7 @@ import EstadisticasLocal from "@/components/EstadisticasLocal";
 import ConsumoDelMes from "@/components/ConsumoDelMes";
 import { useFicha } from "../_panel/PanelLocal";
 import { getMetricasLocal } from "@/lib/tardeos";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Las cifras del local: el periodo elegido (7/30/90 días, con fechas de
@@ -31,7 +32,7 @@ export default function Estadisticas() {
         <EstadisticasLocal localId={ficha.id} enlace={enlace} />
 
         <section>
-          <h2 className="mb-3 text-xl font-bold">Desde que estás en TardeosClub</h2>
+          <h2 className="mb-3 text-xl font-bold">Desde que estás en {MARCA.nombre}</h2>
           {total?.error && (
             <p role="alert" className="mb-3 rounded-xl border border-error/20 bg-error-fondo p-3 text-[15px] font-semibold text-error">
               No se pudieron cargar los totales: {total.error}
@@ -40,7 +41,7 @@ export default function Estadisticas() {
           <div className="grid grid-cols-2 gap-3 md:max-w-xl">
             {[
               { icon: Eye, label: "Visitas en total", valor: total?.visitas },
-              { icon: Users, label: "Apuntados en total", valor: total?.inscritos },
+              { icon: Users, label: "Confirmados en total", valor: total?.inscritos },
             ].map(({ icon: Icon, label, valor }) => (
               <div key={label} className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta">
                 <Icon size={20} className="text-magenta" aria-hidden />

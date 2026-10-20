@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { autorizarLocalOAdmin, pasaLimite, respuestaLimite } from "@/lib/apiAuth";
 import { registrar } from "@/lib/registro";
+import { MARCA } from "@/lib/marca";
 
 export const runtime = "nodejs";
 
@@ -118,7 +119,7 @@ export async function POST(req: Request) {
       err?.status === 429 || err?.status === 529
         ? "La IA está saturada ahora mismo. Prueba dentro de un minuto."
         : err?.status === 401 || err?.status === 403
-          ? "La IA no está bien configurada. Avisa a TardeosClub."
+          ? `La IA no está bien configurada. Avisa a ${MARCA.nombre}.`
           : "No se ha podido leer el flyer. Prueba con otra imagen o rellénalo a mano.";
     return NextResponse.json({ error: message }, { status: 502 });
   }

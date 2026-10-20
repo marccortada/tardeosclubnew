@@ -94,7 +94,8 @@ export default function PerfilTardicola({ uid }: { uid: string }) {
 
   return (
     <main className="bg-fondo">
-      <CabeceraApp titulo="Perfil" />
+      {/* El h1 es el nombre de la persona (abajo): la cabecera no repite otro. */}
+      <CabeceraApp titulo="Perfil" sinH1 />
       <div className="mx-auto max-w-xl px-4 pt-5 md:pt-10">
         <div className="flex items-center gap-4">
           <button type="button" onClick={() => fichero.current?.click()} aria-label="Cambiar foto"

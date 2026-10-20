@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Download, Share, Plus, X, Smartphone } from "lucide-react";
 import { esApple, sePuedeOfrecer } from "@/lib/instalar";
+import { MARCA } from "@/lib/marca";
 
 /**
  * «Instálala en tu móvil».
@@ -147,7 +148,7 @@ export default function InstalarApp() {
     // real publica BottomNav en --alto-barra-inferior. Antes era una tarjeta
     // de ~200 px que tapaba media pantalla. Si suena música, también sube por
     // encima del mini‑reproductor (--alto-mini), que si no la tapaba.
-    <div role="dialog" aria-label="Instalar la app de TardeosClub"
+    <div role="dialog" aria-label={`Instalar la app de ${MARCA.nombre}`}
       style={{ bottom: "calc(var(--alto-barra-inferior, 96px) + var(--alto-mini, 0px) + 8px)" }}
       className="fixed inset-x-3 z-[1100] md:hidden">
       <div className="rounded-2xl border border-linea bg-white shadow-elevada">

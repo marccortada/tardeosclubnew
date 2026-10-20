@@ -13,6 +13,7 @@ import { plegar } from "@/lib/texto";
 import { SITE_URL } from "@/lib/seo";
 import { generarQR, qrASvg } from "@/lib/qr";
 import type { Tardeo } from "@/lib/types";
+import { MARCA } from "@/lib/marca";
 
 /**
  * QR imprimible del local (dossier pág. 14: "PDF con QR por local y
@@ -243,7 +244,7 @@ function Hoja({ nombre, tardeo, svg, urlCorta }: {
   return (
     <div className="hoja-qr bg-superficie text-tinta [container-type:inline-size]">
       <div className="flex aspect-[148/210] w-full flex-col items-center px-[8cqw] pb-[6cqw] pt-[8cqw] text-center">
-        <Image src="/branding/logo-transp.png" alt="TardeosClub" width={240} height={206} className="h-auto w-[24cqw]" />
+        <Image src="/branding/logo-transp.png" alt={MARCA.nombre} width={240} height={206} className="h-auto w-[24cqw]" />
         <p className="mt-[4cqw] text-[8cqw] font-extrabold leading-[1.05] tracking-tight">{nombre}</p>
         {tardeo && (
           <p className="mt-[2cqw] text-[4.2cqw] font-bold leading-tight text-magenta">

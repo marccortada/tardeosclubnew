@@ -4,6 +4,7 @@ import { MessageCircle, Mail } from "lucide-react";
 import { SeccionPanel } from "@/components/panel/PanelShell";
 import ServiciosExternos, { whatsappTardeos, emailTardeos } from "@/components/ServiciosExternos";
 import { useFicha } from "../_panel/PanelLocal";
+import { MARCA } from "@/lib/marca";
 
 const PREGUNTAS = [
   {
@@ -20,7 +21,7 @@ const PREGUNTAS = [
   },
   {
     p: "¿Cómo sé quién viene?",
-    r: "En los tardeos gratis la gente se apunta con un botón. Lo ves en «Apuntados» y puedes descargarlo en CSV para la puerta.",
+    r: "En los tardeos gratis la gente se apunta con un botón. Lo ves en «Asistentes» y puedes descargarlo en CSV para la puerta.",
   },
   {
     p: "¿Cuesta algo?",
@@ -31,7 +32,7 @@ const PREGUNTAS = [
 /** Ayuda corta y contacto directo con TardeosClub, más los servicios de Gnerai. */
 export default function Ayuda() {
   const { ficha } = useFicha();
-  const hola = `Hola, soy de ${ficha.nombre} y tengo una duda con mi panel de TardeosClub.`;
+  const hola = `Hola, soy de ${ficha.nombre} y tengo una duda con mi panel de ${MARCA.nombre}.`;
   return (
     <SeccionPanel titulo="Ayuda y servicios" descripcion="Respuestas rápidas y cómo hablar con nosotros.">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -50,7 +51,7 @@ export default function Ayuda() {
         </section>
         <aside className="h-fit rounded-2xl border border-linea bg-white p-5 shadow-tarjeta">
           <h2 className="text-lg font-bold">¿Hablamos?</h2>
-          <p className="mt-1 text-[15px] text-tinta-suave">Te respondemos personas del equipo de TardeosClub.</p>
+          <p className="mt-1 text-[15px] text-tinta-suave">Te respondemos personas del equipo de {MARCA.nombre}.</p>
           <div className="mt-4 flex flex-col gap-2">
             <a href={whatsappTardeos(hola)} target="_blank" rel="noopener noreferrer"
               className="inline-flex min-h-tacto items-center justify-center gap-2 rounded-xl bg-[#1DA851] px-5 text-[17px] font-bold text-white hover:brightness-95">

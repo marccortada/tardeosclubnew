@@ -12,6 +12,7 @@ import { getAdn } from "@/lib/tardicola";
 import { entrarYVolver } from "@/lib/volver";
 import { getFeed, gustarSetDetalle, guardarSetDetalle, portadaDe, type TarjetaFeed } from "@/lib/sets";
 import { optimizable } from "@/lib/fotos";
+import { MARCA } from "@/lib/marca";
 
 const POR_PAGINA = 6;
 
@@ -143,7 +144,7 @@ export default function FeedDjs() {
   async function compartir(t: TarjetaFeed) {
     const url = `${window.location.origin}/djs/${t.dj_id}`;
     try {
-      if (navigator.share) await navigator.share({ title: t.nombre, text: `Escucha a ${t.nombre} en TardeosClub`, url });
+      if (navigator.share) await navigator.share({ title: t.nombre, text: `Escucha a ${t.nombre} en ${MARCA.nombre}`, url });
       else { await navigator.clipboard.writeText(url); setAviso("Enlace copiado"); }
     } catch { /* cancelado */ }
   }

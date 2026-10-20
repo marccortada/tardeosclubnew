@@ -539,11 +539,11 @@ export async function getInscritosLocal(localId: string): Promise<{ filas: Inscr
   try {
     const { data, error } = await supabase.rpc("inscritos_de_local", { p_local: localId });
     if (error) {
-      return { filas: [], error: faltaFuncion(error) ? "Falta pegar el lote 8 (apuntados) en la base." : error.message };
+      return { filas: [], error: faltaFuncion(error) ? "Falta pegar el lote 8 (asistentes) en la base." : error.message };
     }
     return { filas: (data ?? []) as InscritoLocal[], error: null };
   } catch (e) {
-    return { filas: [], error: (e as Error)?.message || "No se pudieron cargar los apuntados." };
+    return { filas: [], error: (e as Error)?.message || "No se pudieron cargar los asistentes." };
   }
 }
 

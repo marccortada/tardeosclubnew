@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import ReportarProblema from "@/components/ReportarProblema";
 import SubSecciones, { SubCtx, rutaActiva, type ContextoSub, type HijaPanel } from "@/components/panel/SubSecciones";
+import { MARCA } from "@/lib/marca";
 
 export type { HijaPanel };
 
@@ -182,7 +183,7 @@ export default function PanelShell({
       </Link>
       <div className="min-w-0">
         <p className="text-[13px] font-semibold uppercase tracking-wider text-magenta">{rol}</p>
-        <p className="truncate text-[15px] font-bold leading-tight">{nombre || "TardeosClub"}</p>
+        <p className="truncate text-[15px] font-bold leading-tight">{nombre || MARCA.nombre}</p>
       </div>
     </div>
   );

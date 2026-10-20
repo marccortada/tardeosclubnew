@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
 import { entrarYVolver } from "@/lib/volver";
 import { errorPublico, ESTADOS_NEXO, getSetsDeDj, type EnvioNexo, type SetDj, type Plataforma } from "@/lib/sets";
+import { MARCA } from "@/lib/marca";
 
 const WEB_NEXO = "https://nexoradio.es/";
 type Pestana = "escuchar" | "programacion" | "enviar";
@@ -213,7 +214,7 @@ export function Enviar() {
       <div className="rounded-2xl border border-linea bg-superficie p-5">
         <h2 className="text-[20px] font-bold">Comparte tu sesión</h2>
         <p className="mt-2 text-[16px] leading-relaxed">
-          Los DJs de TardeosClub pueden enviar sus sesiones al equipo de Nexo Radio para que las escuche.
+          Los DJs de {MARCA.nombre} pueden enviar sus sesiones al equipo de Nexo Radio para que las escuche.
           Si eres DJ, entra con tu cuenta profesional para enviar la tuya.
         </p>
         {!user && <Link href={entrarYVolver("/nexo?pestana=enviar")} className="mt-4 inline-flex min-h-tacto items-center rounded-xl bg-magenta px-6 font-bold text-white">Entrar</Link>}

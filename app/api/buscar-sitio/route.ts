@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { autorizarUsuario, pasaLimite, respuestaLimite } from "@/lib/apiAuth";
 import { registrar, avisar } from "@/lib/registro";
+import { MARCA } from "@/lib/marca";
 
 export const runtime = "nodejs";
 
@@ -97,7 +98,7 @@ async function conOsm(q: string): Promise<Sitio[]> {
   const r = await fetch(
     `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=es&q=${encodeURIComponent(q)}`,
     // Nominatim pide identificarse; sin User-Agent responde 403.
-    { headers: { "Accept-Language": "es", "User-Agent": "TardeosClub (info@gnerai.com)" } }
+    { headers: { "Accept-Language": "es", "User-Agent": `${MARCA.nombre} (info@gnerai.com)` } }
   );
   if (!r.ok) throw new Error(`OSM ${r.status}`);
   const j = await r.json();

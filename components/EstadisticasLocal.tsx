@@ -98,7 +98,7 @@ export default function EstadisticasLocal({ localId, enlace = (r: string) => r }
     { icon: Eye, label: "Visitas", valor: vistas },
     { icon: MousePointerClick, label: "Clics a comprar", valor: clics },
     { icon: Heart, label: "Guardados", valor: favoritos },
-    { icon: Ticket, label: "Apuntados", valor: inscripciones },
+    { icon: Ticket, label: "Confirmados", valor: inscripciones },
   ];
 
   const hayAlgo = vistas + clics + favoritos + inscripciones > 0;

@@ -10,6 +10,7 @@ import SiteNav from "@/components/SiteNav";
 import RegistrarSW from "@/components/RegistrarSW";
 import InstalarApp from "@/components/InstalarApp";
 import CapturaErrores from "@/components/CapturaErrores";
+import { MARCA } from "@/lib/marca";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -28,10 +29,10 @@ const dancing = Dancing_Script({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "TardeosClub — Tu comunidad tardícola",
+    default: `${MARCA.nombre} — Tu comunidad tardícola`,
     template: "%s",
   },
-  description: "El buscador de tardeos que va contigo. Sal, conecta y vive el tardeo.",
+  description: `El buscador de tardeos que va contigo. ${MARCA.lema}`,
   // Cae en cascada a todas las páginas. Las privadas ya lo llevan aparte, así
   // que ponerlo aquí solo afecta a las públicas mientras el dominio no sea el
   // definitivo. Ver INDEXABLE en lib/seo.ts.
@@ -43,9 +44,9 @@ export const metadata: Metadata = {
   icons: { icon: "/branding/icon-192.png", apple: "/branding/icon-512.png" },
   openGraph: {
     type: "website",
-    siteName: "TardeosClub",
-    title: "TardeosClub — Tu comunidad tardícola",
-    description: "El buscador de tardeos que va contigo. Sal, conecta y vive el tardeo.",
+    siteName: MARCA.nombre,
+    title: `${MARCA.nombre} — Tu comunidad tardícola`,
+    description: `El buscador de tardeos que va contigo. ${MARCA.lema}`,
     // 1200x630: el logo cuadrado salía recortado por los lados al compartir.
     images: [{ url: "/branding/og.png", width: 1200, height: 630 }],
   },

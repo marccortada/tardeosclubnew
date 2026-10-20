@@ -8,6 +8,7 @@ import {
   ArrowRight, Disc3, Store, PartyPopper, UserPlus, ClipboardList, BadgeCheck, LogIn,
   CalendarPlus, Users, LineChart, Images, FileText, Headphones, CalendarDays, Megaphone,
 } from "lucide-react";
+import { MARCA } from "@/lib/marca";
 
 /**
  * /unirse SIN sesión. Antes era una tarjeta casi vacía con "Crear cuenta o
@@ -36,8 +37,8 @@ const LOCAL: Contenido = {
   intro: "Con local fijo o montando eventos en sitios distintos: publicas tus tardeos y la gente que busca plan los encuentra.",
   beneficios: [
     { icono: <CalendarPlus size={22} aria-hidden />, titulo: "Publica tus tardeos", texto: "Sube el flyer y se rellenan los datos solos. Tú revisas y publicas." },
-    { icono: <Users size={22} aria-hidden />, titulo: "Mira quién se apunta", texto: "La lista de apuntados de cada tardeo, para saber cuánta gente esperar." },
-    { icono: <LineChart size={22} aria-hidden />, titulo: "Estadísticas", texto: "Cuántas visitas y apuntados tienen tus tardeos." },
+    { icono: <Users size={22} aria-hidden />, titulo: "Mira quién se apunta", texto: "La lista de asistentes de cada tardeo, para saber cuánta gente esperar." },
+    { icono: <LineChart size={22} aria-hidden />, titulo: "Estadísticas", texto: "Cuántas visitas y confirmados tienen tus tardeos." },
     { icono: <Images size={22} aria-hidden />, titulo: "Tu ficha con fotos y reseñas", texto: "Una página de tu local o marca con fotos, dirección y lo que opina la gente." },
   ],
   pasos: [
@@ -64,7 +65,7 @@ const DJ: Contenido = {
   etiqueta: "Para DJs",
   titulo: <>Que los locales te <span className="texto-oro">encuentren</span></>,
   frase: "Pon música a la tarde",
-  intro: "Tu perfil de DJ en el listado de TardeosClub: lo ven los tardícolas y los locales que buscan quién les pinche.",
+  intro: `Tu perfil de DJ en el listado de ${MARCA.nombre}: lo ven los tardícolas y los locales que buscan quién les pinche.`,
   beneficios: [
     { icono: <Disc3 size={22} aria-hidden />, titulo: "Tu ficha pública de DJ", texto: "Foto, estilos y biografía, en el listado de DJs de la web." },
     { icono: <Headphones size={22} aria-hidden />, titulo: "Sesiones y fotos", texto: "Enlaza tus sesiones y sube fotos para que se oiga y se vea cómo pinchas." },
@@ -181,7 +182,7 @@ function ElegirTipo() {
     <main className="mx-auto max-w-6xl px-4 pb-16 pt-8 md:px-8 md:pt-14">
       <p className="font-script text-[26px] text-magenta">Únete al club</p>
       <h1 className="text-[32px] font-extrabold leading-tight tracking-tight md:text-[44px]">
-        ¿Cómo vas a vivir <span className="bg-fiesta bg-clip-text text-transparent">TardeosClub</span>?
+        ¿Cómo vas a vivir <span className="bg-fiesta bg-clip-text text-transparent">{MARCA.nombre}</span>?
       </h1>
       <p className="mt-2 max-w-xl text-[17px] text-tinta-suave">Elige tu tipo de cuenta. Con la misma cuenta puedes tener local y perfil de DJ.</p>
 

@@ -320,7 +320,11 @@ silencio estado y orden de destacados). L8 oculta las 3 fichas de prueba.
 - **Pendiente de decidir (usuario)**: repo de GitHub PÚBLICO con el email del admin de prueba;
   servidor con entrada por contraseña de root, sin cortafuegos ni fail2ban (21.446 intentos en
   24 h); `.gitignore` sin `.env` ni `AUDITORIA_Y_PLAN.md` (el protector de comandos no dejó
-  editarlo); unificar nombres (Apuntados/Asistentes/Confirmados) y constante de marca.
+  editarlo).
+- **Remate**: marca en `lib/marca.ts` (+ `docs/CAMBIO_DE_MARCA.md`), nombres de asistencia
+  unificados (Asistentes / Confirmados / Lista de espera), lote 78 en /admin/salud, un solo h1
+  en Perfil, buscador de tardeos del registro sin reabrirse. Recorridas a 360 px y en oscuro
+  16 pantallas del tardícola y 34 del admin/local: sin desbordes ni errores.
 
 ---
 

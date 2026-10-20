@@ -14,6 +14,7 @@ import { traducirAuth as traducir, esCuentaInexistente } from "@/components/cuen
 import {
   Mail, Lock, Eye, EyeOff, PartyPopper, Disc3, Store, UserPlus, Check, Heart, BellRing, Ticket, KeyRound,
 } from "lucide-react";
+import { MARCA } from "@/lib/marca";
 
 type Rol = "tardicola" | "local" | "promotor" | "dj";
 type Modo = "login" | "signup";
@@ -471,7 +472,7 @@ function PanelMarca() {
       />
       <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-br from-magenta/85 via-fuchsia-700/75 to-purple-900/90" />
       <div className="flex h-full flex-col gap-5 p-6 sm:p-8 lg:p-10">
-        <Link href="/" aria-label="TardeosClub, inicio" className="w-fit">
+        <Link href="/" aria-label={`${MARCA.nombre}, inicio`} className="w-fit">
           <span className="grid h-14 w-14 place-items-center overflow-hidden rounded-full bg-white shadow-tarjeta">
             <Image src="/branding/logo-transp.png" alt="" width={120} height={70} className="h-auto w-11" />
           </span>

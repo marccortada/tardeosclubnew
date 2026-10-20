@@ -14,6 +14,7 @@ import { claseCampo } from "@/components/ui/Campo";
 import PanelFiltros, { CampoFiltro, claseFiltro, RangoFechas } from "@/components/panel/PanelFiltros";
 import { rangoTimestamp } from "@/lib/filtrosLista";
 import { Mail, MessageCircle, ExternalLink, UserRound, ChevronRight } from "lucide-react";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Bandeja de lo que la gente avisa con «¿Algo no funciona?» (lote 57).
@@ -237,10 +238,10 @@ function Detalle({ f, onCerrar, onGuardado }: { f: Fila; onCerrar: () => void; o
   const email = f.email_contacto ?? perfil?.email ?? null;
   const tel = telWhatsapp(perfil?.phone ?? null);
   const nombre = perfil?.display_name?.trim() || "";
-  const saludo = `Hola${nombre ? ` ${nombre.split(" ")[0]}` : ""}, te escribimos de TardeosClub por el aviso que nos mandaste`;
+  const saludo = `Hola${nombre ? ` ${nombre.split(" ")[0]}` : ""}, te escribimos de ${MARCA.nombre} por el aviso que nos mandaste`;
   const cita = f.mensaje.split("\n— Error:")[0].slice(0, 300);
   const mailto = email
-    ? `mailto:${email}?subject=${encodeURIComponent("Tu aviso en TardeosClub")}&body=${encodeURIComponent(`${saludo}:\n\n«${cita}»\n\n`)}`
+    ? `mailto:${email}?subject=${encodeURIComponent(`Tu aviso en ${MARCA.nombre}`)}&body=${encodeURIComponent(`${saludo}:\n\n«${cita}»\n\n`)}`
     : null;
   const wa = tel ? `https://wa.me/${tel}?text=${encodeURIComponent(`${saludo}: «${cita}». `)}` : null;
   const cambioNota = (nota.trim() || null) !== (f.nota_admin ?? null);

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Megaphone, ChevronRight, Star, MessageCircle, Mail, Check } from "lucide-react";
 import Hoja from "@/components/ui/Hoja";
 import { whatsappTardeos, emailTardeos } from "@/components/ServiciosExternos";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Pedir que destaquen un tardeo.
@@ -20,14 +21,14 @@ import { whatsappTardeos, emailTardeos } from "@/components/ServiciosExternos";
  */
 export function ContactoDestacar({ titulo }: { titulo?: string }) {
   const que = titulo ? `«${titulo}»` : "mis tardeos";
-  const mensaje = `Hola, quiero destacar ${que} en TardeosClub. ¿Qué opciones hay y cuánto cuesta?`;
+  const mensaje = `Hola, quiero destacar ${que} en ${MARCA.nombre}. ¿Qué opciones hay y cuánto cuesta?`;
   return (
     <div>
       <ul className="flex flex-col gap-3">
         {[
           "Sale en el bloque «Destacados» de la portada, antes que el resto de tardeos.",
           "Su tarjeta lleva la marca de destacado.",
-          "Lo activa el equipo de TardeosClub para las fechas que acordéis.",
+          `Lo activa el equipo de ${MARCA.nombre} para las fechas que acordéis.`,
         ].map((t) => (
           <li key={t} className="flex items-start gap-3 text-[15px]">
             <Check size={18} className="mt-0.5 shrink-0 text-ok" aria-hidden /> {t}

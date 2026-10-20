@@ -516,7 +516,7 @@ export default function FichaUsuario() {
       {/* Actividad */}
       <h2 className="mb-3 mt-8 text-xl font-bold">Actividad</h2>
       <div className="grid gap-4 lg:grid-cols-2">
-        <Bloque titulo="Inscripciones" icono={<Ticket size={18} aria-hidden />} n={inscripciones.total}>
+        <Bloque titulo="Asistencia" icono={<Ticket size={18} aria-hidden />} n={inscripciones.total}>
           <div className="mb-3">
             <Filtros<FiltroInscripcion> valor={filtroIns} onCambiar={setFiltroIns} opciones={[
               { clave: "todas", label: "Todas" },

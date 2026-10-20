@@ -34,7 +34,7 @@ async function pruebasNuevas(): Promise<Prueba[]> {
       () => supabase.from("popups").select("cta_texto,cta_url,imagen_url").limit(0)),
     // El 50 cambia permisos internos que no se ven desde fuera; lo que sí se
     // ve es si sus funciones responden.
-    mirar("Apuntados y métricas del local para el admin (lote 50)", "Pega supabase/50_panel_local_admin.sql",
+    mirar("Asistentes y métricas del local para el admin (lote 50)", "Pega supabase/50_panel_local_admin.sql",
       () => supabase.rpc("inscritos_de_local", { p_local: CERO })),
     Promise.resolve<Prueba>({
       nombre: "Borrar cuentas sin que lo bloquee la base (lote 52)", ok: true, sinComprobar: true,

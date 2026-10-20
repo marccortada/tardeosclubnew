@@ -10,6 +10,7 @@ import Tarjeta from "@/components/ui/Tarjeta";
 import Hoja from "@/components/ui/Hoja";
 import Aviso from "@/components/admin/Aviso";
 import { BellRing, Send, Users } from "lucide-react";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Misma regla que `urlInternaSegura` en el servidor: solo rutas de la propia
@@ -118,8 +119,8 @@ export default function AdminNotificaciones() {
                 placeholder="Remember en la Sala Blau desde las 18:00" className={claseCampo} />
             </Campo>
             <Campo etiqueta="Al tocarla, abre" htmlFor="pu-url"
-              error={urlMal ? "Tiene que ser una página de TardeosClub: empieza por «/» (por ejemplo /tardeos/123)." : null}
-              ayuda="Una página de TardeosClub. Copia la parte de la dirección que va después del dominio.">
+              error={urlMal ? `Tiene que ser una página de ${MARCA.nombre}: empieza por «/» (por ejemplo /tardeos/123).` : null}
+              ayuda={`Una página de ${MARCA.nombre}. Copia la parte de la dirección que va después del dominio.`}>
               <input id="pu-url" value={url} onChange={(e) => setUrl(e.target.value)} inputMode="url"
                 className={claseCampo} aria-invalid={urlMal} />
             </Campo>
@@ -152,7 +153,7 @@ export default function AdminNotificaciones() {
               <BellRing size={20} aria-hidden />
             </span>
             <div className="min-w-0">
-              <p className="text-[13px] text-white/70">TardeosClub · ahora</p>
+              <p className="text-[13px] text-white/70">{MARCA.nombre} · ahora</p>
               <p className="truncate font-bold leading-tight">{titulo || "Título de la notificación"}</p>
               <p className="text-[15px] text-white/85">{mensaje || "El mensaje que verán sin abrir la app."}</p>
             </div>

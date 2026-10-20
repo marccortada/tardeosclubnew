@@ -475,7 +475,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
             {tardeo.estado === "cancelado" && nApuntados > 0 && (
               <Boton variante="contorno" tamano="pequeno" className="mt-3"
                 onClick={() => { setHoja("avisar"); consultarCanales(); }}>
-                <BellRing size={16} aria-hidden /> Avisar a los {nApuntados} apuntados
+                <BellRing size={16} aria-hidden /> Avisar a los {nApuntados} confirmados
               </Boton>
             )}
           </div>
@@ -686,13 +686,13 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
         </p>
         {nApuntados > 0 && (
           <p className="mt-2 rounded-xl bg-aviso-fondo p-3 text-[15px] text-aviso">
-            Hay {nApuntados} {nApuntados === 1 ? "persona apuntada" : "personas apuntadas"}. Si al final no se hace, mejor despublícalo y avísales.
+            Hay {nApuntados} {nApuntados === 1 ? "persona confirmada" : "personas confirmadas"}. Si al final no se hace, mejor despublícalo y avísales.
           </p>
         )}
       </Hoja>
 
       <Hoja abierta={hoja === "cancelar" || hoja === "avisar"} onCerrar={() => !obrando && setHoja(null)}
-        titulo={hoja === "cancelar" ? "¿Cancelar este tardeo?" : "Avisar a los apuntados"}
+        titulo={hoja === "cancelar" ? "¿Cancelar este tardeo?" : "Avisar a los confirmados"}
         pie={
           <div className="flex gap-2">
             <Boton variante="contorno" ancho onClick={() => setHoja(null)} disabled={obrando}>Volver</Boton>
@@ -711,7 +711,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
           </p>
         )}
         {nApuntados === 0 ? (
-          hoja === "cancelar" && <p className="mt-2 text-[15px] text-tinta-suave">No hay nadie apuntado, así que no hay a quién avisar.</p>
+          hoja === "cancelar" && <p className="mt-2 text-[15px] text-tinta-suave">No hay nadie confirmado, así que no hay a quién avisar.</p>
         ) : !canales ? (
           <p className="mt-3 flex items-center gap-2 text-[15px] text-tinta-suave"><Loader2 size={16} className="animate-spin" aria-hidden /> Comprobando cómo avisar…</p>
         ) : (
@@ -721,18 +721,18 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
             {canales.error && hoja === "cancelar" ? (
               <p className="rounded-xl bg-aviso-fondo p-3 text-[15px] text-tinta">
                 No hemos podido comprobar cómo avisar ({canales.error}). Puedes cancelar igualmente y avisar después
-                desde este tardeo, o a mano con la lista de «Apuntados».
+                desde este tardeo, o a mano con la lista de «Asistentes».
               </p>
             ) : canales.error && !canales.email && !canales.push ? (
               // Falló la consulta: se enseña el error real y no «no está
               // configurado», que haría creer que falta algo en el servidor.
               <p role="alert" className="rounded-xl bg-error-fondo p-3 text-[15px] font-semibold text-error">
-                No hemos podido comprobar cómo avisar: {canales.error} Inténtalo de nuevo en un rato o avisa a mano con la lista de «Apuntados».
+                No hemos podido comprobar cómo avisar: {canales.error} Inténtalo de nuevo en un rato o avisa a mano con la lista de «Asistentes».
               </p>
             ) : !canales.email && !canales.push ? (
               <p className="rounded-xl bg-aviso-fondo p-3 text-[15px] text-tinta">
                 <b>El aviso automático no está configurado</b> (falta el envío de emails y de notificaciones en el servidor).
-                Avisa tú a {nApuntados === 1 ? "la persona apuntada" : `las ${nApuntados} personas apuntadas`}: tienes la lista en «Apuntados».
+                Avisa tú a {nApuntados === 1 ? "la persona confirmada" : `las ${nApuntados} personas confirmadas`}: tienes la lista en «Asistentes».
               </p>
             ) : (
               <>
@@ -740,7 +740,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
                   <label className="flex cursor-pointer items-start gap-3">
                     <input type="checkbox" checked={avisar} onChange={(e) => setAvisar(e.target.checked)} className="mt-1 h-5 w-5 accent-magenta" />
                     <span className="text-[15px]">
-                      <b>Avisar a {nApuntados === 1 ? "la persona apuntada" : `las ${nApuntados} personas apuntadas`}</b>
+                      <b>Avisar a {nApuntados === 1 ? "la persona confirmada" : `las ${nApuntados} personas confirmadas`}</b>
                     </span>
                   </label>
                 )}

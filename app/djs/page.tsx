@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { metadataPublica } from "@/lib/seo";
 import FeedDjs from "./FeedDjs";
+import { MARCA } from "@/lib/marca";
 
 // Con canónica e imagen al compartir (helper común de lib/seo.ts).
 export const metadata: Metadata = metadataPublica(
-  "DJs · TardeosClub",
+  `DJs · ${MARCA.nombre}`,
   "Descubre DJs y sus sets, síguelos y mira dónde pinchan.",
   "/djs"
 );

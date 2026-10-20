@@ -9,6 +9,7 @@ import { entrarYVolver } from "@/lib/volver";
 import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
 import { BadgeCheck, Loader2, ShieldQuestion, Check } from "lucide-react";
+import { MARCA } from "@/lib/marca";
 
 type Estado = "cargando" | "puede" | "pendiente" | "enviada" | "sinSesion" | "sinTabla";
 
@@ -108,7 +109,7 @@ export default function ReclamarFicha({
         <ShieldQuestion size={20} className="shrink-0 text-magenta" /> ¿Eres el responsable de este perfil?
       </p>
       <p className="mt-1 text-tinta-suave">
-        Ya te estamos publicando en TardeosClub. Reclámalo y podrás subir tus tardeos, editar la
+        Ya te estamos publicando en {MARCA.nombre}. Reclámalo y podrás subir tus tardeos, editar la
         ficha y ver quién te sigue.
       </p>
 

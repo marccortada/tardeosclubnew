@@ -7,6 +7,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Pause, Play, X, Loader2, Radio } from "lucide-react";
 import { ocultaBarraInferior } from "@/lib/rutasPanel";
 import { plataformaDe, type Plataforma } from "@/lib/sets";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Reproductor persistente (dossier 2.0, pág. 7):
@@ -218,7 +219,7 @@ export function ReproductorProvider({ children }: { children: ReactNode }) {
     if (!actual) { ms.metadata = null; return; }
     try {
       ms.metadata = new MediaMetadata({
-        title: actual.titulo, artist: actual.autor ?? "", album: actual.tipo === "nexo" ? "Nexo Radio" : "TardeosClub",
+        title: actual.titulo, artist: actual.autor ?? "", album: actual.tipo === "nexo" ? "Nexo Radio" : MARCA.nombre,
         artwork: actual.portada ? [{ src: actual.portada, sizes: "512x512" }] : [],
       });
       ms.playbackState = sonando ? "playing" : "paused";

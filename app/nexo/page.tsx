@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { metadataPublica } from "@/lib/seo";
 import { Suspense } from "react";
 import NexoRadioPagina from "./NexoRadioPagina";
+import { MARCA } from "@/lib/marca";
 
 // Con canónica e imagen al compartir (helper común de lib/seo.ts).
 export const metadata: Metadata = metadataPublica(
-  "Nexo Radio · TardeosClub",
+  `Nexo Radio · ${MARCA.nombre}`,
   "El ritmo de tu tarde. Radio y comunidad musical.",
   "/nexo"
 );

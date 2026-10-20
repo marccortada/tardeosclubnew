@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import { metadataPublica } from "@/lib/seo";
 import PaginaLegal from "@/components/PaginaLegal";
 import { RESPONSABLE, SUBENCARGADOS } from "@/lib/legal";
+import { MARCA } from "@/lib/marca";
 
 // Con canónica e imagen al compartir (helper común de lib/seo.ts).
 export const metadata: Metadata = metadataPublica(
-  "Política de privacidad — TardeosClub",
-  "Qué datos guardamos en TardeosClub, para qué, y cómo puedes borrarlos.",
+  `Política de privacidad — ${MARCA.nombre}`,
+  `Qué datos guardamos en ${MARCA.nombre}, para qué, y cómo puedes borrarlos.`,
   "/legal/privacidad"
 );
 
@@ -227,7 +228,7 @@ export default function Privacidad() {
 
       <h2>9. Menores</h2>
       <p>
-        TardeosClub es para mayores de 18 años. Si detectamos una cuenta de un menor, la
+        {MARCA.nombre} es para mayores de 18 años. Si detectamos una cuenta de un menor, la
         eliminamos.
       </p>
 

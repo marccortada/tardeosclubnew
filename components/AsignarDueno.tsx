@@ -4,6 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { UserPlus, UserMinus, Loader2, X, Link2, Copy, Check, MessageCircle } from "lucide-react";
 import { claseCampo } from "@/components/ui/Campo";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Enlaza una ficha creada por el admin (local o DJ) con la cuenta de su dueño.
@@ -174,7 +175,7 @@ export default function AsignarDueno({
               {copiado ? <Check size={16} aria-hidden /> : <Copy size={16} aria-hidden />} {copiado ? "Copiado" : "Copiar"}
             </button>
             <a
-              href={`https://wa.me/?text=${encodeURIComponent(`Hola. Este es tu enlace para gestionar tu ficha en TardeosClub (entra con tu cuenta o créala): ${enlace}`)}`}
+              href={`https://wa.me/?text=${encodeURIComponent(`Hola. Este es tu enlace para gestionar tu ficha en ${MARCA.nombre} (entra con tu cuenta o créala): ${enlace}`)}`}
               target="_blank" rel="noopener noreferrer"
               className={`${btn} border border-linea-fuerte bg-white hover:bg-marfil-100`}
             >

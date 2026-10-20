@@ -12,6 +12,7 @@ import { estilosDe } from "@/components/DjCard";
 import Playlist from "@/components/Playlist";
 import type { Tardeo } from "@/lib/types";
 import PerfilDj from "./PerfilDj";
+import { MARCA } from "@/lib/marca";
 
 type Cargado = {
   dj: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -47,7 +48,7 @@ export default function FichaOcultaPropia({ id, volver }: { id: string; volver: 
 
   // El título lo puso el servidor («DJ no encontrado»): se corrige al cargarla.
   const nombre = typeof estado === "object" ? String(estado.dj.nombre_artistico ?? "") : "";
-  useEffect(() => { if (nombre) document.title = `${nombre} · TardeosClub`; }, [nombre]);
+  useEffect(() => { if (nombre) document.title = `${nombre} · ${MARCA.nombre}`; }, [nombre]);
 
   // Ni dueño ni admin: el mismo 404 en español que cualquier ruta inexistente.
   if (estado === "nada") notFound();

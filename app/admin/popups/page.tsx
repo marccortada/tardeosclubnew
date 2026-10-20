@@ -17,6 +17,7 @@ import Hoja from "@/components/ui/Hoja";
 import Tarjeta from "@/components/ui/Tarjeta";
 import Aviso from "@/components/admin/Aviso";
 import { Plus, Pencil, Pause, Play, Trash2, ImagePlus, X, ArrowLeft } from "lucide-react";
+import { MARCA } from "@/lib/marca";
 
 const TIPOS = ["Oferta", "Promo", "Noticia"];
 
@@ -163,7 +164,7 @@ export default function AdminPopups() {
   // ---------- Validación ----------
   const errores = (f: Form): string | null => {
     if (!f.titulo.trim()) return "Pon un título.";
-    if (!urlCtaValida(f.ctaUrl)) return "El enlace del botón debe empezar por «/» (una página de TardeosClub) o por «https://».";
+    if (!urlCtaValida(f.ctaUrl)) return `El enlace del botón debe empezar por «/» (una página de ${MARCA.nombre}) o por «https://».`;
     if (f.desde && f.hasta && new Date(f.hasta) <= new Date(f.desde)) return "La fecha de fin tiene que ser posterior a la de inicio.";
     return null;
   };
@@ -314,7 +315,7 @@ export default function AdminPopups() {
                     placeholder={CTA_POR_DEFECTO.texto} className={claseCampo} disabled={hayLote49 === false} />
                 </Campo>
                 <Campo etiqueta="A dónde lleva" htmlFor="pp-url"
-                  error={urlMal ? "Empieza por «/» (página de TardeosClub) o por «https://»." : null}
+                  error={urlMal ? `Empieza por «/» (página de ${MARCA.nombre}) o por «https://».` : null}
                   ayuda={`Ej.: /tardeos/123 o https://… Vacío: ${CTA_POR_DEFECTO.url}.`}>
                   <input id="pp-url" value={form.ctaUrl} onChange={(e) => cambiar("ctaUrl", e.target.value)} inputMode="url"
                     placeholder={CTA_POR_DEFECTO.url} className={claseCampo} disabled={hayLote49 === false} aria-invalid={urlMal} />

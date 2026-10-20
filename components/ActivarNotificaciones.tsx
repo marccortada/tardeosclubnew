@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import { Bell, BellRing, BellOff, Loader2, Share } from "lucide-react";
 import { claseBoton } from "@/components/Boton";
+import { MARCA } from "@/lib/marca";
 
 /**
  * El navegador solo enseña el permiso de notificaciones si lo pide un gesto
@@ -89,7 +90,7 @@ export default function ActivarNotificaciones() {
       <div className="flex items-start gap-3 rounded-2xl border border-linea bg-white p-4">
         <Share size={22} className="mt-0.5 shrink-0 text-magenta" />
         <p className="text-[15px] text-tinta-suave">
-          Para recibir avisos de tardeos en tu iPhone, añade TardeosClub a tu pantalla
+          Para recibir avisos de tardeos en tu iPhone, añade {MARCA.nombre} a tu pantalla
           de inicio: toca <b>Compartir</b> y luego <b>«Añadir a pantalla de inicio»</b>.
           Al abrirla desde ahí podrás activar las notificaciones.
         </p>

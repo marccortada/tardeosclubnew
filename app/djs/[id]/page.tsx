@@ -13,6 +13,7 @@ import ContenidoPublicoDj from "@/components/ContenidoPublicoDj";
 import Resenas from "@/components/Resenas";
 import ReclamarFicha from "@/components/ReclamarFicha";
 import Playlist from "@/components/Playlist";
+import { MARCA } from "@/lib/marca";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +23,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const dj = await getDjPublico(id);
   // Sin ficha pública (no existe u oculta): que no se indexe esta URL.
-  if (!dj) return { title: "DJ no encontrado · TardeosClub", robots: { index: false } };
+  if (!dj) return { title: `DJ no encontrado · ${MARCA.nombre}`, robots: { index: false } };
   const estilos = estilosDe(dj.estilos);
-  const desc = descripcionMeta(`${dj.nombre_artistico}${estilos.length ? ` · ${estilos.join(", ")}` : ""}. Escucha sus sets y mira dónde pincha en TardeosClub.`);
+  const desc = descripcionMeta(`${dj.nombre_artistico}${estilos.length ? ` · ${estilos.join(", ")}` : ""}. Escucha sus sets y mira dónde pincha en ${MARCA.nombre}.`);
   return {
-    title: `${dj.nombre_artistico} · TardeosClub`,
+    title: `${dj.nombre_artistico} · ${MARCA.nombre}`,
     description: desc,
     alternates: { canonical: urlAbsoluta(`/djs/${id}`) },
     openGraph: { title: dj.nombre_artistico, description: desc, images: [dj.avatar_url ? { url: dj.avatar_url } : OG_POR_DEFECTO], url: urlAbsoluta(`/djs/${id}`), type: "website" },

@@ -10,6 +10,7 @@ import { getLocalById } from "@/lib/tardeos";
 import { LogoLocal, tipoDeLocal } from "@/components/LocalCard";
 import { optimizable } from "@/lib/fotos";
 import { claseBoton } from "@/components/Boton";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Ficha de un local que el servidor no ve: o no existe o aún no está publicada.
@@ -38,7 +39,7 @@ export default function FichaNoPublicaPropia({ id }: { id: string }) {
   }, [id, user, loading]);
 
   const nombre = typeof estado === "object" ? String(estado.nombre ?? "") : "";
-  useEffect(() => { if (nombre) document.title = `${nombre} (vista previa) · TardeosClub`; }, [nombre]);
+  useEffect(() => { if (nombre) document.title = `${nombre} (vista previa) · ${MARCA.nombre}`; }, [nombre]);
 
   if (estado === "nada") notFound();
   if (estado === "cargando") {

@@ -16,6 +16,7 @@ import { Etiqueta } from "@/components/ui/Chip";
 import Aviso from "@/components/admin/Aviso";
 import { Store, Disc3, Loader2, Power, PowerOff } from "lucide-react";
 import PanelFiltros, { CampoFiltro, claseFiltro, SelectorOrden } from "@/components/panel/PanelFiltros";
+import { MARCA } from "@/lib/marca";
 
 type Rol = "local" | "dj";
 type Filtro = "todas" | "activa" | "impago" | "sin_suscripcion" | "cancelada";
@@ -429,7 +430,7 @@ export default function AdminSuscripciones() {
           <div className="flex flex-col gap-3 text-base">
             <p>Si las activas, <strong>en cuanto guardes</strong>:</p>
             <ul className="list-disc space-y-1 pl-5">
-              <li>Los locales en <strong>Basic</strong> (hoy, casi todos) dejan de enseñar su logo en el mapa y su sello de verificado: llevarán la chincheta de TardeosClub.</li>
+              <li>Los locales en <strong>Basic</strong> (hoy, casi todos) dejan de enseñar su logo en el mapa y su sello de verificado: llevarán la chincheta de {MARCA.nombre}.</li>
               <li>Lo que cada ficha puede usar (logo, sello y las funciones de pago del panel) pasa a depender del plan y del estado de pago marcados aquí.</li>
               <li>Nadie recibe un cobro: no hay pasarela. Pero lo que ve el público cambia para todos a la vez.</li>
             </ul>

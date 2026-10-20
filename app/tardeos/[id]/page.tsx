@@ -21,17 +21,18 @@ import { sinMarcas } from "@/lib/texto";
 import { instantesTardeo } from "@/lib/avisos";
 import type { Tardeo } from "@/lib/types";
 import { ArrowLeft, CalendarDays, MapPin, Navigation, Tag, Ban, History, Star, ArrowRight } from "lucide-react";
+import { MARCA } from "@/lib/marca";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const tardeo = await getTardeoById(id);
-  if (!tardeo) return { title: "Tardeo no encontrado · TardeosClub" };
-  const desc = descripcionMeta(`${formatFecha(tardeo.fecha)} · ${tardeo.local.nombre} (${tardeo.zona})${tardeo.estilo ? ` · ${tardeo.estilo}` : ""}. Descúbrelo en TardeosClub.`);
+  if (!tardeo) return { title: `Tardeo no encontrado · ${MARCA.nombre}` };
+  const desc = descripcionMeta(`${formatFecha(tardeo.fecha)} · ${tardeo.local.nombre} (${tardeo.zona})${tardeo.estilo ? ` · ${tardeo.estilo}` : ""}. Descúbrelo en ${MARCA.nombre}.`);
   const img = flyerSrc(tardeo);
   return {
-    title: `${tardeo.titulo} · TardeosClub`,
+    title: `${tardeo.titulo} · ${MARCA.nombre}`,
     description: desc,
     // Sin esto heredaría la canónica del listado (app/tardeos/layout.tsx).
     alternates: { canonical: urlAbsoluta(`/tardeos/${id}`) },

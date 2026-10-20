@@ -271,6 +271,12 @@ export async function revisarSalud(): Promise<{ pruebas: Prueba[]; datos: Record
       const { error } = await supabase.rpc("lista_de_tardeo", { p_tardeo: "00000000-0000-0000-0000-000000000000" });
       return { error: existeFuncion(error) };
     }),
+    // Lote 78: los emails y los datos de cobro de las fichas se piden por esta
+    // función (lib/privados.ts). Sin ella, el código lee las columnas como antes.
+    comprobar("Datos privados de las fichas (lote 78)", "Aplica supabase/PEGAR_78.sql", async () => {
+      const { error } = await supabase.rpc("datos_privados_locales", { p_ids: [] });
+      return { error: existeFuncion(error) };
+    }),
   ]);
 
   // Lotes que solo crean disparadores, restricciones o políticas: no se ven

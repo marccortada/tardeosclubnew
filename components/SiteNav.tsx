@@ -9,6 +9,7 @@ import { useRoles } from "@/lib/permisos";
 import { Campana } from "@/components/CabeceraApp";
 import { esRutaPanel, esRutaPanelConSesion } from "@/lib/rutasPanel";
 import { usePortal } from "@/components/cuenta/usePortal";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Los enlaces de la cabecera, los mismos que tenía tardeosclub.com. «Mis
@@ -46,9 +47,9 @@ export default function SiteNav() {
     <header className="sticky top-0 z-[900] hidden border-b border-linea bg-superficie/95 backdrop-blur-md md:block">
       <div className="mx-auto flex h-[76px] max-w-6xl items-center justify-between gap-4 px-6 lg:px-8">
         {/* Logo redondo, como en la web de siempre. */}
-        <Link href="/" aria-label="TardeosClub, inicio" className="shrink-0">
+        <Link href="/" aria-label={`${MARCA.nombre}, inicio`} className="shrink-0">
           <span className="grid h-14 w-14 place-items-center overflow-hidden rounded-full border border-linea bg-white shadow-tarjeta">
-            <Image src="/branding/logo-transp.png" alt="TardeosClub" width={150} height={90} priority className="h-auto w-12" />
+            <Image src="/branding/logo-transp.png" alt={MARCA.nombre} width={150} height={90} priority className="h-auto w-12" />
           </span>
         </Link>
 

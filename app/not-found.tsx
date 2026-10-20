@@ -2,9 +2,10 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { CalendarDays, Home, SearchX } from "lucide-react";
 import { claseBoton } from "@/components/Boton";
+import { MARCA } from "@/lib/marca";
 
 export const metadata: Metadata = {
-  title: "Página no encontrada · TardeosClub",
+  title: `Página no encontrada · ${MARCA.nombre}`,
   robots: { index: false },
 };
 

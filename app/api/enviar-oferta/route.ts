@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { esAdminGlobal, pasaLimite, respuestaLimite, tokenDe } from "@/lib/apiAuth";
 import { registrar } from "@/lib/registro";
+import { MARCA } from "@/lib/marca";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -11,7 +12,7 @@ export async function POST(req: Request) {
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
   const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const FROM = process.env.RESEND_FROM || "TardeosClub <onboarding@resend.dev>";
+  const FROM = process.env.RESEND_FROM || `${MARCA.nombre} <onboarding@resend.dev>`;
 
   if (!RESEND_API_KEY) return NextResponse.json({ error: "Falta RESEND_API_KEY en el servidor." }, { status: 500 });
   if (!SERVICE_ROLE || !URL) return NextResponse.json({ error: "Falta SUPABASE_SERVICE_ROLE_KEY en el servidor." }, { status: 500 });
@@ -93,13 +94,13 @@ export async function POST(req: Request) {
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto">
       <div style="background:linear-gradient(135deg,#FF3DCF,#FAC72E);padding:28px;border-radius:20px 20px 0 0;color:#fff">
-        <p style="margin:0;font-weight:800;letter-spacing:.5px">TARDEOSCLUB · OFERTA</p>
+        <p style="margin:0;font-weight:800;letter-spacing:.5px">${MARCA.nombre.toUpperCase()} · OFERTA</p>
         <h1 style="margin:6px 0 0;font-size:26px">${escapeHtml(titulo)}</h1>
       </div>
       <div style="background:#fff;padding:24px;border:1px solid #eee;border-top:0;border-radius:0 0 20px 20px">
         <p style="font-size:16px;color:#2A1721;white-space:pre-line">${escapeHtml(mensaje)}</p>
-        <a href="https://tardeosclub.com" style="display:inline-block;margin-top:16px;background:#D61AA8;color:#fff;text-decoration:none;font-weight:800;padding:12px 22px;border-radius:14px">Ir a TardeosClub</a>
-        <p style="margin-top:20px;font-size:12px;color:#999">Recibes este email por ser local de TardeosClub. Sal, conecta y vive el tardeo.</p>
+        <a href="https://${MARCA.dominio}" style="display:inline-block;margin-top:16px;background:#D61AA8;color:#fff;text-decoration:none;font-weight:800;padding:12px 22px;border-radius:14px">Ir a ${MARCA.nombre}</a>
+        <p style="margin-top:20px;font-size:12px;color:#999">Recibes este email por ser local de ${MARCA.nombre}. ${MARCA.lema}</p>
       </div>
     </div>`;
 
@@ -110,7 +111,7 @@ export async function POST(req: Request) {
       const chunk = emails.slice(i, i + 100).map((to) => ({
         from: FROM,
         to: [to],
-        subject: `TardeosClub · ${titulo}`,
+        subject: `${MARCA.nombre} · ${titulo}`,
         html,
       }));
       const { error } = await resend.batch.send(chunk);
