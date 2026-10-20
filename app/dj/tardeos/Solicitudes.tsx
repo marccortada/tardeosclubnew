@@ -8,6 +8,7 @@ import { Etiqueta } from "@/components/ui/Chip";
 import Aviso from "@/components/admin/Aviso";
 import { Filtros, useDiferido } from "@/components/panel/Paginacion";
 import { supabase } from "@/lib/supabase";
+import { mensajeAmable } from "@/lib/mensajeError";
 import { faltaLote68, hoyISO } from "@/lib/tardeos";
 import { formatFecha } from "@/lib/formato";
 
@@ -52,7 +53,7 @@ export default function SolicitudesDj({ djId }: { djId: string }) {
     if (estadoF !== "todas") q = q.eq("estado", estadoF);
     // Se pide una de más para saber si hay más sin contar todo.
     const { data, error } = await q.order("created_at", { ascending: false }).order("id").limit(tope + 1);
-    if (error) { setFalta(faltaLote68(error)); setLista([]); if (!faltaLote68(error)) setMsg({ tono: "error", texto: error.message }); return; }
+    if (error) { setFalta(faltaLote68(error)); setLista([]); if (!faltaLote68(error)) setMsg({ tono: "error", texto: mensajeAmable(error) }); return; }
     const filas = (data ?? []) as unknown as Sol[];
     setHayMas(filas.length > tope);
     setLista(filas.slice(0, tope));
@@ -78,7 +79,7 @@ export default function SolicitudesDj({ djId }: { djId: string }) {
     setMsg(null);
     const { error } = await supabase.from("dj_solicitudes").insert({ tipo: "vinculo", dj_id: djId, tardeo_id: e.id });
     if (error) {
-      setMsg({ tono: "error", texto: error.code === "23505" ? "Ya tienes una solicitud pendiente para ese evento." : faltaLote68(error) ? "Falta el lote 68." : error.message });
+      setMsg({ tono: "error", texto: error.code === "23505" ? "Ya tienes una solicitud pendiente para ese evento." : faltaLote68(error) ? "Esta sección aún no está disponible." : mensajeAmable(error) });
       return;
     }
     setMsg({ tono: "ok", texto: `Solicitud enviada al organizador de «${e.titulo}». Te avisaremos cuando responda.` });
@@ -93,7 +94,7 @@ export default function SolicitudesDj({ djId }: { djId: string }) {
       tipo: "propuesta", dj_id: djId, propuesta: { ...p, titulo: p.titulo.trim(), lugar: p.lugar.trim() }, mensaje: p.nota.trim() || null,
     });
     setEnviando(false);
-    if (error) { setMsg({ tono: "error", texto: faltaLote68(error) ? "Falta el lote 68." : error.message }); return; }
+    if (error) { setMsg({ tono: "error", texto: faltaLote68(error) ? "Esta sección aún no está disponible." : mensajeAmable(error) }); return; }
     setMsg({ tono: "ok", texto: "Propuesta enviada. El equipo la revisa y, si encaja, la publica." });
     setP({ titulo: "", fecha: "", hora: "", lugar: "", enlace: "", nota: "" }); setProponer(false);
     void cargar();
@@ -101,11 +102,11 @@ export default function SolicitudesDj({ djId }: { djId: string }) {
 
   const retirar = async (s: Sol) => {
     const { error } = await supabase.rpc("resolver_solicitud_dj", { p_id: s.id, p_estado: "retirada", p_nota: null });
-    if (error) { setMsg({ tono: "error", texto: error.message }); return; }
+    if (error) { setMsg({ tono: "error", texto: mensajeAmable(error) }); return; }
     void cargar();
   };
 
-  if (falta) return <Aviso tono="aviso">Solicitar vincularte a eventos llegará en breve (falta el lote 68).</Aviso>;
+  if (falta) return <Aviso tono="aviso">Esta sección aún no está disponible.</Aviso>;
 
   return (
     <div className="flex flex-col gap-5">

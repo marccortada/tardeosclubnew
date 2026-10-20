@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { mensajeAmable } from "./mensajeError";
 
 /**
  * Encuesta "¿Qué tal el tardeo?" (dossier 2.0 pág. 10, lote 67).
@@ -39,7 +40,7 @@ export async function enviarEncuesta(tardeoId: string, r: RespuestaEncuesta): Pr
     p_tardeo: tardeoId, p_valoracion: r.valoracion, p_musica: r.musica, p_ambiente: r.ambiente,
     p_ropa: r.ropa, p_edad: r.edad, p_volverias: r.volverias, p_comentario: r.comentario.trim() || null,
   });
-  if (error) throw new Error(faltaLote(error) ? "Falta el lote 67 en la base de datos." : error.message);
+  if (error) throw new Error(faltaLote(error) ? "Esta sección aún no está disponible." : mensajeAmable(error));
 }
 
 export type ValoracionPublica = { valoracion: number; comentario: string | null; alias: string; tardeo_id: string; created_at: string };

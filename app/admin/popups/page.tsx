@@ -359,7 +359,7 @@ export default function AdminPopups() {
 
           <div className="lg:sticky lg:top-4 lg:self-start">
             <p className="mb-2 text-[15px] font-semibold text-tinta-suave">Vista previa</p>
-            <div className="grid place-items-center rounded-2xl bg-tinta/50 p-4">
+            <div className="grid place-items-center rounded-2xl bg-noche/60 p-4">
               <TarjetaPopup previa popup={{
                 titulo: form.titulo, mensaje: form.mensaje, tipo: form.tipo,
                 cta_texto: hayLote49 === false ? null : form.ctaTexto,

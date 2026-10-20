@@ -122,17 +122,17 @@ export default function ReclamarFicha({
         </button>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
-          <input
+          <input aria-label={tipo === "local" ? "Tu relación con el local" : "Tu relación con el DJ"}
             value={cargo} onChange={(e) => setCargo(e.target.value)}
             placeholder={tipo === "local" ? "¿Qué eres del local? Propietario, encargado…" : "¿Eres tú? ¿Su representante?"}
             className={claseCampo}
           />
-          <input
+          <input aria-label="Teléfono de contacto"
             value={telefono} onChange={(e) => setTelefono(e.target.value)}
             placeholder="Teléfono de contacto (para verificarlo)"
             className={claseCampo}
           />
-          <textarea
+          <textarea aria-label="Mensaje (opcional)"
             value={mensaje} onChange={(e) => setMensaje(e.target.value)} rows={2}
             placeholder="Lo que quieras contarnos (opcional)"
             className={claseCampo}

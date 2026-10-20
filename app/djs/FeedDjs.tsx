@@ -56,6 +56,16 @@ export default function FeedDjs() {
   // lanzaba alta y baja a la vez y el contador acababa descuadrado.
   const marcando = useRef(new Set<string>());
 
+  // Aviso breve dentro de la pantalla (fallos al dar ♥/guardar, «Enlace
+  // copiado»). Antes era alert(): bloquea la app, en la PWA instalada sale con
+  // la URL del sitio de título y no se puede leer bien con letra grande.
+  const [aviso, setAviso] = useState("");
+  useEffect(() => {
+    if (!aviso) return;
+    const t = setTimeout(() => setAviso(""), 3500);
+    return () => clearTimeout(t);
+  }, [aviso]);
+
   // ADN del usuario (si lo tiene). Sin sesión, sin ADN: orden general.
   useEffect(() => {
     if (loading) return;
@@ -117,13 +127,13 @@ export default function FeedDjs() {
         const r = await gustarSetDetalle(t.set_id, user.id, v);
         // Fallo: todo como estaba. "Ya estaba así": el ♥ queda, pero el
         // contador de la base no se movió, así que tampoco el de la tarjeta.
-        if (r.error) { cambiar(t.dj_id, { me_gusta: t.me_gusta, set_likes: t.set_likes }); alert(r.error); }
+        if (r.error) { cambiar(t.dj_id, { me_gusta: t.me_gusta, set_likes: t.set_likes }); setAviso(r.error); }
         else if (!r.cambio) cambiar(t.dj_id, { me_gusta: v, set_likes: t.set_likes });
       } else {
         const v = !t.guardado;
         cambiar(t.dj_id, { guardado: v });
         const r = await guardarSetDetalle(t.set_id, user.id, v);
-        if (r.error) { cambiar(t.dj_id, { guardado: t.guardado }); alert(r.error); }
+        if (r.error) { cambiar(t.dj_id, { guardado: t.guardado }); setAviso(r.error); }
       }
     } finally {
       marcando.current.delete(clave);
@@ -134,7 +144,7 @@ export default function FeedDjs() {
     const url = `${window.location.origin}/djs/${t.dj_id}`;
     try {
       if (navigator.share) await navigator.share({ title: t.nombre, text: `Escucha a ${t.nombre} en TardeosClub`, url });
-      else { await navigator.clipboard.writeText(url); alert("Enlace copiado"); }
+      else { await navigator.clipboard.writeText(url); setAviso("Enlace copiado"); }
     } catch { /* cancelado */ }
   }
 
@@ -146,6 +156,11 @@ export default function FeedDjs() {
       {/* La pantalla es un feed a sangre sin título visible: el h1 es para
           lectores de pantalla y buscadores. */}
       <h1 className="sr-only">DJs</h1>
+      {/* Región viva siempre montada: si se crea a la vez que el texto, algunos
+          lectores de pantalla no lo anuncian. */}
+      <div role="status" aria-live="polite" className="pointer-events-none absolute inset-x-4 top-[calc(max(12px,env(safe-area-inset-top))+56px)] z-30 flex justify-center">
+        {aviso && <p className="max-w-sm rounded-xl bg-noche/90 px-4 py-3 text-center text-[15px] font-semibold text-white shadow-elevada">{aviso}</p>}
+      </div>
       {/* Pestañas sobre el feed */}
       <div role="tablist" aria-label="Feed de DJs" className="absolute inset-x-0 top-0 z-20 flex justify-center gap-6 bg-gradient-to-b from-black/60 to-transparent pb-6 pt-[max(12px,env(safe-area-inset-top))]">
         {([["parati", "Para ti"], ["siguiendo", "Siguiendo"]] as const).map(([k, l]) => (

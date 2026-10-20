@@ -9,7 +9,7 @@ import { Check, Heart, ExternalLink, Loader2, Clock, MessageCircle } from "lucid
 import type { Tardeo } from "@/lib/types";
 import { useAuth } from "@/lib/useAuth";
 import { esFavorito, setFavorito } from "@/lib/tardeos";
-import { asistire, retirarAsistencia, getMiAsistencia, getQuienesVan, type MiAsistencia, type QuienesVan } from "@/lib/tardicola";
+import { LISTA_LLENA, asistire, retirarAsistencia, getMiAsistencia, getQuienesVan, type MiAsistencia, type QuienesVan } from "@/lib/tardicola";
 import { medir } from "@/lib/metricas";
 
 /**
@@ -99,7 +99,7 @@ export default function AccionTardeo({ tardeo, activo = true }: { tardeo: Tardeo
     if (confirmado || enEspera) return;
     setOcupado(true); setAviso(""); setHecho("");
     const { r, error } = await asistire(user.id, tardeo.id);
-    if (error) setAviso(error === "Lista llena. La lista de espera llega con el lote 64." ? error : "No se pudo guardar tu Asistiré. Inténtalo otra vez.");
+    if (error) setAviso(error === LISTA_LLENA ? error : "No se pudo guardar tu Asistiré. Inténtalo otra vez.");
     else if (r) {
       setMia(r);
       medir("inscripcion", { tardeoId: tardeo.id, detalle: r.estado ?? undefined });

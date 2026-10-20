@@ -284,7 +284,9 @@ export default function AdminCrm() {
  * que una clase escrita en `lib/` se purgaría del CSS sin avisar.
  */
 const COLOR: Record<EstadoCrm, string> = {
-  no_contactado: "border-tinta-suave bg-tinta-suave text-white",
+  // Gris fijo (no tinta-suave, que en oscuro se aclara y dejaba la letra
+  // blanca sobre gris claro): blanco sobre #57534E da ~7,6:1 en los dos temas.
+  no_contactado: "border-[#57534E] bg-[#57534E] text-white",
   contactado: "border-magenta bg-magenta text-white",
   interesado: "border-ok bg-ok text-white",
   no_interesado: "border-linea-fuerte bg-marfil-200 text-tinta",

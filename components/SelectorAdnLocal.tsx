@@ -83,8 +83,9 @@ export default function SelectorAdnLocal({
           <input
             value={otroTipo} onChange={(e) => setOtroTipo(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (otroTipo.trim()) { set("tipoLocal", otroTipo.trim()); setOtroTipo(""); } } }}
-            placeholder="Otro…"
-            className="min-w-0 flex-1 rounded-xl border border-linea-fuerte bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-magenta"
+            placeholder="Otro…" aria-label="Otro tipo de local"
+            // text-base (16 px): con menos, Safari de iPhone hace zoom al tocar.
+            className="min-w-0 flex-1 rounded-xl border border-linea-fuerte bg-white px-4 py-2.5 text-base font-semibold outline-none focus:border-magenta"
           />
         </div>
       </Bloque>
@@ -94,7 +95,7 @@ export default function SelectorAdnLocal({
           <input
             value={adn.aforo}
             onChange={(e) => set("aforo", e.target.value.replace(/[^0-9]/g, ""))}
-            inputMode="numeric" placeholder="Ej: 250"
+            inputMode="numeric" placeholder="Ej: 250" aria-label="Aforo (personas)"
             className="w-36 rounded-xl border border-linea-fuerte bg-white px-4 py-2.5 font-semibold outline-none focus:border-magenta"
           />
           {tamano && (
@@ -147,7 +148,7 @@ export default function SelectorAdnLocal({
         <input
           value={adn.horarioHabitual}
           onChange={(e) => set("horarioHabitual", e.target.value)}
-          placeholder="Vie a Dom, 18:00–02:00"
+          placeholder="Vie a Dom, 18:00–02:00" aria-label="Horario habitual"
           className="w-full rounded-xl border border-linea-fuerte bg-white px-4 py-2.5 font-semibold outline-none focus:border-magenta"
         />
       </Bloque>

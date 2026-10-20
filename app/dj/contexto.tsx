@@ -99,7 +99,7 @@ export type TardeoDj = {
 
 function Pantalla({ children }: { children: ReactNode }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-marfil px-4">
+    <main className="flex min-h-dvh items-center justify-center bg-marfil px-4">
       <div className="w-full max-w-md rounded-2xl border border-linea bg-white p-6 text-center shadow-tarjeta md:p-8">{children}</div>
     </main>
   );
@@ -184,7 +184,7 @@ export default function PanelDj({ children }: { children: ReactNode }) {
 
   if (estado.tipo === "cargando") {
     return (
-      <main className="flex min-h-screen items-center justify-center gap-2 bg-marfil text-[15px] text-tinta-suave" aria-busy>
+      <main className="flex min-h-dvh items-center justify-center gap-2 bg-marfil text-[15px] text-tinta-suave" aria-busy>
         <Loader2 size={20} className="animate-spin" aria-hidden /> Cargando tu panel…
       </main>
     );

@@ -145,9 +145,10 @@ export default function InstalarApp() {
   return (
     // Franja compacta (~56 px) justo encima de la barra de abajo, cuya altura
     // real publica BottomNav en --alto-barra-inferior. Antes era una tarjeta
-    // de ~200 px que tapaba media pantalla.
+    // de ~200 px que tapaba media pantalla. Si suena música, también sube por
+    // encima del mini‑reproductor (--alto-mini), que si no la tapaba.
     <div role="dialog" aria-label="Instalar la app de TardeosClub"
-      style={{ bottom: "calc(var(--alto-barra-inferior, 96px) + 8px)" }}
+      style={{ bottom: "calc(var(--alto-barra-inferior, 96px) + var(--alto-mini, 0px) + 8px)" }}
       className="fixed inset-x-3 z-[1100] md:hidden">
       <div className="rounded-2xl border border-linea bg-white shadow-elevada">
         <div className="flex min-h-[56px] items-center gap-2 py-1.5 pl-3 pr-1">

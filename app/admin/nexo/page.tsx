@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { ExternalLink, Trash2, Plus, Loader2 } from "lucide-react";
 import { SeccionPanel } from "@/components/panel/PanelShell";
 import { useReproductor } from "@/components/musica/Reproductor";
@@ -42,7 +42,11 @@ export default function AdminNexo() {
   // una página que ya no existe y decir «no hay envíos»).
   const conPagina0 = (set: (v: string) => void) => (v: string) => { set(v); setPagina(0); };
 
+  // Turno de cada carga: si se cambia de pestaña o de búsqueda mientras otra
+  // sigue en camino, la respuesta vieja no pisa a la nueva.
+  const turno = useRef(0);
   const cargar = useCallback(async () => {
+    const mio = ++turno.current;
     let q = supabase.from("nexo_envios")
       .select("id,dj_id,set_id,titulo,url,descripcion,estado,nota_nexo,created_at,revisado_en,djs(nombre_artistico)", { count: "exact" })
       .eq("estado", estado);
@@ -56,6 +60,7 @@ export default function AdminNexo() {
     }
     const { data, error, count } = await q.order("created_at", { ascending: false }).order("id")
       .range(pagina * POR_PAGINA, pagina * POR_PAGINA + POR_PAGINA - 1);
+    if (mio !== turno.current) return;
     if (error) { setError(faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message); setFilas([]); return; }
     setError(null); setFilas((data ?? []) as unknown as Envio[]); setTotal(count ?? 0);
   }, [estado, pagina, busca, fDesde, fHasta]);

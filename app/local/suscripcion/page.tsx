@@ -99,7 +99,7 @@ export default function Suscripcion() {
  */
 function CupoInformativo({ c }: { c: { cupo: CupoCiclo | null; falta: boolean; error: string | null } | null }) {
   if (!c) return null;
-  if (c.falta) return <p className="rounded-xl bg-marfil-100 p-3 text-[15px] text-tinta-suave">El contador de eventos por ciclo llegará en breve (falta el lote 68).</p>;
+  if (c.falta) return <p className="rounded-xl bg-marfil-100 p-3 text-[15px] text-tinta-suave">Esta sección aún no está disponible.</p>;
   if (c.error || !c.cupo) return null;
   const k = c.cupo;
   const fmt = (d: string) => new Date(d).toLocaleDateString("es-ES", { day: "numeric", month: "short", timeZone: "Europe/Madrid" });

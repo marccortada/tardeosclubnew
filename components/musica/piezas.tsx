@@ -140,13 +140,14 @@ export function HojaComentarios({
           <span className="ml-2 font-normal text-tinta-suave">{hace(c.created_at)}</span>
         </p>
         <p className="mt-0.5 whitespace-pre-line break-words text-[15px]">{c.texto}</p>
+        {/* Botones de 44 px de alto (WCAG 2.2, público 30+): con 36 se fallaba el toque. */}
         <div className="mt-1 flex gap-3">
           {soyDj && !resp && (
-            <button type="button" onClick={() => setRespondiendo(c)} className="min-h-[36px] text-[14px] font-bold text-magenta">Responder</button>
+            <button type="button" onClick={() => setRespondiendo(c)} className="min-h-[44px] px-1 text-[14px] font-bold text-magenta">Responder</button>
           )}
           {(soyDj || c.autor === user?.id) && (
             <button type="button" onClick={async () => { const e = await borrarComentario(c.id); if (e) setError(e); else if (setId) await cargar(setId); }}
-              className="inline-flex min-h-[36px] items-center gap-1 text-[14px] text-tinta-suave" aria-label="Borrar comentario">
+              className="inline-flex min-h-[44px] items-center gap-1 px-1 text-[14px] text-tinta-suave" aria-label="Borrar comentario">
               <Trash2 size={14} aria-hidden /> Borrar
             </button>
           )}

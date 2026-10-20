@@ -71,18 +71,12 @@ const nextConfig = {
   // Empaqueta solo lo necesario para ejecutar: imagen de Docker pequeña.
   output: "standalone",
   images: {
-    // De dónde pueden venir las imágenes. Las 683 (flyers, logos de locales y
-    // avatares de DJs) ya viven en nuestro propio proyecto: scripts/traer-imagenes.mjs
-    // las trajo del de la app anterior.
-    //
-    // El host antiguo sigue permitido a propósito. La sincronización de cada
-    // mañana reescribe las URLs con las del origen y el rescate las vuelve a
-    // corregir en el paso siguiente del mismo workflow: durante esos minutos
-    // la base apunta otra vez allí. Quitar este patrón antes de retirar la app
-    // vieja dejaría la web sin imágenes en esa ventana.
+    // De dónde pueden venir las imágenes: solo nuestro Storage (todas las de la
+    // app anterior se trajeron a flyers/migrados/) y Unsplash. El proyecto
+    // antiguo (obevrycebhqdqtvxnxoy) se borró el 20-oct-2026 y la sincronización
+    // diaria que reescribía URLs hacia él está desactivada.
     remotePatterns: [
       { protocol: "https", hostname: "fmbzcjsbyazkzsiiykto.supabase.co", pathname: "/storage/v1/object/public/**" },
-      { protocol: "https", hostname: "obevrycebhqdqtvxnxoy.supabase.co", pathname: "/storage/v1/object/public/**" },
       // Fotos de ambiente de la portada (Unsplash, licencia libre). Se piden ya
       // redimensionadas a su CDN y van `unoptimized`: no gastan CPU aquí.
       { protocol: "https", hostname: "images.unsplash.com" },

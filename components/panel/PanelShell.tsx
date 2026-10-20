@@ -188,7 +188,7 @@ export default function PanelShell({
   );
 
   return (
-    <div className="min-h-screen bg-marfil lg:pl-[264px]">
+    <div className="min-h-dvh bg-marfil lg:pl-[264px]">
       {/* Barra lateral fija (escritorio) */}
       <aside className="fixed inset-y-0 left-0 z-[800] hidden w-[264px] flex-col border-r border-linea bg-white lg:flex">
         {volverWeb}
@@ -225,7 +225,7 @@ export default function PanelShell({
           return (
             <Link key={i.href} href={i.href} aria-current={on ? "page" : undefined}
               ref={on ? (el) => el?.scrollIntoView({ block: "nearest", inline: "center" }) : undefined}
-              className={`inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[14px] font-semibold transition-colors ${
+              className={`inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[14px] font-semibold transition-colors ${
                 on ? "border-tinta bg-tinta text-white" : "border-linea-fuerte bg-white text-tinta"}`}>
               <i.icon size={16} aria-hidden />
               {i.label}
@@ -240,7 +240,7 @@ export default function PanelShell({
       {/* Cajón móvil */}
       {abierto && (
         <div className="fixed inset-0 z-[2000] lg:hidden">
-          <div className="absolute inset-0 bg-tinta/50" onClick={() => setAbierto(false)} aria-hidden />
+          <div className="absolute inset-0 bg-noche/60" onClick={() => setAbierto(false)} aria-hidden />
           <aside role="dialog" aria-modal="true" aria-label={`Menú · ${rol}`}
             className="absolute inset-y-0 left-0 flex w-[86%] max-w-[320px] flex-col bg-white shadow-elevada">
             {/* Sin «Volver a la web»: en el móvil ya está el botón «Web» de la

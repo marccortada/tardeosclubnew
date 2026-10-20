@@ -45,7 +45,7 @@ export default function GuardiaAdmin({ children }: { children: React.ReactNode }
 
   if (fallo && !loading) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-4 text-center">
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-4 text-center">
         <span className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-error-fondo text-error">
           <ShieldAlert size={28} aria-hidden />
         </span>
@@ -78,7 +78,7 @@ export default function GuardiaAdmin({ children }: { children: React.ReactNode }
   if (!isAdmin) {
     // Sin sesión, lo útil es entrar; con sesión de no-admin, volver a la web.
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-4 text-center">
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-4 text-center">
         <span className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-noche text-white">
           <ShieldAlert size={28} aria-hidden />
         </span>

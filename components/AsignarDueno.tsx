@@ -124,7 +124,7 @@ export default function AsignarDueno({
               <button onClick={quitarDueno} disabled={quitar === "quitando"} className={`${fino} bg-error text-white disabled:opacity-60`}>
                 {quitar === "quitando" && <Loader2 size={16} className="animate-spin" aria-hidden />} Sí, quitar
               </button>
-              <button onClick={() => { setQuitar(""); setError(""); }} disabled={quitar === "quitando"} className={`${fino} text-tinta-suave hover:bg-white`}>No</button>
+              <button onClick={() => { setQuitar(""); setError(""); }} disabled={quitar === "quitando"} className={`${fino} text-tinta-suave hover:bg-superficie`}>No</button>
             </div>
           </div>
         ) : (
@@ -167,7 +167,7 @@ export default function AsignarDueno({
             value={enlace}
             aria-label="Enlace de invitación"
             onFocus={(e) => e.currentTarget.select()}
-            className={`${claseCampo} !min-h-[40px] !px-3 !py-2 text-sm`}
+            className={`${claseCampo} !min-h-[44px] !px-3 !py-2 text-base`}
           />
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button onClick={copiar} className={`${btn} bg-magenta text-white hover:bg-magenta-600`}>
@@ -203,7 +203,7 @@ export default function AsignarDueno({
               onKeyDown={(e) => e.key === "Enter" && asignar()}
               placeholder="nombre@ejemplo.com"
               autoFocus
-              className={`${claseCampo} !min-h-[40px] !px-3 !py-2 text-sm`}
+              className={`${claseCampo} !min-h-[44px] !px-3 !py-2 text-base`}
             />
             <button onClick={asignar} disabled={guardando} className={`${btn} bg-magenta text-white hover:bg-magenta-600`}>
               {guardando ? <Loader2 size={16} className="animate-spin" aria-hidden /> : "Asignar"}

@@ -136,7 +136,7 @@ export async function canjearPromocion(promoId: string, codigo?: string | null):
   const { data, error } = await supabase.rpc("canjear_promocion", { p_promo: promoId, p_codigo: codigo ?? null });
   if (error) {
     const falta = ["PGRST202", "42883"].includes(error.code ?? "");
-    return { ok: false, error: falta ? "El canje llegará en breve (falta el lote 68)." : error.message };
+    return { ok: false, error: falta ? "Esta sección aún no está disponible." : error.message };
   }
   // Lote 73: un código incorrecto ya no es un error (si lo fuera, se desharía
   // también la cuenta de intentos y el tope no frenaría a nadie): la base

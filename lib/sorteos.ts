@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { faltaLote } from "./encuestas";
+import { mensajeAmable } from "./mensajeError";
 
 /**
  * Sorteos (dossier 2.0 pág. 14, lote 67). Una participación por cuenta; la
@@ -32,7 +33,7 @@ export const fechaLarga = (iso: string) =>
 
 export async function participar(id: string): Promise<"registrada" | "ya_participabas"> {
   const { data, error } = await supabase.rpc("participar_sorteo", { p_sorteo: id });
-  if (error) throw new Error(faltaLote(error) ? "Falta el lote 67 en la base de datos." : error.message);
+  if (error) throw new Error(faltaLote(error) ? "Esta sección aún no está disponible." : mensajeAmable(error));
   return data as "registrada" | "ya_participabas";
 }
 

@@ -11,7 +11,7 @@ import { BotonPlay } from "@/components/musica/piezas";
 import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
 import { entrarYVolver } from "@/lib/volver";
-import { faltaLote, MENSAJE_FALTA_LOTE, ESTADOS_NEXO, getSetsDeDj, type EnvioNexo, type SetDj, type Plataforma } from "@/lib/sets";
+import { errorPublico, ESTADOS_NEXO, getSetsDeDj, type EnvioNexo, type SetDj, type Plataforma } from "@/lib/sets";
 
 const WEB_NEXO = "https://nexoradio.es/";
 type Pestana = "escuchar" | "programacion" | "enviar";
@@ -107,7 +107,7 @@ function Escuchar() {
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     supabase.rpc("nexo_sesiones", { p_limite: 20 }).then(({ data, error }) => {
-      if (error) { setError(faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message); setSesiones([]); return; }
+      if (error) { setError(errorPublico(error)); setSesiones([]); return; }
       setSesiones((data ?? []) as Sesion[]);
     });
   }, []);
@@ -152,7 +152,7 @@ function Programacion() {
     supabase.from("nexo_programacion").select("id,dia_semana,hora,titulo,detalle")
       .order("dia_semana", { nullsFirst: true }).order("hora").order("orden")
       .then(({ data, error }) => {
-        if (error) { setError(faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message); setFilas([]); return; }
+        if (error) { setError(errorPublico(error)); setFilas([]); return; }
         setFilas((data ?? []) as Franja[]);
       });
   }, []);
@@ -192,7 +192,7 @@ export function Enviar() {
     const { data, error } = await supabase.from("nexo_envios")
       .select("id,dj_id,set_id,titulo,url,descripcion,estado,nota_nexo,created_at,revisado_en")
       .eq("dj_id", id).order("created_at", { ascending: false }).limit(20);
-    if (error) { setMsg({ ok: false, t: faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message }); return; }
+    if (error) { setMsg({ ok: false, t: errorPublico(error) }); return; }
     setEnvios((data ?? []) as EnvioNexo[]);
   }
 
@@ -230,7 +230,7 @@ export function Enviar() {
       dj_id: djId, set_id: setId || null, titulo: titulo.trim(), url: url.trim(), descripcion: descripcion.trim() || null,
     });
     setEnviando(false);
-    if (error) { setMsg({ ok: false, t: faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message }); return; }
+    if (error) { setMsg({ ok: false, t: errorPublico(error) }); return; }
     setMsg({ ok: true, t: "Sesión enviada. El equipo de Nexo la revisará; enviar no garantiza emisión ni fecha." });
     setTitulo(""); setUrl(""); setDescripcion(""); setSetId("");
     void cargarEnvios(djId);

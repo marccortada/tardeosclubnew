@@ -576,7 +576,7 @@ export default function FichaUsuario() {
                   </Etiqueta>
                 </div>
                 <p className="text-sm text-tinta-suave">
-                  <span className="font-semibold text-oro-600" aria-label={`${r.puntuacion} de 5`}>{"★".repeat(r.puntuacion)}{"☆".repeat(5 - r.puntuacion)}</span>
+                  <span className="font-semibold text-aviso" aria-label={`${r.puntuacion} de 5`}>{"★".repeat(r.puntuacion)}{"☆".repeat(5 - r.puntuacion)}</span>
                   {" · "}{fechaDia(r.created_at)}
                 </p>
                 {r.comentario && <p className="mt-1 line-clamp-3 text-[15px]">{r.comentario}</p>}

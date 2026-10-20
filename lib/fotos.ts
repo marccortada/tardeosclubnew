@@ -67,7 +67,7 @@ export function propsFoto(id: string, { sizes, alt = "", prioridad = false }: { 
  * Optimizar importa: un avatar o un flyer original pesa cientos de KB y en
  * el móvil se ve a una fracción de ese tamaño.
  */
-const HOSTS_OPTIMIZABLES = /^https:\/\/(fmbzcjsbyazkzsiiykto|obevrycebhqdqtvxnxoy)\.supabase\.co\/storage\/v1\/object\/public\//;
+const HOSTS_OPTIMIZABLES = /^https:\/\/fmbzcjsbyazkzsiiykto\.supabase\.co\/storage\/v1\/object\/public\//;
 export function optimizable(src: string | null | undefined): boolean {
   if (!src) return false;
   if (src.startsWith("/") && !src.startsWith("//")) return true;

@@ -126,9 +126,12 @@ export default function CalendarioLocal({
           const cls = `flex min-h-[52px] flex-col gap-1 rounded-xl p-1.5 text-left transition ${
             elegido ? "bg-tinta text-white" : esHoy ? "bg-magenta-50 ring-1 ring-magenta" : pasado ? "bg-marfil" : "hover:bg-marfil-100"
           }`;
+          // El número del día elegido hereda el color de la celda: en oscuro,
+          // globals.css invierte «bg-tinta text-white» (fondo claro, letra oscura)
+          // y un text-white propio dejaba el número blanco sobre claro.
           const contenido = (
             <>
-              <span className={`text-[13px] font-semibold ${elegido ? "text-white" : esHoy ? "text-magenta-700" : "text-tinta-suave"}`}>
+              <span className={`text-[13px] font-semibold ${elegido ? "" : esHoy ? "text-magenta-700" : "text-tinta-suave"}`}>
                 {d.getDate()}
               </span>
               <span className="flex flex-wrap gap-0.5">

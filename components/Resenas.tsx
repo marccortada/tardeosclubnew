@@ -99,7 +99,7 @@ export default function Resenas({
             Motivo: <b>{etiquetaMotivo(mia.motivo_rechazo).toLowerCase()}</b>.
             Si crees que nos hemos equivocado, dínoslo y la vuelve a mirar una persona.
           </p>
-          <textarea
+          <textarea aria-label="Por qué crees que hay un error"
             value={apelacion} onChange={(e) => setApelacion(e.target.value)} rows={2} maxLength={500}
             placeholder="Por qué crees que hay un error…"
             className={`mt-2 ${claseCampo}`}
@@ -146,7 +146,7 @@ export default function Resenas({
               valorar no ve un formulario entero. */}
           {puntos > 0 && (
             <>
-              <textarea value={comentario} onChange={(e) => setComentario(e.target.value)} rows={2} placeholder="Cuenta tu experiencia (opcional)…"
+              <textarea aria-label="Tu reseña (opcional)" value={comentario} onChange={(e) => setComentario(e.target.value)} rows={2} placeholder="Cuenta tu experiencia (opcional)…"
                 className={claseCampo} />
               {estado === "error" && <p role="alert" className="mt-1 text-[15px] font-semibold text-error">No se pudo enviar. ¿Ya la habías dejado?</p>}
               <button onClick={enviar} disabled={estado === "enviando"}

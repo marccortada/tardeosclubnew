@@ -10,6 +10,7 @@ import { Etiqueta } from "@/components/ui/Chip";
 import Aviso from "@/components/admin/Aviso";
 import { useDiferido } from "@/components/panel/Paginacion";
 import { supabase } from "@/lib/supabase";
+import { mensajeAmable } from "@/lib/mensajeError";
 import { buscarDjsDirectorio, type DjDirectorio } from "@/lib/tardeos";
 
 type Estado = "pendiente" | "aceptada" | "rechazada";
@@ -60,7 +61,7 @@ export default function InvitarDj({ tardeoId, creadaPor }: { tardeoId: string; c
       .order("created_at", { ascending: false });
     if (error) {
       if (faltaTabla(error.code)) setSinLote(true);
-      else setErrorLista(`No se pudieron cargar las invitaciones: ${error.message}`);
+      else setErrorLista(`No se pudieron cargar las invitaciones. ${mensajeAmable(error)}`);
     } else {
       setSinLote(false);
       setErrorLista("");
@@ -103,7 +104,7 @@ export default function InvitarDj({ tardeoId, creadaPor }: { tardeoId: string; c
       } else if (error.code === "42501") {
         setMensaje({ tono: "error", texto: "No tienes permiso para invitar DJs a este tardeo." });
       } else {
-        setMensaje({ tono: "error", texto: `No se pudo enviar la invitación: ${error.message}` });
+        setMensaje({ tono: "error", texto: `No se pudo enviar la invitación. ${mensajeAmable(error)}` });
       }
       return;
     }
@@ -130,7 +131,7 @@ export default function InvitarDj({ tardeoId, creadaPor }: { tardeoId: string; c
       .eq("estado", "pendiente")
       .select("id");
     setRetirando(false);
-    if (error) { setErrorRetirar(`No se pudo retirar: ${error.message}`); return; }
+    if (error) { setErrorRetirar(`No se pudo retirar. ${mensajeAmable(error)}`); return; }
     if (!data || data.length === 0) {
       setErrorRetirar("No se retiró: puede que el DJ ya haya respondido. Recargamos la lista.");
       cargar();
@@ -143,7 +144,7 @@ export default function InvitarDj({ tardeoId, creadaPor }: { tardeoId: string; c
 
   if (cargando) return <p className="text-[15px] text-tinta-suave">Cargando invitaciones…</p>;
   if (sinLote) {
-    return <Aviso tono="aviso">Falta pegar el lote 55 en Supabase (supabase/55_invitaciones_dj.sql). Hasta entonces no se pueden invitar DJs.</Aviso>;
+    return <Aviso tono="aviso">Esta sección aún no está disponible.</Aviso>;
   }
 
   return (
@@ -156,7 +157,7 @@ export default function InvitarDj({ tardeoId, creadaPor }: { tardeoId: string; c
           <AvatarDj url={elegido.avatar_url} />
           <span className="flex-1 text-[16px] font-bold">{elegido.nombre_artistico}</span>
           <button type="button" onClick={() => setElegido(null)} aria-label="Elegir otro DJ"
-            className="grid h-11 w-11 place-items-center rounded-xl text-tinta-suave hover:bg-white">
+            className="grid h-11 w-11 place-items-center rounded-xl text-tinta-suave hover:bg-superficie">
             <X size={20} aria-hidden />
           </button>
         </div>

@@ -130,7 +130,7 @@ export default function PeriodicidadTardeo({
             )}
 
             {tope && (
-              <p className="mt-2 flex items-start gap-1.5 text-xs font-bold text-aviso">
+              <p className="mt-2 flex items-start gap-1.5 text-[15px] font-bold text-aviso">
                 <AlertTriangle size={13} className="mt-0.5 shrink-0" />
                 Son más de {MAXIMO}. Se crearán los {MAXIMO} primeros; para el resto, repite
                 el proceso desde la última fecha.

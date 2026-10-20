@@ -62,7 +62,7 @@ export default function PromoTardeo({ valor, onCambio }: { valor: Promo; onCambi
         ))}
       </div>
       <input
-        placeholder="Otra etiqueta…"
+        placeholder="Otra etiqueta…" aria-label="Otra etiqueta"
         onKeyDown={(e) => {
           if (e.key !== "Enter") return;
           e.preventDefault();
@@ -70,7 +70,8 @@ export default function PromoTardeo({ valor, onCambio }: { valor: Promo; onCambi
           (e.target as HTMLInputElement).value = "";
         }}
         onBlur={(e) => { anadirLibre(e.target.value); e.target.value = ""; }}
-        className="mt-2 w-full rounded-xl border border-linea-fuerte bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-magenta"
+        // text-base (16 px): con menos, Safari de iPhone hace zoom al tocar.
+        className="mt-2 w-full rounded-xl border border-linea-fuerte bg-white px-4 py-2.5 text-base font-semibold outline-none focus:border-magenta"
       />
     </div>
   );

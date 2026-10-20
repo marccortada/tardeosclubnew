@@ -14,7 +14,7 @@ import { useRoles } from "@/lib/permisos";
 import { supabase } from "@/lib/supabase";
 import { entrarYVolver } from "@/lib/volver";
 import {
-  sigoA, misMarcas, gustarSetDetalle, guardarSetDetalle, seguidoresDe, getPresskit, portadaDe, MENSAJE_FALTA_LOTE, type SetDj,
+  sigoA, misMarcas, gustarSetDetalle, guardarSetDetalle, seguidoresDe, getPresskit, portadaDe, MENSAJE_NO_DISPONIBLE, type SetDj,
 } from "@/lib/sets";
 import type { Tardeo } from "@/lib/types";
 import { optimizable } from "@/lib/fotos";
@@ -49,6 +49,14 @@ export default function PerfilDj({
   const marcando = useRef(new Set<string>());
   // Última lectura pedida del contador de seguidores (descarta las viejas).
   const turnoSeguidores = useRef(0);
+  // Aviso breve en pantalla si falla ♥/guardar (antes alert(), que bloquea la
+  // app y en la PWA sale con la URL del sitio de título).
+  const [aviso, setAviso] = useState("");
+  useEffect(() => {
+    if (!aviso) return;
+    const t = setTimeout(() => setAviso(""), 4000);
+    return () => clearTimeout(t);
+  }, [aviso]);
 
   const destacado = sets.find((s) => s.destacado) ?? sets[0] ?? null;
 
@@ -90,7 +98,7 @@ export default function PerfilDj({
         // Fallo: se deshace la marca Y el contador (antes el número se quedaba sumado).
         fijar((c) => { const n = new Set(c); if (activar) n.delete(s.id); else n.add(s.id); return n; });
         contar(-paso);
-        alert(r.error);
+        setAviso(r.error);
       } else if (!r.cambio) {
         // "Ya estaba así" (p. ej. 23505): la marca es correcta pero la base no
         // ha movido su contador, así que la pantalla tampoco.
@@ -185,7 +193,7 @@ export default function PerfilDj({
 
       <div className="px-4 pt-4">
         {pestana === "sets" && (
-          faltaLote ? <Vacio texto={MENSAJE_FALTA_LOTE} />
+          faltaLote ? <Vacio texto={MENSAJE_NO_DISPONIBLE} />
           : sets.length === 0 ? <Vacio texto="Aún no ha publicado sets." />
           : (
             <ul className="grid grid-cols-2 gap-3">
@@ -200,16 +208,18 @@ export default function PerfilDj({
                   <div className="p-2.5">
                     <p className="line-clamp-2 text-[15px] font-bold leading-tight">{s.titulo}</p>
                     <div className="mt-1 flex items-center justify-between text-tinta-suave">
-                      <button type="button" onClick={() => void marcar(s, "like")} aria-pressed={likes.has(s.id)} aria-label="Me gusta"
-                        className="inline-flex min-h-[40px] items-center gap-1 text-[14px]">
+                      {/* 44 px de toque (WCAG 2.2, público 30+) y la cifra en la
+                          etiqueta: con aria-label solo «Me gusta» el número no se leía. */}
+                      <button type="button" onClick={() => void marcar(s, "like")} aria-pressed={likes.has(s.id)} aria-label={`Me gusta, ${s.likes}`}
+                        className="inline-flex min-h-[44px] min-w-[44px] items-center gap-1 text-[14px]">
                         <Heart size={18} className={likes.has(s.id) ? "fill-magenta text-magenta" : ""} aria-hidden /> {s.likes}
                       </button>
-                      <button type="button" onClick={() => setComentando(s)} aria-label="Comentarios"
-                        className="inline-flex min-h-[40px] items-center gap-1 text-[14px]">
+                      <button type="button" onClick={() => setComentando(s)} aria-label={`Comentarios, ${s.comentarios}`}
+                        className="inline-flex min-h-[44px] min-w-[44px] items-center gap-1 text-[14px]">
                         <MessageCircle size={18} aria-hidden /> {s.comentarios}
                       </button>
                       <button type="button" onClick={() => void marcar(s, "guardar")} aria-pressed={guardados.has(s.id)} aria-label="Guardar set"
-                        className="grid min-h-[40px] min-w-[40px] place-items-center">
+                        className="grid min-h-[44px] min-w-[44px] place-items-center">
                         <Bookmark size={18} className={guardados.has(s.id) ? "fill-magenta text-magenta" : ""} aria-hidden />
                       </button>
                     </div>
@@ -239,7 +249,7 @@ export default function PerfilDj({
               <a href={`${presskit}${presskit.includes("?") ? "&" : "?"}download=${encodeURIComponent(nombrePdf)}`} rel="noopener noreferrer"
                 className="flex min-h-tacto items-center gap-3 border-b border-linea py-2 text-[16px] font-bold">
                 <FileDown size={20} className="text-magenta" aria-hidden />
-                <span className="flex-1">Descargar press kit</span>
+                <span className="flex-1">Descargar PressKit</span>
                 <span className="text-[13px] font-normal text-tinta-suave">PDF</span>
               </a>
             )}
@@ -253,6 +263,13 @@ export default function PerfilDj({
         onCerrar={() => setComentando(null)} soyDj={soyDj} nombreDj={dj.nombre}
         onTotal={(n) => comentando && setSets((xs) => xs.map((x) => (x.id === comentando.id ? { ...x, comentarios: n } : x)))}
       />
+
+      {/* Siempre montado: los lectores de pantalla solo anuncian cambios en una
+          región viva que ya existía. Encima de la barra y del mini‑reproductor. */}
+      <div role="status" aria-live="polite"
+        className="pointer-events-none fixed inset-x-3 bottom-[calc(var(--alto-barra-inferior,76px)+var(--alto-mini,0px)+8px)] z-[1001] mx-auto flex max-w-md justify-center md:bottom-6">
+        {aviso && <p className="rounded-2xl bg-noche px-4 py-3 text-center text-[15px] font-semibold text-white shadow-elevada">{aviso}</p>}
+      </div>
     </main>
   );
 }

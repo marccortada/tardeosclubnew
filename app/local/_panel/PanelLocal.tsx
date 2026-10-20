@@ -170,7 +170,7 @@ export default function PanelLocal({ children }: { children: ReactNode }) {
   // ---------- Estados previos al panel ----------
   if (loading || (user && cargando)) {
     return (
-      <main className="flex min-h-screen items-center justify-center gap-2 bg-marfil text-[15px] text-tinta-suave">
+      <main className="flex min-h-dvh items-center justify-center gap-2 bg-marfil text-[15px] text-tinta-suave">
         <Loader2 className="animate-spin" size={20} aria-hidden /> Cargando tu panel…
       </main>
     );
@@ -275,7 +275,7 @@ export default function PanelLocal({ children }: { children: ReactNode }) {
       <select
         value={ficha.id}
         onChange={(e) => elegir(e.target.value)}
-        className="min-h-[44px] w-full rounded-lg border border-linea-fuerte bg-white px-3 text-[15px] font-semibold outline-none focus:border-magenta focus:ring-4 focus:ring-magenta/15"
+        className="min-h-[44px] w-full rounded-lg border border-linea-fuerte bg-white px-3 text-base font-semibold outline-none focus:border-magenta focus:ring-4 focus:ring-magenta/15"
       >
         {fichas.map((f) => (
           <option key={f.id} value={f.id}>{f.nombre}{f.tipo === "promotor" ? " (eventos)" : ""}</option>
@@ -318,7 +318,7 @@ export default function PanelLocal({ children }: { children: ReactNode }) {
 /** Pantalla suelta (sin barra lateral) para los casos en que aún no hay panel. */
 function Aviso({ icono, titulo, texto, accion }: { icono: ReactNode; titulo: string; texto: string; accion: ReactNode }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-marfil px-4 py-10">
+    <main className="flex min-h-dvh items-center justify-center bg-marfil px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border border-linea bg-white p-6 text-center shadow-tarjeta md:p-8">
         <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-magenta-50 text-magenta">{icono}</span>
         <h1 className="mt-4 text-2xl font-bold tracking-tight">{titulo}</h1>

@@ -378,7 +378,7 @@ export default function GestionTardeos() {
               <p className="flex min-h-[44px] items-center gap-2 rounded-xl bg-magenta-50 px-3 text-[15px] font-semibold">
                 <span className="min-w-0 flex-1 truncate">{localElegido.nombre}{localElegido.zona ? ` · ${localElegido.zona}` : ""}</span>
                 <button type="button" onClick={() => setLocalId("")} aria-label="Quitar el filtro de local"
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-tinta-suave hover:bg-white">
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-tinta-suave hover:bg-superficie">
                   <X size={18} aria-hidden />
                 </button>
               </p>

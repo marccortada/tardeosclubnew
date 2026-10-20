@@ -37,7 +37,7 @@ type Bruta = {
   tardeos: { titulo: string | null; fecha: string | null; hora_inicio: string | null; zona_slug?: string | null; locales: { nombre: string | null } | null } | null;
 };
 
-type Filtro = { estado: Estado; asist: "todas" | Asist; periodo: Periodo; desde: string; hasta: string; busca: string; buscaEn: BuscarEn; sinAsistencia: boolean };
+type Filtro = { estado: Estado; asist: "todas" | Asist; periodo: Periodo; desde: string; hasta: string; busca: string; buscaEn: BuscarEn; sinAsistencia: boolean; tardeoId: string | null };
 type TardeoElegido = { id: string; titulo: string | null; fecha: string | null; hora_inicio: string | null; local: string | null };
 
 const hoyMadrid = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
@@ -70,6 +70,11 @@ function consulta(f: Filtro, contar: boolean, zona: FiltroZona) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- la select se arma en tiempo de ejecución y el tipado de supabase-js no la sigue
   let q: any = supabase.from("inscripciones").select(cols, contar ? { count: "exact" } : undefined);
+  // Con un tardeo elegido, la cuenta y el CSV son solo de ese tardeo (antes el
+  // botón exportaba todo el registro aunque se estuviera mirando uno).
+  // Los demás filtros están ocultos en ese modo: se exporta la lista entera del
+  // tardeo (confirmados, espera y cancelados), igual que la que se ve.
+  if (f.tardeoId) return q.eq("tardeo_id", f.tardeoId).order("estado").order("created_at").order("id");
   if (f.estado !== "todos") q = q.eq("estado", f.estado);
   if (!f.sinAsistencia && f.asist !== "todas") q = q.eq("asistencia", f.asist);
   // Un rango de fechas manda sobre Próximos / Pasados.
@@ -124,7 +129,7 @@ export default function Registro() {
   // Filtro de zona (lote 69), por la zona del tardeo de cada inscripción.
   const zona = useFiltroZona();
 
-  const filtro: Filtro = { estado, asist, periodo, desde, hasta, busca, buscaEn, sinAsistencia };
+  const filtro: Filtro = { estado, asist, periodo, desde, hasta, busca, buscaEn, sinAsistencia, tardeoId: tardeo?.id ?? null };
 
   const elegirTardeo = async (id: string) => {
     const { data } = await supabase.from("tardeos").select("id,titulo,fecha,hora_inicio,locales(nombre)").eq("id", id).maybeSingle();
@@ -153,7 +158,7 @@ export default function Registro() {
         }
         return r;
       }),
-    [estado, asist, periodo, desde, hasta, busca, buscaEn, sinAsistencia, zona.clave],
+    [estado, asist, periodo, desde, hasta, busca, buscaEn, sinAsistencia, zona.clave, tardeo?.id ?? null],
     25,
   );
 

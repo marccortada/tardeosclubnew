@@ -8,6 +8,7 @@ import { Etiqueta } from "@/components/ui/Chip";
 import Boton from "@/components/Boton";
 import { Filtros } from "@/components/panel/Paginacion";
 import { supabase } from "@/lib/supabase";
+import { mensajeAmable } from "@/lib/mensajeError";
 import { faltaLote68 } from "@/lib/tardeos";
 import { formatFecha } from "@/lib/formato";
 import { useFicha } from "../_panel/PanelLocal";
@@ -39,7 +40,7 @@ export default function SolicitudesDeDjs() {
 
   const cargar = useCallback(async () => {
     const { data, error } = await supabase.rpc("solicitudes_dj_de_local", { p_local: ficha.id });
-    if (error) { setFalta(faltaLote68(error)); setFilas([]); if (!faltaLote68(error)) setMsg({ tono: "error", texto: error.message }); return; }
+    if (error) { setFalta(faltaLote68(error)); setFilas([]); if (!faltaLote68(error)) setMsg({ tono: "error", texto: mensajeAmable(error) }); return; }
     setFilas((data ?? []) as Fila[]);
   }, [ficha.id]);
 
@@ -52,7 +53,7 @@ export default function SolicitudesDeDjs() {
     setOcupada(f.id); setMsg(null);
     const { error } = await supabase.rpc("resolver_solicitud_dj", { p_id: f.id, p_estado: estado, p_nota: null });
     setOcupada(null);
-    if (error) { setMsg({ tono: "error", texto: error.message }); return; }
+    if (error) { setMsg({ tono: "error", texto: mensajeAmable(error) }); return; }
     setMsg({ tono: "ok", texto: estado === "aprobada" ? `${f.dj_nombre} ya sale en «${f.titulo}».` : "Solicitud rechazada." });
     void cargar();
   };
@@ -60,7 +61,7 @@ export default function SolicitudesDeDjs() {
   return (
     <SeccionPanel titulo="Solicitudes de DJs" descripcion="DJs que piden salir en el cartel de tus eventos." ancho="estrecho">
       {falta ? (
-        <p className="rounded-2xl border border-aviso/25 bg-aviso-fondo p-4 text-[15px]">Esta bandeja llegará en breve (falta el lote 68).</p>
+        <p className="rounded-2xl border border-aviso/25 bg-aviso-fondo p-4 text-[15px]">Esta sección aún no está disponible.</p>
       ) : (
         <div className="flex flex-col gap-3">
           {msg && <p role="status" className={`rounded-xl p-3 text-[15px] font-semibold ${msg.tono === "ok" ? "bg-ok-fondo text-ok" : "bg-error-fondo text-error"}`}>{msg.texto}</p>}

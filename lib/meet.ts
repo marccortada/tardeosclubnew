@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "./supabase";
+import { mensajeAmable } from "@/lib/mensajeError";
 
 /**
  * Meet Zone (lote 66): chat de cada evento. Quién entra, cuándo cierra y qué
@@ -37,16 +38,18 @@ export type MensajeMeet = {
 
 export type PerfilPublico = { id: string; alias: string; avatar_url: string | null; bio: string | null };
 
-/** Error de Supabase → frase para la persona. Detecta si falta el lote. */
-export function textoError(e: unknown, lote = "66"): string {
+/**
+ * Error de Supabase → frase para la persona. Si falta el lote, al público se le
+ * dice solo que no está disponible («lote» y «base» son jerga nuestra); el
+ * número de lote solo sale si se pasa `lote`, que es lo que hacen las
+ * pantallas del admin para saber qué pegar.
+ */
+export function textoError(e: unknown, lote?: string): string {
   const err = (e ?? {}) as { code?: string; message?: string; hint?: string };
   if (["42P01", "42883", "PGRST202", "PGRST205", "PGRST200"].includes(err.code ?? "")) {
-    return `Esta sección aún no está activada (falta el lote ${lote} en la base).`;
+    return lote ? `Esta sección aún no está activada (falta el lote ${lote} en la base).` : "Esta sección aún no está disponible.";
   }
-  if (err.code === "42501" || /row-level security/i.test(err.message ?? "")) {
-    return "No tienes permiso para hacer esto ahora mismo.";
-  }
-  return err.message || "Algo ha fallado. Vuelve a intentarlo.";
+  return mensajeAmable(err);
 }
 
 export function faltaLote(e: unknown): boolean {

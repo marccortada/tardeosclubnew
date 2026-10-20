@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { leerPrivados } from "./privados";
 import { Tardeo } from "./types";
 import { memo } from "@/lib/memo";
 import { plegar } from "@/lib/texto";
@@ -446,7 +447,18 @@ export async function subirFotoLocal(id: string, file: File): Promise<string | n
  * contacto y tiene que poder cambiarlo desde el editor.
  */
 const COLS_MI_LOCAL =
-  "id,nombre,descripcion,direccion,lat,lng,zona,codigo_postal,telefono,email,redes,fotos,horarios,verificado,estado,logo_url,tipo,owner_id,plan,plan_estado,plan_hasta,playlist_url,tipo_local,aforo,espacios,ambiente,publico,dress_code,musica,horario_habitual";
+  "id,nombre,descripcion,direccion,lat,lng,zona,codigo_postal,telefono,redes,fotos,horarios,verificado,estado,logo_url,tipo,owner_id,plan,plan_estado,plan_hasta,playlist_url,tipo_local,aforo,espacios,ambiente,publico,dress_code,musica,horario_habitual";
+
+/**
+ * El email de contacto del local ya no se lee de la tabla (lote 78: solo su dueño
+ * y el admin lo ven): se completa aparte con `leerPrivados`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- filas crudas del panel
+async function conEmail<T extends Record<string, any>>(filas: T[]): Promise<T[]> {
+  if (!filas.length) return filas;
+  const p = await leerPrivados("locales", filas.map((f) => f.id));
+  return filas.map((f) => ({ ...f, email: p.get(f.id)?.email ?? null }));
+}
 
 /** El primer local del usuario (owner). Devuelve la fila cruda o null. */
 export async function getMiLocal(ownerId: string): Promise<any | null> {
@@ -460,7 +472,7 @@ export async function getMiLocal(ownerId: string): Promise<any | null> {
   // duplicados. Sigue devolviendo null (cinco sitios la llaman y varios sin
   // catch), pero al menos deja rastro de que fue un fallo y no una ausencia.
   if (error) registrar("locales", "no se pudo cargar el local del dueño", error);
-  return data ?? null;
+  return data ? (await conEmail([data]))[0] : null;
 }
 
 /**
@@ -482,7 +494,7 @@ export async function getMisLocales(ownerId: string): Promise<{ fichas: any[]; e
     registrar("locales", "no se pudieron cargar las fichas del dueño", error);
     return { fichas: [], error: error.message };
   }
-  return { fichas: data ?? [], error: null };
+  return { fichas: await conEmail(data ?? []), error: null };
 }
 
 /** Una ficha cualquiera por id, con las columnas del panel. Para el admin, que
@@ -490,7 +502,7 @@ export async function getMisLocales(ownerId: string): Promise<{ fichas: any[]; e
 export async function getLocalParaPanel(id: string): Promise<any | null> {
   const { data, error } = await supabase.from("locales").select(COLS_MI_LOCAL).eq("id", id).maybeSingle();
   if (error) registrar("locales", "no se pudo cargar una ficha para el panel", error);
-  return data ?? null;
+  return data ? (await conEmail([data]))[0] : null;
 }
 
 /** «Esa función no existe» (42883 en la base, PGRST202 en la API). */

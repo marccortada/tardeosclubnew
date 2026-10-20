@@ -71,7 +71,7 @@ export default function ResenasDj() {
           {p.filas.map((r) => (
             <li key={r.id} className="rounded-2xl border border-linea bg-white p-4 shadow-tarjeta">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="flex items-center gap-0.5 text-oro-600" aria-label={`${r.puntuacion} de 5 estrellas`}>
+                <span className="flex items-center gap-0.5 text-aviso" aria-label={`${r.puntuacion} de 5 estrellas`}>
                   {[1, 2, 3, 4, 5].map((n) => (
                     <Star key={n} size={18} fill={n <= r.puntuacion ? "currentColor" : "none"} aria-hidden />
                   ))}

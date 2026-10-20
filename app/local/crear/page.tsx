@@ -11,6 +11,7 @@ import VistaPrevia from "../_panel/VistaPrevia";
 import AyudaBorrador from "../_panel/AyudaBorrador";
 import { leerFlyerConIA, subirFlyer } from "../_panel/leerFlyer";
 import { supabase } from "@/lib/supabase";
+import { mensajeAmable } from "@/lib/mensajeError";
 import SelectorAdn from "@/components/SelectorAdn";
 import SelectorLocal from "@/components/SelectorLocal";
 import AddressSearch, { Direccion } from "@/components/AddressSearch";
@@ -273,7 +274,7 @@ export default function CrearTardeo() {
       setFlyerDecidido(true);
       setEstado("revisar");
     } catch (e: unknown) {
-      setError((e as Error)?.message || "Error al leer el flyer.");
+      setError(e ? mensajeAmable(e) : "Error al leer el flyer.");
       setEstado("revisar");
     }
   };
@@ -413,19 +414,20 @@ export default function CrearTardeo() {
     let { data: nuevos, error } = await insertar(filas);
     const notas: string[] = [];
     // Columnas de lotes que pueden no estar pegados: se reintenta sin ellas y
-    // se dice qué se ha perdido, en vez de no crear nada.
+    // se dice qué se ha perdido, en vez de no crear nada. Sin hablar de lotes:
+    // quien lo lee es el local, no nosotros (eso lo avisa /admin/salud).
     for (let i = 0; i < 2 && error; i++) {
       if (faltaColumna(error, "serie_id") && "serie_id" in (filas[0] ?? {})) {
         filas = quitar(filas, "serie_id");
-        notas.push("Las fechas se han creado sueltas: para poder cambiarlas todas a la vez falta pegar el lote 53 (supabase/53_series.sql).");
+        notas.push("Las fechas se han creado sueltas: por ahora no se pueden cambiar todas a la vez.");
       } else if (faltaColumna(error, "aforo") && "aforo" in (filas[0] ?? {})) {
         filas = quitar(filas, "aforo");
-        notas.push("Las plazas no se han guardado: falta pegar el lote 48 (supabase/48_reservas_aforo_asistencia.sql). El tardeo queda sin límite.");
+        notas.push("Las plazas no se han guardado todavía: el tardeo queda sin límite de plazas.");
       } else break;
       ({ data: nuevos, error } = await insertar(filas));
     }
 
-    if (error) { setPublicando(false); setError(error.message); return; }
+    if (error) { setPublicando(false); setError(mensajeAmable(error)); return; }
     setAvisos(notas);
     borrarBorrador();
 

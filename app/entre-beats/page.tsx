@@ -126,30 +126,48 @@ function MenuDenuncia({ tipo, id }: { tipo: TipoObjeto; id: string }) {
 /**
  * Borrar lo propio (o cualquier cosa, si eres admin). Antes no había forma de
  * quitar un hilo publicado por error. La base (lote 72) solo deja borrar al
- * autor o a un admin: si falta el lote, se explica en vez de fallar callado.
+ * autor o a un admin: si no borra nada, se explica en vez de fallar callado.
+ * Confirmación en una Hoja (no window.confirm/alert: bloquean la app, en la
+ * PWA salen con la URL de título y no respetan el tamaño de letra).
  */
 function BotonBorrar({ tabla, id, autor, yo, que, onBorrado }: {
   tabla: "eb_hilos" | "eb_respuestas" | "eb_anuncios"; id: string; autor: string; yo: string; que: string; onBorrado: () => void;
 }) {
   const { esAdmin } = useRoles();
   const [borrando, setBorrando] = useState(false);
+  const [preguntando, setPreguntando] = useState(false);
+  const [fallo, setFallo] = useState("");
   if (autor !== yo && !esAdmin) return null;
   async function borrar() {
-    if (!window.confirm(`¿Borrar ${que}? No se puede deshacer.`)) return;
-    setBorrando(true);
+    setBorrando(true); setFallo("");
     const { error, count } = await supabase.from(tabla).delete({ count: "exact" }).eq("id", id);
     setBorrando(false);
     if (error || count === 0) {
-      window.alert(error ? textoError(error) : "No se pudo borrar (falta aplicar el lote 72 en la base).");
+      setFallo(error ? textoError(error) : "No se ha podido borrar. Vuelve a intentarlo más tarde.");
       return;
     }
+    setPreguntando(false);
     onBorrado();
   }
   return (
-    <button type="button" aria-label={`Borrar ${que}`} onClick={borrar} disabled={borrando}
-      className="grid min-h-[44px] min-w-[36px] place-items-center text-tinta-suave hover:text-error disabled:opacity-50">
-      {borrando ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Trash2 size={18} aria-hidden />}
-    </button>
+    <>
+      <button type="button" aria-label={`Borrar ${que}`} onClick={() => { setFallo(""); setPreguntando(true); }} disabled={borrando}
+        className="grid min-h-[44px] min-w-[44px] place-items-center text-tinta-suave hover:text-error disabled:opacity-50">
+        {borrando ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Trash2 size={18} aria-hidden />}
+      </button>
+      <Hoja abierta={preguntando} onCerrar={() => !borrando && setPreguntando(false)} titulo={`¿Borrar ${que}?`}
+        pie={
+          <div className="flex gap-2">
+            <Boton variante="contorno" ancho onClick={() => setPreguntando(false)} disabled={borrando}>Cancelar</Boton>
+            <Boton variante="peligro" ancho onClick={borrar} cargando={borrando}>Borrar</Boton>
+          </div>
+        }>
+        <p className="text-[15px] text-tinta-suave">No se puede deshacer.</p>
+        <div role="status" aria-live="polite">
+          {fallo && <p className="mt-3 rounded-xl bg-error-fondo p-3 text-[15px] font-semibold text-error">{fallo}</p>}
+        </div>
+      </Hoja>
+    </>
   );
 }
 

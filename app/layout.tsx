@@ -75,13 +75,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             sale en claro y salta a oscuro, un parpadeo en cada carga. */}
         <script dangerouslySetInnerHTML={{ __html: TEMA_SCRIPT }} />
       </head>
-      <body className="font-sans min-h-screen bg-fondo text-tinta antialiased">
+      <body className="font-sans min-h-dvh bg-fondo text-tinta antialiased">
         <RegistrarSW />
         {/* Errores del navegador → /admin/errores (lote 57). No pinta nada. */}
         <CapturaErrores />
         <ReproductorProvider>
           <SiteNav />
-          <div className="min-h-screen">{children}</div>
+          <div className="min-h-dvh">{children}</div>
           <MiniReproductor />
           <BottomNav />
         {/* El aviso de instalar. Va DESPUÉS de la barra de abajo para quedar

@@ -137,7 +137,10 @@ export default function ProximaParada() {
       </div>
 
       {deshacer && (
-        <div role="status" className="fixed inset-x-3 bottom-[calc(76px+env(safe-area-inset-bottom))] z-[1001] mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl bg-tinta px-4 py-3 text-fondo shadow-elevada md:bottom-6">
+        // bg-noche fijo (no bg-tinta, que en oscuro se aclara y dejaba el aviso
+        // claro con letra clara). Va encima de la barra inferior y del
+        // mini‑reproductor si suena música: cada uno publica su altura.
+        <div role="status" className="fixed inset-x-3 bottom-[calc(var(--alto-barra-inferior,76px)+var(--alto-mini,0px)+8px)] z-[1001] mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl bg-noche px-4 py-3 text-white shadow-elevada md:bottom-6">
           <span className="truncate text-[15px]">Quitado de guardados: {deshacer.tardeo.titulo}</span>
           <button type="button" onClick={deshacerQuitar} className="min-h-[44px] shrink-0 font-bold text-oro">Deshacer</button>
         </div>

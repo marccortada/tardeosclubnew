@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
+import { mensajeAmable } from "@/lib/mensajeError";
 import { entrarYVolver } from "@/lib/volver";
 import { Store, Check, Loader2, AlertTriangle, LogIn, BadgeCheck, ArrowRight } from "lucide-react";
 import Boton, { claseBoton } from "@/components/Boton";
@@ -23,7 +24,7 @@ function ReclamarContent() {
     setReclamando(true);
     const { data, error } = await supabase.rpc("reclamar_invitacion", { p_token: token });
     setReclamando(false);
-    if (error) { setRes({ ok: false, error: error.message }); return; }
+    if (error) { setRes({ ok: false, error: mensajeAmable(error) }); return; }
     setRes(data as Resultado);
   };
 
@@ -100,7 +101,7 @@ function Caja({ icono, titulo, tono = "marca", children }: { icono: React.ReactN
           {tono === "marca" && <p className="font-script text-[24px] leading-none text-white">Tu ficha te espera</p>}
         </div>
         <div className="-mt-9 flex flex-col items-center px-6 pb-7 md:px-8 md:pb-8">
-          <span className={`grid h-[72px] w-[72px] place-items-center rounded-full border-4 border-white bg-white ${color} shadow-tarjeta`}>{icono}</span>
+          <span className={`grid h-[72px] w-[72px] place-items-center rounded-full border-4 border-superficie bg-white ${color} shadow-tarjeta`}>{icono}</span>
           <h1 className="mb-2 mt-3 text-[26px] font-extrabold leading-tight tracking-tight">{titulo}</h1>
           {children}
         </div>

@@ -108,8 +108,10 @@ export default function AccionesFicha({ tardeo, activo }: { tardeo: Tardeo; acti
           aria-label="Acciones del tardeo"
           role="region"
           // Encima de la barra inferior: su altura real la publica BottomNav en
-          // --alto-barra-inferior (ya incluye la zona segura del iPhone).
-          style={{ bottom: "var(--alto-barra-inferior, calc(68px + env(safe-area-inset-bottom)))" }}
+          // --alto-barra-inferior (ya incluye la zona segura del iPhone). Si suena
+          // música, el mini‑reproductor va justo encima de la barra y publica su
+          // altura en --alto-mini: sin sumarla, el reproductor tapaba «Asistiré».
+          style={{ bottom: "calc(var(--alto-barra-inferior, 68px) + var(--alto-mini, 0px))" }}
           className={`fixed inset-x-0 z-[999] border-t border-linea bg-superficie/95 px-4 py-2 backdrop-blur transition-transform duration-200 md:hidden ${
             bloqueVisible ? "pointer-events-none translate-y-[150%]" : ""}`}
           aria-hidden={bloqueVisible || undefined}

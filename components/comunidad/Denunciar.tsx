@@ -46,7 +46,7 @@ export default function Denunciar({
               </label>
             ))}
           </div>
-          <textarea className={claseCampo} rows={2} maxLength={500} placeholder="Detalles (opcional)"
+          <textarea aria-label="Detalles de la denuncia (opcional)" className={claseCampo} rows={2} maxLength={500} placeholder="Detalles (opcional)"
             value={mensaje} onChange={(e) => setMensaje(e.target.value)} />
           {estado && !estado.ok && <p role="alert" className="text-[15px] font-semibold text-error">{estado.texto}</p>}
         </div>

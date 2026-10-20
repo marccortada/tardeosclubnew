@@ -101,7 +101,7 @@ export default function AddressSearch({
     <div ref={box} className="relative">
       <div className="flex items-center gap-2 rounded-xl border border-linea-fuerte bg-white pl-3 focus-within:border-magenta">
         <MapPin size={18} className="shrink-0 text-magenta" />
-        <input
+        <input aria-label={placeholder || "Dirección"}
           value={q}
           onChange={(e) => { setQ(e.target.value); setError(""); }}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); buscar(); } }}
@@ -120,26 +120,26 @@ export default function AddressSearch({
       </div>
 
       {error && (
-        <p className="mt-1.5 rounded-xl bg-error-fondo p-3 text-xs font-bold text-error">{error}</p>
+        <p role="alert" className="mt-1.5 rounded-xl bg-error-fondo p-3 text-[15px] font-bold text-error">{error}</p>
       )}
 
       {/* Sin resultados hay que decirlo Y decir qué hacer, para que no parezca
           que el buscador está roto cuando lo que pasa es que ese sitio no está
           fichado con ese nombre. */}
       {!loading && !error && buscado && res.length === 0 && (
-        <p className="mt-1.5 rounded-xl bg-magenta-50 p-3 text-sm text-tinta-suave">
+        <p className="mt-1.5 rounded-xl bg-magenta-50 p-3 text-[15px] text-tinta-suave">
           No encontramos «{buscado}». Prueba con la calle y el número, o añade la ciudad.
         </p>
       )}
 
       {res.length > 0 && (
-        <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-black/10 bg-white shadow-tarjeta">
+        <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-linea bg-white shadow-tarjeta">
           {res.map((d, i) => (
             <li key={i}>
               <button
                 type="button"
                 onClick={() => elegir(d)}
-                className="flex w-full items-start gap-2 border-b border-black/5 p-3 text-left text-sm font-semibold text-tinta-suave hover:bg-magenta-50"
+                className="flex w-full items-start gap-2 border-b border-linea p-3 text-left text-sm font-semibold text-tinta-suave hover:bg-magenta-50"
               >
                 <MapPin size={16} className="mt-0.5 shrink-0 text-magenta" />
                 <span>{d.display}</span>

@@ -58,7 +58,7 @@ export default function PerfilTardicola({ uid }: { uid: string }) {
     if (alias && (alias.length < 2 || alias.length > 30)) { setMsg({ ok: false, t: "El alias debe tener entre 2 y 30 letras." }); return; }
     const { error } = await supabase.from("profiles").update({ alias: alias || null, bio: borr.bio.trim() || null }).eq("id", uid);
     if (error) {
-      setMsg({ ok: false, t: error.code === "23505" ? "Ese alias ya lo usa otra persona." : error.code === "42703" || error.code === "PGRST204" ? "Falta el lote 63 en la base." : "No se pudo guardar." });
+      setMsg({ ok: false, t: error.code === "23505" ? "Ese alias ya lo usa otra persona." : error.code === "42703" || error.code === "PGRST204" ? "Esta sección aún no está disponible." : "No se pudo guardar." });
       return;
     }
     setP((x) => x && { ...x, alias, bio: borr.bio.trim() });

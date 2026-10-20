@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { leerPrivados } from "@/lib/privados";
 import { enlaceInstagram, enlaceWeb, enlaceTelefono } from "@/lib/crm";
 import { etiquetaPublicacion } from "@/lib/estados";
 import { Check, X, Mail, Phone, Instagram, Globe, MapPin, CalendarDays, UserRound, Store, Megaphone } from "lucide-react";
@@ -43,11 +44,17 @@ export default function LocalesPorVerificar({ alCambiar }: { alCambiar?: () => v
       // Solo borradores: con `neq activo` entraban también los ocultos y los
       // dados de baja, que no esperan aprobación de nadie.
       let q = supabase.from("locales")
-        .select("id,nombre,direccion,zona,tipo,estado,created_at,owner_id,email,telefono,redes", { count: "exact" })
+        .select("id,nombre,direccion,zona,tipo,estado,created_at,owner_id,telefono,redes", { count: "exact" })
         .eq("estado", "borrador");
       const l = limpiar(busca);
       if (l) q = q.or(`nombre.ilike.%${l}%,zona.ilike.%${l}%,direccion.ilike.%${l}%`);
-      return q.order("created_at", { ascending: false }).order("id").range(desde, hasta) as unknown as PromiseLike<{ data: Fila[] | null; count: number | null; error: unknown }>;
+      // El email de la ficha va aparte (lote 78: columna cerrada a la API).
+      return (q.order("created_at", { ascending: false }).order("id").range(desde, hasta) as unknown as PromiseLike<{ data: Fila[] | null; count: number | null; error: unknown }>)
+        .then(async (r) => {
+          if (!r.data?.length) return r;
+          const p = await leerPrivados("locales", r.data.map((f) => f.id));
+          return { ...r, data: r.data.map((f) => ({ ...f, email: p.get(f.id)?.email ?? null })) };
+        });
     },
     [busca],
     10,

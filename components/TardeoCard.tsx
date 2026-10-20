@@ -104,7 +104,7 @@ export default function TardeoCard({
           titulo={tardeo.titulo}
           texto={`¡Mira este tardeo! ${tardeo.titulo} — ${formatFecha(tardeo.fecha)} en ${tardeo.local.nombre}`}
           url={`/tardeos/${tardeo.id}`}
-          className="absolute right-2 top-2 z-20 grid h-11 w-11 place-items-center rounded-full bg-white/95 text-tinta shadow-tarjeta transition hover:bg-white active:scale-95"
+          className="absolute right-2 top-2 z-20 grid h-11 w-11 place-items-center rounded-full bg-white/95 text-tinta shadow-tarjeta transition hover:bg-superficie active:scale-95"
         />
 
         {/* Abajo: destacado y, solo en "Para ti", por qué te lo proponemos.

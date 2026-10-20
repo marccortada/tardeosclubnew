@@ -87,7 +87,7 @@ export default function MapaFiltrable({ todos }: { todos: Tardeo[] }) {
               <Link href="/perfil/notificaciones" className="mt-4 inline-flex min-h-tacto w-full items-center justify-center gap-2 rounded-xl bg-oro-400 px-5 font-bold text-sobre-oro hover:bg-oro">
                 <Bell size={19} aria-hidden /> Activar avisos
               </Link>
-              <Link href="/colaboradores" className="mt-2 inline-flex min-h-tacto items-center gap-1 rounded-xl px-2 text-[15px] font-bold text-magenta-700 hover:bg-magenta-50">
+              <Link href="/directorio" className="mt-2 inline-flex min-h-tacto items-center gap-1 rounded-xl px-2 text-[15px] font-bold text-magenta-700 hover:bg-magenta-50">
                 Ver locales y DJs <ArrowRight size={17} aria-hidden />
               </Link>
             </div>

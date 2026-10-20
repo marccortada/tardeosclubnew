@@ -125,7 +125,7 @@ export default function PromocionesDeTardeo({ tardeoId }: { tardeoId: string }) 
           {promos.map((p) => {
             const motivo = porQueNoCorre(p);
             return (
-              <div key={p.id} className={`rounded-xl bg-white p-3 ring-1 ${vigente(p) ? "ring-ok/40" : "ring-black/10"}`}>
+              <div key={p.id} className={`rounded-xl bg-white p-3 ring-1 ${vigente(p) ? "ring-ok/40" : "ring-linea"}`}>
                 <div className="flex items-start gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-bold leading-tight">{p.nombre}</p>
@@ -139,11 +139,11 @@ export default function PromocionesDeTardeo({ tardeoId }: { tardeoId: string }) 
                     </div>
                   </div>
                   <button onClick={() => alternar(p)} aria-label={p.activa ? `Apagar ${p.nombre}` : `Encender ${p.nombre}`}
-                    className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg ${p.activa ? "bg-tinta text-white" : "bg-white text-tinta-suave ring-1 ring-black/10"}`}>
+                    className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg ${p.activa ? "bg-tinta text-white" : "bg-white text-tinta-suave ring-1 ring-linea"}`}>
                     <Power size={16} />
                   </button>
                   <button onClick={() => setBorrar(p)} aria-label={`Borrar ${p.nombre}`}
-                    className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-tinta-suave ring-1 ring-black/10 hover:text-magenta">
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-tinta-suave ring-1 ring-linea hover:text-magenta">
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -160,7 +160,7 @@ export default function PromocionesDeTardeo({ tardeoId }: { tardeoId: string }) 
       {error && <p className="mt-2 text-sm font-bold text-magenta">{error}</p>}
 
       {abierto ? (
-        <div className="mt-3 flex flex-col gap-3 rounded-xl bg-white/70 p-3">
+        <div className="mt-3 flex flex-col gap-3 rounded-xl bg-superficie/70 p-3">
           <Campo etiqueta="Nombre" hijo={
             <input value={form.nombre} onChange={(e) => set("nombre", e.target.value)}
               placeholder="2x1 en cócteles" className={input} />} />
@@ -190,7 +190,7 @@ export default function PromocionesDeTardeo({ tardeoId }: { tardeoId: string }) 
               {guardando ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />} Guardar promoción
             </button>
             <button onClick={() => { setAbierto(false); setError(""); }}
-              className="rounded-xl bg-white px-4 py-3 font-semibold text-tinta-suave ring-1 ring-black/10">
+              className="rounded-xl bg-white px-4 py-3 font-semibold text-tinta-suave ring-1 ring-linea">
               Cancelar
             </button>
           </div>

@@ -118,8 +118,10 @@ export function TarjetaPopup({
         type="button"
         onClick={onCerrar}
         aria-label="Cerrar"
+        // Sobre la foto, pareja fija oscuro/blanco: con bg-white/90 + text-tinta,
+        // en modo oscuro la X salía clara sobre blanco y no se veía.
         className={`absolute right-2 top-2 grid min-h-tacto min-w-tacto place-items-center rounded-full ${
-          popup.imagen_url ? "bg-white/90 text-tinta shadow-tarjeta" : "text-tinta hover:bg-marfil-100"}`}
+          popup.imagen_url ? "bg-noche/60 text-white shadow-tarjeta backdrop-blur-sm" : "text-tinta hover:bg-marfil-100"}`}
       >
         <X size={24} aria-hidden />
       </button>
@@ -265,7 +267,7 @@ export default function PopupCliente() {
 
   return (
     <div className="fixed inset-0 z-[1100] flex items-end justify-center p-4 sm:items-center">
-      <div className="absolute inset-0 bg-tinta/50" onClick={cerrar} aria-hidden />
+      <div className="absolute inset-0 bg-noche/60" onClick={cerrar} aria-hidden />
       <div ref={refCaja} role="dialog" aria-modal="true" aria-labelledby={idTitulo} className="relative flex w-full justify-center">
         <TarjetaPopup popup={popup} onCerrar={cerrar} onCta={cerrar} idTitulo={idTitulo} refCerrar={refCerrar} etiqueta={etiqueta} />
       </div>

@@ -104,7 +104,7 @@ export default function SelectorAdn({
             </button>
           )}
         </div>
-        <input
+        <input aria-label="Otro tipo de evento"
           value={otroTipo}
           onChange={(e) => setOtroTipo(e.target.value)}
           onBlur={anadirOtroTipo}
@@ -132,7 +132,7 @@ export default function SelectorAdn({
             </button>
           ))}
         </div>
-        <input
+        <input aria-label="Otro ambiente"
           value={otroAmbiente}
           onChange={(e) => setOtroAmbiente(e.target.value)}
           onBlur={anadirOtroAmbiente}
@@ -160,7 +160,7 @@ export default function SelectorAdn({
             </button>
           ))}
         </div>
-        <input
+        <input aria-label="Otro tipo de público"
           value={otroPublico}
           onChange={(e) => setOtroPublico(e.target.value)}
           onBlur={anadirOtroPublico}
@@ -189,7 +189,7 @@ export default function SelectorAdn({
             </button>
           )}
         </div>
-        <input
+        <input aria-label="Otro outfit o dress code"
           value={otroOutfit}
           onChange={(e) => setOtroOutfit(e.target.value)}
           onBlur={anadirOtroOutfit}

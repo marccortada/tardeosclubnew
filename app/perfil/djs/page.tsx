@@ -7,7 +7,7 @@ import MarcoPerfil from "@/components/musica/MarcoPerfil";
 import { AvatarDj, estilosDe } from "@/components/DjCard";
 import { BotonSeguir } from "@/components/musica/piezas";
 import { supabase } from "@/lib/supabase";
-import { faltaLote, MENSAJE_FALTA_LOTE } from "@/lib/sets";
+import { errorPublico } from "@/lib/sets";
 
 type Fila = { dj_id: string; djs: { id: string; nombre_artistico: string; avatar_url: string | null; estilos: unknown } | null };
 
@@ -23,7 +23,7 @@ function Lista({ uid }: { uid: string }) {
     supabase.from("seguidores_dj").select("dj_id,djs(id,nombre_artistico,avatar_url,estilos)")
       .eq("profile_id", uid).order("created_at", { ascending: false }).limit(200)
       .then(({ data, error }) => {
-        if (error) { setError(faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message); setFilas([]); return; }
+        if (error) { setError(errorPublico(error)); setFilas([]); return; }
         setFilas((data ?? []) as unknown as Fila[]);
       });
   }, [uid]);

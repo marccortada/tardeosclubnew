@@ -26,11 +26,11 @@ export default function Sorteos() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white pb-28">
+    <div className="min-h-dvh bg-white pb-28">
       <CabeceraApp titulo="Sorteos" />
       <main className="mx-auto max-w-lg px-4 pt-4">
         {lista === null ? <p className="py-10 text-center text-tinta-suave">Cargando…</p>
-          : falta ? <Mensaje icono={<Wrench size={26} aria-hidden />} titulo="Todavía no disponible"><p>Falta el lote 67 en la base de datos.</p></Mensaje>
+          : falta ? <Mensaje icono={<Wrench size={26} aria-hidden />} titulo="Todavía no disponible"><p>Esta sección aún no está disponible.</p></Mensaje>
           : lista.length === 0 ? <Mensaje icono={<Gift size={26} aria-hidden />} titulo="No hay sorteos ahora"><p>Vuelve pronto: sorteamos entradas y planes.</p></Mensaje>
           : (
             <ul className="flex flex-col gap-4">

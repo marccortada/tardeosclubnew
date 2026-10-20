@@ -108,7 +108,7 @@ export default function InicioCuenta({ datos, email, uid }: { datos: DatosCuenta
 
   const paneles = [
     datos?.ficha && { href: "/local", icono: datos.ficha.tipo === "promotor" ? Megaphone : Store, titulo: datos.ficha.tipo === "promotor" ? "Mis eventos" : "Mi local", texto: datos.ficha.nombre },
-    datos?.esDj && { href: "/dj", icono: Disc3, titulo: "Mi perfil DJ", texto: "Perfil, sesiones y press kit" },
+    datos?.esDj && { href: "/dj", icono: Disc3, titulo: "Mi perfil DJ", texto: "Perfil, sesiones y PressKit" },
     datos?.esAdmin && { href: "/admin", icono: ShieldCheck, titulo: "Administración", texto: "Gestión de TardeosClub" },
   ].filter(Boolean) as { href: string; icono: typeof Store; titulo: string; texto: string }[];
 

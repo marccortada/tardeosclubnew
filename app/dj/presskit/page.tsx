@@ -23,7 +23,7 @@ import { useDj } from "../contexto";
 const MAX_MB = 10;
 const MAX_BYTES = MAX_MB * 1024 * 1024;
 const BUCKET = "flyers";
-const LOTE_47 = "Falta pegar el lote 47 en la base de datos (supabase/47_presskit_y_arreglos.sql). Hasta entonces el PressKit no se puede guardar. Avisa a quien administra la web.";
+const LOTE_47 = "Esta sección aún no está disponible: el PressKit todavía no se puede guardar.";
 
 const mb = (b: number) => (b / 1024 / 1024).toLocaleString("es-ES", { maximumFractionDigits: 1 });
 

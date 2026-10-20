@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { leerPrivados } from "@/lib/privados";
 import { SeccionPanel } from "@/components/panel/PanelShell";
 import Paginacion, { usePaginado, useDiferido, Buscador, Filtros, EstadoLista } from "@/components/panel/Paginacion";
 import { PLANES, ETIQUETA, precioTexto, euroMes, vigente, diasRestantes, type Plan } from "@/lib/planes";
@@ -37,7 +38,8 @@ type Ficha = {
 /** Quita lo que rompe la sintaxis de los filtros de PostgREST. */
 const limpiar = (s: string) => s.replace(/[,()*%\\"']/g, " ").replace(/\s+/g, " ").trim();
 
-const COLS = "id,plan,plan_estado,plan_hasta,pago_proveedor,pago_referencia";
+// Sin `pago_*`: desde el lote 78 solo el admin los lee, y por `leerPrivados`.
+const COLS = "id,plan,plan_estado,plan_hasta";
 const tablaDe = (r: Rol) => (r === "local" ? "locales" : "djs");
 const nombreDe = (r: Rol) => (r === "local" ? "nombre" : "nombre_artistico");
 
@@ -98,7 +100,9 @@ export default function AdminSuscripciones() {
       }
       // Por fecha de fin: las que no tienen fecha, al final.
       q = orden === "nombre" ? q.order(nombreDe(rol)) : q.order("plan_hasta", { ascending: orden === "hasta_asc", nullsFirst: false });
-      return q.order("id").range(desde, hasta).then((r: any) => ({
+      return q.order("id").range(desde, hasta).then(async (r: any) => {
+        const priv = await leerPrivados(rol === "local" ? "locales" : "djs", (r.data ?? []).map((x: any) => x.id));
+        return {
         ...r,
         data: (r.data ?? []).map((x: any): Ficha => ({
           id: x.id,
@@ -106,8 +110,8 @@ export default function AdminSuscripciones() {
           plan: x.plan ?? "basic",
           plan_estado: x.plan_estado ?? "sin_suscripcion",
           plan_hasta: x.plan_hasta ?? null,
-          pago_proveedor: x.pago_proveedor ?? null,
-          pago_referencia: x.pago_referencia ?? null,
+          pago_proveedor: priv.get(x.id)?.pago_proveedor ?? null,
+          pago_referencia: priv.get(x.id)?.pago_referencia ?? null,
           estado: x.estado ?? null,
           reclamado: Boolean(x.owner_id ?? x.profile_id),
         })),
@@ -115,7 +119,8 @@ export default function AdminSuscripciones() {
         error: r.error && (r.error.code === "42703" || r.error.code === "PGRST204")
           ? { message: "falta pegar el lote 33 (supabase/33_planes.sql)." }
           : r.error,
-      }));
+        };
+      });
     },
     [rol, filtro, busca, planFiltro, caduca30, orden],
     25,

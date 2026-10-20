@@ -65,7 +65,7 @@ export default function EncuestaTardeo({ params }: { params: Promise<{ id: strin
           <Link href={entrarYVolver(`/tardeos/${id}/encuesta`)} className={claseBoton("primario", "normal", false, "mt-4")}>Entrar</Link>
         </Mensaje>
       );
-    if (estado === "falta_lote") return <Mensaje icono={<Wrench size={26} aria-hidden />} titulo="Todavía no disponible"><p>Falta el lote 67 en la base de datos.</p></Mensaje>;
+    if (estado === "falta_lote") return <Mensaje icono={<Wrench size={26} aria-hidden />} titulo="Todavía no disponible"><p>Esta sección aún no está disponible.</p></Mensaje>;
     if (estado === "error") return <Mensaje icono={<Wrench size={26} aria-hidden />} titulo="No se pudo cargar"><p>Recarga la página en un momento.</p></Mensaje>;
     if (estado === "no_existe" || estado === "cancelado")
       return <Mensaje icono={<Lock size={26} aria-hidden />} titulo={estado === "cancelado" ? "Este tardeo se canceló" : "Este tardeo no existe"} />;
@@ -128,7 +128,7 @@ export default function EncuestaTardeo({ params }: { params: Promise<{ id: strin
   };
 
   return (
-    <div className="min-h-screen bg-white pb-28">
+    <div className="min-h-dvh bg-white pb-28">
       <CabeceraApp titulo="¿Qué tal el tardeo?" volver={volver} />
       <main className="mx-auto max-w-lg px-4 pt-5">
         {titulo && <h2 className="text-[22px] font-bold leading-tight">{titulo}</h2>}

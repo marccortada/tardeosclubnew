@@ -299,3 +299,25 @@ silencio estado y orden de destacados). L8 oculta las 3 fichas de prueba.
   `/api/buscar-sitio` 200; llave mala no da cookie; cron `avisos` sigue en 200.
 - `scripts/desplegar.sh` comprueba ahora con la llave (la lee del servidor).
 - Plantillas en `docs/nginx-*.conf`; copia de antes en `/root/nginx-antes-llave-*`.
+
+---
+
+## 20‑oct‑2026 · Auditoría a fondo (código, seguridad, pantallas, datos, servidor)
+
+- **Fotos rotas**: 57 locales tenían la galería en el Supabase antiguo (borrado hoy). Lote 77:
+  enlaces al Storage nuevo; 57/57 cargan. Revisadas además 826 imágenes: ninguna rota.
+- **Sincronización diaria con la web antigua** (workflow de GitHub desde `main`): reescribía
+  locales, DJs y tardeos de producción con los de la vieja. Desactivada en GitHub y quitada de
+  `rediseno`; host antiguo fuera de `next.config.mjs` y `lib/fotos.ts`.
+- **Código**: avisos de cancelación con el número de confirmados actual, CSV de un tardeo
+  elegido en /admin/registro, 404 real en fichas de local inexistentes, cargas tardías en Nexo.
+- **Seguridad, lote 78**: reseñas nacen pendientes, columnas de sistema de tardeos, emails y
+  cobros de fichas fuera de la API (`lib/privados.ts`), plaza en tardeo cerrado solo admin,
+  `quienes_van` solo visibles. 24/24 en local.
+- **Pantallas** (~40 arreglos): reproductor que tapaba «Asistiré», velos y X en oscuro, zoom
+  de iOS en buscadores, barras tapadas por la barra inferior, textos largos, errores técnicos
+  en inglés y «falta el lote» fuera de lo público, foco en hojas, botones de 44 px.
+- **Pendiente de decidir (usuario)**: repo de GitHub PÚBLICO con el email del admin de prueba;
+  servidor con entrada por contraseña de root, sin cortafuegos ni fail2ban (21.446 intentos en
+  24 h); `.gitignore` sin `.env` ni `AUDITORIA_Y_PLAN.md` (el protector de comandos no dejó
+  editarlo); unificar nombres (Apuntados/Asistentes/Confirmados) y constante de marca.

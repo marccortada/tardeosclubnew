@@ -7,7 +7,7 @@ import { Bookmark } from "lucide-react";
 import MarcoPerfil from "@/components/musica/MarcoPerfil";
 import { BotonPlay } from "@/components/musica/piezas";
 import { supabase } from "@/lib/supabase";
-import { faltaLote, guardarSet, portadaDe, MENSAJE_FALTA_LOTE, type Plataforma } from "@/lib/sets";
+import { guardarSet, portadaDe, errorPublico, type Plataforma } from "@/lib/sets";
 
 type Fila = {
   set_id: string;
@@ -30,7 +30,7 @@ function Lista({ uid }: { uid: string }) {
       .select("set_id,sets(id,titulo,url,plataforma,portada,dj_id,djs(nombre_artistico))")
       .eq("profile_id", uid).order("created_at", { ascending: false }).limit(200)
       .then(({ data, error }) => {
-        if (error) { setError(faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message); setFilas([]); return; }
+        if (error) { setError(errorPublico(error)); setFilas([]); return; }
         setFilas((data ?? []) as unknown as Fila[]);
       });
   }, [uid]);

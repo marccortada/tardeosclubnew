@@ -22,8 +22,9 @@ import { plataformaDe, type Plataforma } from "@/lib/sets";
  * - Lo que no se puede controlar (Spotify, enlaces raros) se abre fuera.
  *
  * Otros equipos: `useReproductor().reproducir({ id, titulo, autor, portada, url, tipo })`.
- * Mientras hay pista, <html> lleva `--alto-mini: 72px` (si no, 0px) para que
- * barras fijas propias puedan subirse: `bottom: calc(... + var(--alto-mini, 0px))`.
+ * Mientras se ve el mini‑reproductor, <html> lleva `--alto-mini` con su altura
+ * real (si no, 0px) para que las barras fijas propias puedan subirse:
+ * `bottom: calc(var(--alto-barra-inferior) + var(--alto-mini, 0px))`.
  */
 export type Pista = {
   id: string; titulo: string; autor?: string; portada?: string | null; url: string;
@@ -227,10 +228,6 @@ export function ReproductorProvider({ children }: { children: ReactNode }) {
     } catch { /* navegador sin soporte completo */ }
   }, [actual, sonando, cerrar]);
 
-  useEffect(() => {
-    document.documentElement.style.setProperty("--alto-mini", actual ? "72px" : "0px");
-  }, [actual]);
-
   const valor = useMemo<Ctx>(() => ({ actual, sonando, cargando, reproducir, pausar, reanudar, alternar, cerrar }),
     [actual, sonando, cargando, reproducir, pausar, reanudar, alternar, cerrar]);
 
@@ -250,14 +247,42 @@ export function ReproductorProvider({ children }: { children: ReactNode }) {
 export function MiniReproductor() {
   const { actual, sonando, cargando, alternar, cerrar } = useReproductor();
   const pathname = usePathname() ?? "";
-  if (!actual) return null;
   const sinBarra = ocultaBarraInferior(pathname);
+
+  // Publica su altura real en --alto-mini (mismo patrón que BottomNav con
+  // --alto-barra-inferior). Antes era un 72px fijo y la barra «Asistiré /
+  // Guardar» de la ficha quedaba debajo del reproductor: si el usuario agranda
+  // la letra o el título cambia, la altura cambia y un número fijo se queda corto.
+  // En escritorio el reproductor va en una esquina y no tapa barras: cuenta 0.
+  const cajaRef = useRef<HTMLDivElement>(null);
+  const hayPista = !!actual;
+  useEffect(() => {
+    const raiz = document.documentElement.style;
+    const caja = cajaRef.current;
+    if (!caja) { raiz.setProperty("--alto-mini", "0px"); return; }
+    const escritorio = window.matchMedia("(min-width: 768px)");
+    const medir = () => raiz.setProperty("--alto-mini", escritorio.matches ? "0px" : `${caja.offsetHeight}px`);
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(caja);
+    escritorio.addEventListener("change", medir);
+    return () => {
+      ro.disconnect();
+      escritorio.removeEventListener("change", medir);
+      raiz.setProperty("--alto-mini", "0px");
+    };
+  }, [hayPista]);
+
+  if (!actual) return null;
   return (
     <>
       <div aria-hidden className="h-20" />
       <div
+        ref={cajaRef}
         role="region" aria-label="Reproductor"
-        className={`fixed inset-x-2 z-[999] mx-auto max-w-md md:inset-x-auto md:right-4 md:w-[380px] ${sinBarra ? "bottom-3" : "bottom-[calc(72px+env(safe-area-inset-bottom))] md:bottom-4"}`}
+        // Justo encima de la barra inferior, cuya altura real (con la zona
+        // segura del iPhone) publica BottomNav en --alto-barra-inferior.
+        className={`fixed inset-x-2 z-[999] mx-auto max-w-md pb-1.5 md:inset-x-auto md:right-4 md:w-[380px] ${sinBarra ? "bottom-3" : "bottom-[var(--alto-barra-inferior,72px)] md:bottom-4"}`}
       >
         <div className="flex items-center gap-3 rounded-2xl border border-linea bg-superficie/95 p-2 pr-1 shadow-elevada backdrop-blur">
           <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-noche">

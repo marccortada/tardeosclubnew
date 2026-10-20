@@ -237,7 +237,7 @@ export default function MeetZone() {
         <div ref={finRef} />
       </div>
 
-      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom)+var(--alto-mini,0px))] z-[600] border-t border-linea bg-superficie px-3 py-2 md:bottom-0">
+      <div className="sticky bottom-[calc(var(--alto-barra-inferior,4rem)+var(--alto-mini,0px))] z-[600] border-t border-linea bg-superficie px-3 py-2 md:bottom-0">
         {e.puede_escribir ? (
           <form onSubmit={enviar} className="mx-auto flex max-w-2xl items-center gap-2">
             <label htmlFor="meet-texto" className="sr-only">Mensaje</label>
@@ -274,7 +274,7 @@ export default function MeetZone() {
       <Hoja abierta={fijando} onCerrar={() => setFijando(false)} titulo="Mensaje fijado"
         pie={<Boton ancho onClick={guardarFijado}>{textoFijado.trim() ? "Fijar mensaje" : "Quitar mensaje fijado"}</Boton>}>
         <p className="mb-2 text-[15px] text-tinta-suave">Punto de encuentro, hora y datos prácticos. Lo verán todos arriba del chat. Sin teléfonos ni emails.</p>
-        <textarea className={claseCampo} rows={4} maxLength={400} value={textoFijado} onChange={(ev) => setTextoFijado(ev.target.value)} />
+        <textarea aria-label="Mensaje fijado" className={claseCampo} rows={4} maxLength={400} value={textoFijado} onChange={(ev) => setTextoFijado(ev.target.value)} />
         {errFijado && <p role="alert" className="mt-2 text-[15px] font-semibold text-error">{errFijado}</p>}
       </Hoja>
     </div>

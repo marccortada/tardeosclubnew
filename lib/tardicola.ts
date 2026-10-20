@@ -1,6 +1,9 @@
 import { supabase } from "./supabase";
 import { registrar } from "./registro";
 
+/** Aforo completo sin lista de espera: la ficha enseña esta frase tal cual. */
+export const LISTA_LLENA = "Lista llena: ya no quedan plazas.";
+
 /**
  * El ADN del tardícola: los mismos criterios con los que se describe un tardeo,
  * pero en forma de preferencia.
@@ -134,7 +137,7 @@ export async function asistire(uid: string, tardeoId: string): Promise<{ r: MiAs
   if (!error) return { r: filaAsistencia(data), error: null };
   if (!faltaLote(error)) return { r: null, error: error.message };
   const v = await supabase.from("inscripciones").upsert({ profile_id: uid, tardeo_id: tardeoId, estado: "apuntado" }, { onConflict: "tardeo_id,profile_id" });
-  if (v.error && /aforo completo/i.test(v.error.message)) return { r: null, error: "Lista llena. La lista de espera llega con el lote 64." };
+  if (v.error && /aforo completo/i.test(v.error.message)) return { r: null, error: LISTA_LLENA };
   if (v.error) return { r: null, error: v.error.message };
   return { r: { estado: "apuntado", puesto: null }, error: null };
 }

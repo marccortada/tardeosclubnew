@@ -172,7 +172,7 @@ export default function PasarLista({
           </ul>
         )}
         <p className="mt-2 flex items-center gap-1.5 text-sm text-tinta-suave">
-          <Info size={14} aria-hidden /> Falta pegar el lote 48 para marcar asistencia.
+          <Info size={14} aria-hidden /> Marcar asistencia aún no está disponible.
         </p>
       </div>
     );

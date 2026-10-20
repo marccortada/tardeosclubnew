@@ -310,7 +310,7 @@ export default function EditarLocal() {
             el botón no puede quedar a seis pantallas. */}
         {/* En el móvil se pega ENCIMA de la barra de abajo (64 px + zona segura):
             con bottom-0 quedaba debajo de ella y no se veía el botón de guardar. */}
-        <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom)+var(--alto-mini,0px))] z-10 -mx-4 flex flex-col gap-2 border-t border-linea bg-marfil/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
+        <div className="sticky bottom-[calc(var(--alto-barra-inferior,4rem)+var(--alto-mini,0px))] z-10 -mx-4 flex flex-col gap-2 border-t border-linea bg-marfil/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
           <div aria-live="polite">
             {error && <p role="alert" className="rounded-xl border border-error/20 bg-error-fondo p-3 text-[15px] font-semibold text-error">{error}</p>}
             {guardado && !error && (

@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowUp, ArrowDown, Star, Trash2, MessageCircle, Heart, Bookmark, Loader2, Plus } from "lucide-react";
 import { SeccionPanel } from "@/components/panel/PanelShell";
 import { BotonPlay, HojaComentarios } from "@/components/musica/piezas";
+import Hoja from "@/components/ui/Hoja";
+import Boton from "@/components/Boton";
 import { useDj } from "../contexto";
 import {
   getSetsDeDj, crearSet, destacarSet, actualizarSet, borrarSet, plataformaDe, portadaDe, type SetDj,
@@ -29,6 +31,10 @@ export default function SetsDj() {
   const [estilos, setEstilos] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [comentando, setComentando] = useState<SetDj | null>(null);
+  // Set pendiente de confirmar el borrado (Hoja en vez de window.confirm, que
+  // bloquea la app y en la PWA sale con la URL de título).
+  const [aBorrar, setABorrar] = useState<SetDj | null>(null);
+  const [borrando, setBorrando] = useState(false);
 
   const cargar = useCallback(async () => {
     const r = await getSetsDeDj(dj.id);
@@ -133,10 +139,7 @@ export default function SetsDj() {
                   <Mini onClick={() => setComentando(s)}><MessageCircle size={16} aria-hidden /> Comentarios</Mini>
                   <Mini onClick={() => void mover(i, -1)} disabled={i === 0} etiqueta="Subir"><ArrowUp size={16} aria-hidden /></Mini>
                   <Mini onClick={() => void mover(i, 1)} disabled={i === sets.length - 1} etiqueta="Bajar"><ArrowDown size={16} aria-hidden /></Mini>
-                  <Mini onClick={async () => {
-                    if (!confirm(`¿Borrar «${s.titulo}»? Se perderán sus ♥ y comentarios.`)) return;
-                    const e = await borrarSet(s.id); if (e) setError(e); await cargar();
-                  }} etiqueta="Borrar"><Trash2 size={16} aria-hidden /></Mini>
+                  <Mini onClick={() => setABorrar(s)} etiqueta="Borrar"><Trash2 size={16} aria-hidden /></Mini>
                 </div>
               </li>
             ))}
@@ -145,7 +148,25 @@ export default function SetsDj() {
 
       <HojaComentarios setId={comentando?.id ?? null} titulo={comentando?.titulo ?? ""} abierta={!!comentando}
         onCerrar={() => { setComentando(null); void cargar(); }} soyDj nombreDj={dj.nombre_artistico} />
-      {/* Hueco para el mini‑reproductor fijo (72 px cuando suena algo): sin él
+      <Hoja abierta={!!aBorrar} onCerrar={() => !borrando && setABorrar(null)} titulo="¿Borrar este set?"
+        pie={
+          <div className="flex gap-2">
+            <Boton variante="contorno" ancho onClick={() => setABorrar(null)} disabled={borrando}>Cancelar</Boton>
+            <Boton variante="peligro" ancho cargando={borrando} onClick={async () => {
+              if (!aBorrar) return;
+              setBorrando(true);
+              const e = await borrarSet(aBorrar.id);
+              setBorrando(false); setABorrar(null);
+              if (e) setError(e);
+              await cargar();
+            }}>Borrar</Boton>
+          </div>
+        }>
+        <p className="text-[15px] text-tinta-suave">
+          «{aBorrar?.titulo}» desaparecerá con sus ♥ y comentarios. No se puede deshacer.
+        </p>
+      </Hoja>
+      {/* Hueco para el mini‑reproductor fijo (su altura real, --alto-mini): sin él
           tapaba la segunda fila de botones del último set en el móvil. */}
       <div aria-hidden className="h-[var(--alto-mini,0px)]" />
     </SeccionPanel>

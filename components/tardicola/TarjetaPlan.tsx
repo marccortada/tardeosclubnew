@@ -64,7 +64,7 @@ export default function TarjetaPlan({ t, afin, patrocinado, href, distancia }: {
       </div>
       <div className="p-4">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[13px] font-semibold tracking-wide text-tinta-suave">{fechaCorta(t.fecha, t.horaInicio)}</p>
+          <p className="text-[15px] font-semibold tracking-wide text-tinta-suave">{fechaCorta(t.fecha, t.horaInicio)}</p>
           {patrocinado && <span className="text-[12px] font-medium text-tinta-suave">Patrocinado</span>}
         </div>
         <div className="mt-1 flex items-start justify-between gap-3">

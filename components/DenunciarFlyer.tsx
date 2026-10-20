@@ -89,7 +89,7 @@ export default function DenunciarFlyer({
         ))}
       </div>
 
-      <textarea
+      <textarea aria-label="Detalles de la denuncia (opcional)"
         value={mensaje}
         onChange={(e) => setMensaje(e.target.value)}
         rows={2}

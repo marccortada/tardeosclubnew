@@ -76,7 +76,8 @@ export function CampoFiltro({ etiqueta, children, ancho }: { etiqueta: string; c
 }
 
 /** Clase de los <select>/<input> dentro del panel (algo más bajos que en formularios). */
-export const claseFiltro = `${claseCampo} !min-h-[44px] !py-2 text-[15px]`;
+// text-base (16 px): por debajo, Safari de iPhone hace zoom al tocar el campo.
+export const claseFiltro = `${claseCampo} !min-h-[44px] !py-2 text-base`;
 
 /** Selector de orden reutilizable. */
 export function SelectorOrden<K extends string>({ valor, onCambiar, opciones }: {

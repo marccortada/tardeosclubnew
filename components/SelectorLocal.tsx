@@ -53,7 +53,7 @@ export default function SelectorLocal({
     <div>
       <div className="relative">
         <Search size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-tinta-suave" />
-        <input
+        <input aria-label="Buscar local"
           type="search"
           value={q}
           onChange={(e) => setQ(e.target.value)}

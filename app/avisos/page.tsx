@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bell, CalendarClock, CheckCheck, Gift, LogIn, Music, PartyPopper, Ban, Star, Settings } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { mensajeAmable } from "@/lib/mensajeError";
 import { useAuth } from "@/lib/useAuth";
 import { entrarYVolver, enlacePropio } from "@/lib/volver";
 import { claseBoton } from "@/components/Boton";
@@ -71,10 +72,10 @@ export default function Avisos() {
     if (destino) router.push(destino);
   };
 
-  if (loading) return <div className="min-h-screen bg-white"><CabeceraApp titulo="Avisos" /></div>;
+  if (loading) return <div className="min-h-dvh bg-white"><CabeceraApp titulo="Avisos" /></div>;
   if (!user) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-dvh bg-white">
         <CabeceraApp titulo="Avisos" />
         <main className="mx-auto max-w-lg px-4 pt-6">
           <Mensaje icono={<LogIn size={26} aria-hidden />} titulo="Entra para ver tus avisos">
@@ -87,7 +88,7 @@ export default function Avisos() {
   }
 
   return (
-    <div className="min-h-screen bg-white pb-28">
+    <div className="min-h-dvh bg-white pb-28">
       <CabeceraApp titulo="Avisos" />
       <main className="mx-auto max-w-lg px-4 pt-4">
         <div className="mb-3">
@@ -103,7 +104,7 @@ export default function Avisos() {
           )}
         </div>
         {aviso && <p role="alert" className="mb-3 rounded-xl bg-error-fondo p-3 text-[15px] font-semibold text-error">{aviso}</p>}
-        <EstadoLista cargando={p.cargando} error={p.error ? (/avisos/.test(p.error) ? "falta el lote 63" : p.error) : null}
+        <EstadoLista cargando={p.cargando} error={p.error ? (/avisos/.test(p.error) ? "esta sección aún no está disponible." : mensajeAmable(p.error)) : null}
           filas={p.filas.length} vacio={soloNoLeidos ? "No tienes avisos sin leer. Todo al día." : "No tienes avisos. Aquí te llegarán los recordatorios de tus planes."} />
         <ul className="flex flex-col gap-2">
           {p.filas.map((a) => {

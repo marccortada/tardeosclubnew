@@ -64,7 +64,7 @@ export default function FichaNoPublicaPropia({ id }: { id: string }) {
   ].filter(Boolean) as string[];
 
   return (
-    <main className="min-h-screen bg-fondo pb-10">
+    <main className="min-h-dvh bg-fondo pb-10">
       <div role="status" className="border-b border-aviso/30 bg-aviso-fondo">
         <div className="mx-auto flex max-w-3xl items-start gap-3 px-4 py-3">
           <EyeOff size={20} className="mt-0.5 shrink-0 text-aviso" aria-hidden />

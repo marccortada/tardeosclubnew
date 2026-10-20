@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { notFound } from "next/navigation";
 import { getLocalById, getTardeosPublicadosDeLocal } from "@/lib/tardeos";
 import TardeoCard from "@/components/TardeoCard";
 import Resenas from "@/components/Resenas";
@@ -29,7 +30,9 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const local = await getLocalById(id);
-  if (!local) return { title: "Local no encontrado · TardeosClub" };
+  // Sin ficha pública (no existe o está en revisión): nunca indexar. La vista
+  // previa del dueño se pinta en el navegador y no debe acabar en Google.
+  if (!local) return { title: "Local no encontrado · TardeosClub", robots: { index: false, follow: false } };
   // Una línea, sin emojis y a ~155: la descripción del local suele ser larga.
   const desc = descripcionMeta(`Tardeos en ${local.nombre}${local.zona ? ` · ${local.zona}` : ""}. ${local.descripcion || "Descúbrelos en TardeosClub."}`);
   const fotos: string[] = Array.isArray(local.fotos) ? local.fotos.filter((f: unknown) => typeof f === "string" && f) : [];
@@ -57,6 +60,9 @@ const TITULO = "font-display text-[24px] font-bold leading-tight md:text-[30px]"
 
 export default async function PaginaLocal({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // Un id que ni siquiera tiene forma de identificador no puede ser una ficha de
+  // nadie: 404 real desde el servidor (antes, 200 con «Cargando ficha…»).
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) notFound();
   const local = await getLocalById(id);
   // El servidor lee sin sesión: una ficha en revisión no le llega ni a su
   // dueño. El navegador la vuelve a pedir con sesión y, si no es suya, 404.

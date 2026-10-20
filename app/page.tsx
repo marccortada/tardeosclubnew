@@ -343,7 +343,9 @@ function TardeoGrande({ t, solo = false }: { t: Tardeo; solo?: boolean }) {
         {/* bg-[#fff] y no bg-white: en modo oscuro globals.css pasa bg-white a
             superficie oscura y la fecha (texto oscuro fijo) dejaba de leerse. */}
         <span className="absolute left-3 top-3 rounded-2xl bg-[#fff] px-3 py-1.5 text-center leading-none text-[#1a1a1a] shadow-md">
-          <span className="block text-[13px] font-bold uppercase text-magenta">{diaSemana(t.fecha)}</span>
+          {/* Magenta oscuro fijo: la tarjeta es blanca en los dos temas y
+              text-magenta pasa al neón en oscuro (poco contraste sobre blanco). */}
+          <span className="block text-[13px] font-bold uppercase text-[#930E72]">{diaSemana(t.fecha)}</span>
           <span className="block text-[24px] font-extrabold">{Number(t.fecha.slice(8, 10))}</span>
           <span className="block text-[13px] font-bold uppercase">{mes(t.fecha)}</span>
         </span>

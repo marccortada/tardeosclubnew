@@ -14,7 +14,7 @@ import { entrarYVolver } from "@/lib/volver";
 export default function MarcoPerfil({ titulo, ruta, children }: { titulo: string; ruta: string; children: (uid: string) => ReactNode }) {
   const { user, loading } = useAuth();
   return (
-    <main className="mx-auto min-h-screen max-w-2xl bg-fondo pb-8">
+    <main className="mx-auto min-h-dvh max-w-2xl bg-fondo pb-8">
       <div className="flex items-center gap-2 bg-superficie px-2 py-1">
         <Link href="/perfil" aria-label="Volver al perfil" className="grid h-12 w-12 place-items-center rounded-full hover:bg-fondo">
           <ArrowLeft size={22} aria-hidden />

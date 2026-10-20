@@ -69,7 +69,7 @@ export default function Conversacion({
               <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${mio ? "bg-magenta-50" : "bg-marfil-100"}`}>
                 {!mio && <p className="text-[13px] font-bold text-magenta">{nombreOtro}</p>}
                 <p className="whitespace-pre-wrap break-words text-[15px]">{m.texto}</p>
-                <p className="text-right text-[11px] text-tinta-suave">{m.retenido && "Retenido · "}{fechaCorta(m.created_at)} {horaCorta(m.created_at)}</p>
+                <p className="text-right text-[13px] text-tinta-suave">{m.retenido && "Retenido · "}{fechaCorta(m.created_at)} {horaCorta(m.created_at)}</p>
               </div>
               {!mio && m.id !== "inicial" && (
                 <button type="button" aria-label="Denunciar mensaje" onClick={() => setDenunciar(m.id)}

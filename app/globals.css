@@ -84,6 +84,10 @@ body {
   line-height: 1.55;
   font-feature-settings: "cv11", "ss01";
   text-rendering: optimizeLegibility;
+  /* Emails, enlaces o nombres pegados sin espacios (p. ej. «tardeo@miracle…» o
+     una URL de Instagram) no tienen por dónde partir y estiraban la pantalla
+     del móvil hacia los lados. Con esto parten donde haga falta. */
+  overflow-wrap: anywhere;
 }
 
 /* ---------- Calidad UX (guías ui-ux-pro-max) ---------- */

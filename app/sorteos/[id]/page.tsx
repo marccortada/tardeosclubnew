@@ -10,6 +10,8 @@ import Boton, { claseBoton } from "@/components/Boton";
 import Hoja from "@/components/ui/Hoja";
 import { CabeceraApp, Mensaje } from "@/components/retorno/Piezas";
 import { COLS_SORTEO, abiertoAhora, fechaLarga, participar, yaParticipo, type Sorteo } from "@/lib/sorteos";
+import { faltaLote } from "@/lib/encuestas";
+import { mensajeAmable } from "@/lib/mensajeError";
 
 /** Ficha de un sorteo (vídeo hoja3/hoja4): imagen, premio, bases, Participar. */
 export default function FichaSorteo({ params }: { params: Promise<{ id: string }> }) {
@@ -20,26 +22,46 @@ export default function FichaSorteo({ params }: { params: Promise<{ id: string }
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verBases, setVerBases] = useState(false);
+  // Fallo al leer (sin red, sesión caducada…) ≠ «no existe». Antes cualquier
+  // error decía «Este sorteo no existe» y la persona no sabía que podía
+  // reintentar. `intento` sube con «Reintentar» y vuelve a lanzar la lectura.
+  const [falloCarga, setFalloCarga] = useState<string | null>(null);
+  const [intento, setIntento] = useState(0);
 
   useEffect(() => {
+    let vivo = true;
     supabase.from("sorteos").select(COLS_SORTEO).eq("id", id).maybeSingle()
-      .then(({ data }) => setS((data as Sorteo | null) ?? null));
-  }, [id]);
+      .then(({ data, error: e }) => {
+        if (!vivo) return;
+        if (e) { setFalloCarga(faltaLote(e) ? "Esta sección aún no está disponible." : mensajeAmable(e)); setS(undefined); return; }
+        setFalloCarga(null);
+        setS((data as Sorteo | null) ?? null);
+      });
+    return () => { vivo = false; };
+  }, [id, intento]);
   useEffect(() => { if (user) yaParticipo(id, user.id).then(setDentro); }, [id, user]);
 
   const pulsar = async () => {
     setEnviando(true); setError(null);
     try { await participar(id); setDentro(true); }
-    catch (e) { setError(e instanceof Error ? e.message : "No se pudo registrar. Inténtalo otra vez."); }
+    catch (e) { setError(e instanceof Error ? mensajeAmable(e) : "No se pudo registrar. Inténtalo otra vez."); }
     finally { setEnviando(false); }
   };
 
-  if (s === undefined) return <div className="min-h-screen bg-white"><CabeceraApp titulo="Sorteos" volver="/sorteos" /><p className="py-10 text-center text-tinta-suave">Cargando…</p></div>;
-  if (s === null) return <div className="min-h-screen bg-white"><CabeceraApp titulo="Sorteos" volver="/sorteos" /><main className="mx-auto max-w-lg px-4 pt-6"><Mensaje icono={<Gift size={26} aria-hidden />} titulo="Este sorteo no existe" /></main></div>;
+  if (falloCarga) return (
+    <div className="min-h-dvh bg-white"><CabeceraApp titulo="Sorteos" volver="/sorteos" />
+      <main className="mx-auto max-w-lg px-4 pt-6">
+        <Mensaje icono={<Gift size={26} aria-hidden />} titulo="No se ha podido cargar el sorteo"><p role="alert">{falloCarga}</p></Mensaje>
+        <Boton ancho variante="contorno" onClick={() => { setFalloCarga(null); setIntento((n) => n + 1); }}>Reintentar</Boton>
+      </main>
+    </div>
+  );
+  if (s === undefined) return <div className="min-h-dvh bg-white"><CabeceraApp titulo="Sorteos" volver="/sorteos" /><p className="py-10 text-center text-tinta-suave">Cargando…</p></div>;
+  if (s === null) return <div className="min-h-dvh bg-white"><CabeceraApp titulo="Sorteos" volver="/sorteos" /><main className="mx-auto max-w-lg px-4 pt-6"><Mensaje icono={<Gift size={26} aria-hidden />} titulo="Este sorteo no existe" /></main></div>;
 
   const abierto = abiertoAhora(s);
   return (
-    <div className="min-h-screen bg-white pb-28">
+    <div className="min-h-dvh bg-white pb-28">
       <CabeceraApp titulo="Sorteos" volver="/sorteos" />
       <main className="mx-auto max-w-lg px-4 pt-4">
         {s.imagen_url

@@ -117,7 +117,8 @@ export default function Paginacion({
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const btn = "grid min-h-[40px] min-w-[40px] place-items-center rounded-lg text-[15px] font-semibold transition-colors disabled:opacity-40";
+  // 44 px: mínimo de toque (WCAG 2.2 y público 30+).
+  const btn = "grid min-h-[44px] min-w-[44px] place-items-center rounded-lg text-[15px] font-semibold transition-colors disabled:opacity-40";
 
   return (
     <nav aria-label="Paginación" className="mt-4 flex flex-col items-center justify-between gap-3 sm:flex-row">
@@ -162,11 +163,11 @@ export function Buscador({
         onChange={(e) => onCambiar(e.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="min-h-[44px] w-full rounded-xl border border-linea-fuerte bg-white pl-10 pr-10 text-[15px] outline-none transition focus:border-magenta focus:ring-4 focus:ring-magenta/15"
+        className="min-h-[44px] w-full rounded-xl border border-linea-fuerte bg-white pl-10 pr-12 text-base outline-none transition focus:border-magenta focus:ring-4 focus:ring-magenta/15"
       />
       {valor && (
         <button onClick={() => onCambiar("")} aria-label="Borrar búsqueda"
-          className="absolute right-1 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg text-tinta-suave hover:bg-marfil-100">
+          className="absolute right-0 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-tinta-suave hover:bg-marfil-100">
           <X size={16} />
         </button>
       )}
@@ -184,7 +185,7 @@ export function Filtros<K extends string>({
         const on = o.clave === valor;
         return (
           <button key={o.clave} role="tab" aria-selected={on} onClick={() => onCambiar(o.clave)}
-            className={`inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-full border px-3.5 text-[14px] font-semibold transition-colors ${
+            className={`inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-full border px-3.5 text-[14px] font-semibold transition-colors ${
               on ? "border-tinta bg-tinta text-white" : "border-linea-fuerte bg-white text-tinta hover:border-tinta/50"
             }`}>
             {o.label}

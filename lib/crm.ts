@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { leerPrivados } from "./privados";
 import type { Plan } from "./planes";
 
 /**
@@ -155,12 +156,15 @@ export async function cargarCrm(): Promise<{ fichas: FichaCrm[]; error: string |
     .from("locales")
     .select(cols)
     .order("nombre").order("id").range(d, h) as unknown as PromiseLike<{ data: FilaLocal[] | null; error: { message: string; code?: string } | null }>);
-  const COLS = "id,nombre,zona,redes,email,telefono,owner_id,plan,plan_estado";
+  // Sin `email`: desde el lote 78 no se lee de la tabla; se completa abajo.
+  const COLS = "id,nombre,zona,redes,telefono,owner_id,plan,plan_estado";
   // `zona_slug` (lote 69) sirve para el filtro de zona. Si la base aún no la
   // tiene, se lee sin ella: el CRM funciona igual, solo sin ese filtro.
   let { data: locales, error } = await leerLocales(`${COLS},zona_slug`);
   if (error && (error.code === "42703" || error.code === "PGRST204")) ({ data: locales, error } = await leerLocales(COLS));
   if (error) return { fichas: [], error: error.message };
+  const privados = await leerPrivados("locales", (locales ?? []).map((l) => l.id));
+  locales = (locales ?? []).map((l) => ({ ...l, email: privados.get(l.id)?.email ?? null }));
 
   type FilaSeg = Seguimiento & { local_id: string; actualizado_en: string | null; actualizado_por: string | null };
   type FilaTardeo = { local_id: string | null; fourvenues_url: string | null };

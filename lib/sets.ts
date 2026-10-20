@@ -1,11 +1,13 @@
 import { supabase } from "./supabase";
+import { mensajeAmable } from "./mensajeError";
 
 /**
  * Sets de los DJs, seguir, ♥, guardar, comentarios y Nexo (lote 65).
  *
  * Todo lo que toca tablas del lote 65 devuelve `faltaLote` cuando aún no está
  * aplicado (42P01 tabla, 42883/PGRST202 función, 42703/PGRST204 columna), para
- * que la pantalla diga "Falta el lote 65" en vez de romperse.
+ * que la pantalla diga «no disponible» en vez de romperse. Al público nunca se
+ * le habla de «lotes»: eso solo en el admin (MENSAJE_FALTA_LOTE).
  */
 
 export type Plataforma = "soundcloud" | "youtube" | "mixcloud" | "audio" | "otra";
@@ -81,7 +83,16 @@ export function faltaLote(e: ErrorPg): boolean {
     || /does not exist|Could not find/i.test(e.message ?? "");
 }
 
+/** Solo para pantallas del admin: dice qué lote falta. */
 export const MENSAJE_FALTA_LOTE = "Falta el lote 65 en la base de datos (música). Avisa al administrador.";
+
+/** Lo que ve el público (tardícola, DJ, local) si falta el lote. */
+export const MENSAJE_NO_DISPONIBLE = "Esta sección aún no está disponible.";
+
+/** Error de la base → frase para el público (sin jerga ni mensajes en inglés). */
+export function errorPublico(e: ErrorPg): string {
+  return faltaLote(e) ? MENSAJE_NO_DISPONIBLE : mensajeAmable(e);
+}
 
 /** De qué plataforma es un enlace: decide cómo lo toca el reproductor. */
 export function plataformaDe(url: string): Plataforma {
@@ -108,7 +119,7 @@ export function portadaDe(s: { portada?: string | null; url?: string | null }): 
 export async function getSetsDeDj(djId: string): Promise<{ data: SetDj[]; error: string | null; faltaLote: boolean }> {
   const { data, error } = await supabase.from("sets").select(SELECT_SET).eq("dj_id", djId)
     .order("destacado", { ascending: false }).order("orden").order("created_at", { ascending: false });
-  if (error) return { data: [], error: faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message, faltaLote: faltaLote(error) };
+  if (error) return { data: [], error: errorPublico(error), faltaLote: faltaLote(error) };
   return { data: (data ?? []) as SetDj[], error: null, faltaLote: false };
 }
 
@@ -116,7 +127,7 @@ export async function getFeed(siguiendo: boolean, estilos: string[], desde: numb
   const { data, error } = await supabase.rpc("feed_djs", {
     p_siguiendo: siguiendo, p_estilos: estilos, p_desde: desde, p_limite: limite,
   });
-  if (error) return { data: [] as TarjetaFeed[], error: faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message };
+  if (error) return { data: [] as TarjetaFeed[], error: errorPublico(error) };
   return { data: (data ?? []) as TarjetaFeed[], error: null };
 }
 
@@ -134,7 +145,7 @@ async function alternar(tabla: string, campo: "dj_id" | "set_id", id: string, ui
     ? await supabase.from(tabla).insert({ profile_id: uid, [campo]: id })
     : await supabase.from(tabla).delete().eq("profile_id", uid).eq(campo, id);
   // Duplicado = ya estaba: el estado final es el que se quería.
-  if (error && error.code !== "23505") return faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message;
+  if (error && error.code !== "23505") return errorPublico(error);
   return null;
 }
 export const seguirDj = (djId: string, uid: string, si: boolean) => alternar("seguidores_dj", "dj_id", djId, uid, si);
@@ -155,12 +166,12 @@ async function alternarDetalle(tabla: string, campo: "dj_id" | "set_id", id: str
     const { error } = await supabase.from(tabla).insert({ profile_id: uid, [campo]: id });
     if (!error) return { error: null, cambio: true };
     if (error.code === "23505") return { error: null, cambio: false };
-    return { error: faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message, cambio: false };
+    return { error: errorPublico(error), cambio: false };
   }
   // `.select()` devuelve las filas borradas (la política de lectura deja ver
   // las propias): cero filas = no estaba marcado y el contador no ha bajado.
   const { data, error } = await supabase.from(tabla).delete().eq("profile_id", uid).eq(campo, id).select(campo);
-  if (error) return { error: faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message, cambio: false };
+  if (error) return { error: errorPublico(error), cambio: false };
   return { error: null, cambio: (data ?? []).length > 0 };
 }
 export const gustarSetDetalle = (setId: string, uid: string, si: boolean) => alternarDetalle("sets_likes", "set_id", setId, uid, si);
@@ -197,7 +208,7 @@ export async function getComentarios(setId: string): Promise<{ data: Comentario[
   const { data, error } = await supabase.from("sets_comentarios")
     .select("id,set_id,autor,texto,respuesta_de,es_dj,oculto,created_at")
     .eq("set_id", setId).order("created_at").order("id").limit(300);
-  if (error) return { data: [], error: faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message };
+  if (error) return { data: [], error: errorPublico(error) };
   const filas = (data ?? []) as Comentario[];
   // Alias y foto: perfil_publico (lote 63) nunca devuelve email ni teléfono.
   const ids = [...new Set(filas.map((c) => c.autor).filter(Boolean))] as string[];
@@ -212,13 +223,13 @@ export async function getComentarios(setId: string): Promise<{ data: Comentario[
 export async function comentar(setId: string, uid: string, texto: string, respuestaDe: string | null = null) {
   const { error } = await supabase.from("sets_comentarios")
     .insert({ set_id: setId, autor: uid, texto: texto.trim(), respuesta_de: respuestaDe });
-  if (error) return faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message;
+  if (error) return errorPublico(error);
   return null;
 }
 
 export async function borrarComentario(id: string) {
   const { error } = await supabase.from("sets_comentarios").delete().eq("id", id);
-  return error ? error.message : null;
+  return error ? errorPublico(error) : null;
 }
 
 // ── Gestión del DJ ────────────────────────────────────────────────────────
@@ -232,7 +243,7 @@ export async function crearSet(djId: string, s: NuevoSet) {
     portada: s.portada?.trim() || portadaPorDefecto(url), estilos: s.estilos ?? [],
     destacado: !!s.destacado, orden: s.orden ?? 0,
   });
-  if (error) return faltaLote(error) ? MENSAJE_FALTA_LOTE : error.message;
+  if (error) return errorPublico(error);
   return null;
 }
 
@@ -241,18 +252,18 @@ export async function actualizarSet(id: string, cambios: Partial<Pick<SetDj, "ti
   if (typeof cambios.url === "string") c.plataforma = plataformaDe(cambios.url);
   // `.select`: 0 filas = la base no dejó (RLS), aunque no haya error.
   const { data, error } = await supabase.from("sets").update(c).eq("id", id).select("id");
-  if (error) return error.message;
+  if (error) return errorPublico(error);
   return data?.length ? null : "No se ha podido guardar: este set no es tuyo o ya no existe.";
 }
 
 /** Un solo destacado por DJ: se quita a los demás y se pone a este. */
 export async function destacarSet(djId: string, id: string) {
   const a = await supabase.from("sets").update({ destacado: false }).eq("dj_id", djId).neq("id", id);
-  if (a.error) return a.error.message;
+  if (a.error) return errorPublico(a.error);
   return actualizarSet(id, { destacado: true });
 }
 
 export async function borrarSet(id: string) {
   const { error } = await supabase.from("sets").delete().eq("id", id);
-  return error ? error.message : null;
+  return error ? errorPublico(error) : null;
 }

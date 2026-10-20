@@ -95,7 +95,7 @@ export default function ReportarProblema({
     setEnviando(false);
 
     if (e) {
-      if (NO_EXISTE.has(e.code ?? "")) setFallo({ texto: "Falta pegar el lote 57 en la base de datos, así que esto aún no se puede guardar.", whatsapp: true });
+      if (NO_EXISTE.has(e.code ?? "")) setFallo({ texto: "Esta sección aún no está disponible.", whatsapp: true });
       else setFallo({ texto: `No se pudo enviar: ${e.message}`, whatsapp: true });
       return;
     }
@@ -151,7 +151,7 @@ export default function ReportarProblema({
 
             <Campo etiqueta="Cuéntanoslo" htmlFor="rp-mensaje" ayuda={`Qué intentabas hacer y qué ha pasado. ${largo}/1800`}>
               <textarea id="rp-mensaje" value={mensaje} onChange={(e) => setMensaje(e.target.value)} rows={5} maxLength={1800}
-                placeholder="Ej.: al pulsar «Me apunto» no pasa nada" className={claseCampo} />
+                placeholder="Ej.: al pulsar «Asistiré» no pasa nada" className={claseCampo} />
             </Campo>
 
             {!user && (

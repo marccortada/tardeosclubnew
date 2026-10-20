@@ -366,8 +366,20 @@ Paquetes para pegar de una vez: `PEGAR_45_a_62.sql`, `PEGAR_63_a_69.sql`,
   Probado en local: 23 comprobaciones bien.
 - `76` Copias de la limpieza (`_bak_limpieza_*`) sin permisos para el público + «solo admin
   lee» (**aplicado el 18‑oct‑2026**).
+- `77` Fotos de 57 locales que apuntaban al Supabase antiguo (borrado el 20‑oct) → mismas
+  imágenes en `flyers/migrados/…` del nuevo (**aplicado el 20‑oct‑2026**; comprobadas: 57/57
+  cargan, y 826 flyers/avatares más sin ninguna rota).
 
-El siguiente lote libre es el **77**.
+- `78` Seguridad (auditoría del 20‑oct): reseñas nacen **pendientes** aunque se manden
+  «aprobadas»; columnas de sistema de `tardeos` (versión de horario, cancelado, avisado) solo
+  las escribe el sistema; **`locales.email` y las notas/referencias de cobro de locales y DJs ya
+  no se leen desde la API** (las piden `datos_privados_locales` / `datos_privados_djs`: email
+  al dueño y al admin, cobro solo al admin; en el código, `lib/privados.ts`); dar plaza en un
+  tardeo cerrado solo el admin; `quienes_van` solo de tardeos visibles de locales activos.
+  Probado en local: 24 comprobaciones bien. **Columna nueva en `locales`** = darle
+  `grant select (col) on public.locales to authenticated` (ya no hay permiso de tabla).
+
+El siguiente lote libre es el **79**.
 
 **Permisos por columna en Supabase:** anon y authenticated tienen por defecto permiso de
 TABLA en `public`, así que un `grant (col)` o `revoke (col)` NO restringe nada mientras
@@ -537,6 +549,11 @@ el .txt, recargar. **Lanzar** = quitar el `if ($tc_equipo = 0)` de `location /`,
 `https://tardeosclub.com/**` a las Redirect URLs de Supabase Auth y redirigir crm → tardeosclub.
 Mientras tanto, los enlaces de los correos (recuperar contraseña, invitaciones) solo abren la
 app a quien tenga la llave.
+
+**Sincronización con la web antigua: DESACTIVADA el 20‑oct‑2026.** El workflow de GitHub
+«Sincronizar tardeos» (desde `main`, a diario) reescribía en producción locales, DJs y tardeos
+migrados con lo que dijera la app vieja (y volvía a poner sus URLs de imágenes). Al borrarse el
+Supabase antiguo se desactivó en GitHub y se quitó el fichero de `rediseno`. No reactivar.
 
 Git: rama de trabajo `rediseno`; `main` es la estable. No subir
 `AUDITORIA_Y_PLAN.md` (datos de seguridad de la web vieja) ni ningún `.env*`

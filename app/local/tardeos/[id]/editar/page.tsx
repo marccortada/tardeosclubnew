@@ -346,10 +346,10 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
         body: JSON.stringify({ tardeoId: id, soloContar: true, accessToken: session?.access_token }),
       });
       const j = await res.json().catch(() => ({}));
-      if (!res.ok) { setCanales({ apuntados: apuntados.length, conEmail: 0, conPush: 0, email: false, push: false, error: j.error }); return; }
+      if (!res.ok) { setCanales({ apuntados: nApuntados, conEmail: 0, conPush: 0, email: false, push: false, error: j.error }); return; }
       setCanales(j);
     } catch {
-      setCanales({ apuntados: apuntados.length, conEmail: 0, conPush: 0, email: false, push: false, error: "Sin conexión con el servidor." });
+      setCanales({ apuntados: nApuntados, conEmail: 0, conPush: 0, email: false, push: false, error: "Sin conexión con el servidor." });
     }
   };
 
@@ -378,7 +378,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
     }
     setTardeo((t) => (t ? { ...t, estado: "cancelado" } : t));
     let msg = "Tardeo cancelado. Ya no sale en la web como disponible.";
-    if (avisar && apuntados.length > 0 && canales && !canales.error && (canales.email || canales.push)) {
+    if (avisar && nApuntados > 0 && canales && !canales.error && (canales.email || canales.push)) {
       try { msg += " " + (await mandarAviso()); }
       catch (err) { msg += ` No se pudo avisar: ${(err as Error).message}`; }
     }
@@ -435,6 +435,11 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
   const cerrado = tardeo.estado === "cancelado" || tardeo.estado === "finalizado";
   const est = NOMBRE_ESTADO[tardeo.estado ?? "publicado"] ?? NOMBRE_ESTADO.borrador;
   const apuntados = inscritos?.filas.filter((f) => f.estado === "apuntado") ?? [];
+  // Confirmados AHORA: la lista de asistentes puede dar plaza o cancelar sin
+  // recargar la página. Con el número de la carga inicial, cancelar el tardeo
+  // dejaba sin aviso a quien acababa de recibir plaza (o decía «Avisar a 3»
+  // cuando ya no quedaba nadie).
+  const nApuntados = nConf ?? apuntados.length;
   // Hay lista si alguien se apuntó alguna vez (también en espera o cancelado):
   // antes el bloque solo salía con confirmados y la espera quedaba escondida.
   const hayLista = (inscritos?.filas.length ?? 0) > 0;
@@ -467,10 +472,10 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
             <p className="mt-1 text-[15px]">
               Puedes corregir sus datos y se quedará como está. Si quieres volver a usarlo, pásalo a borrador abajo.
             </p>
-            {tardeo.estado === "cancelado" && apuntados.length > 0 && (
+            {tardeo.estado === "cancelado" && nApuntados > 0 && (
               <Boton variante="contorno" tamano="pequeno" className="mt-3"
                 onClick={() => { setHoja("avisar"); consultarCanales(); }}>
-                <BellRing size={16} aria-hidden /> Avisar a los {apuntados.length} apuntados
+                <BellRing size={16} aria-hidden /> Avisar a los {nApuntados} apuntados
               </Boton>
             )}
           </div>
@@ -542,10 +547,10 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
         {/* Quién viene. Usa la función del lote 48, que responde al local y
             también al admin. */}
         {(hayLista || respaldo.length > 0 || precio.modo === "gratis") && (
-          <Bloque id="apuntados" plegable titulo={`Asistentes y lista de espera${nConf != null ? ` (${nConf})` : apuntados.length || respaldo.length ? ` (${apuntados.length || respaldo.length})` : ""}`}
+          <Bloque id="apuntados" plegable titulo={`Asistentes y lista de espera${nConf != null ? ` (${nConf})` : nApuntados || respaldo.length ? ` (${nApuntados || respaldo.length})` : ""}`}
             ayuda="Pasa lista, da plaza a quien espera o cancela. Cada cambio se guarda al tocar.">
             <PasarLista tardeoId={id} nombresRespaldo={respaldo} onCambio={(f) => setNConf(f.length)} />
-            {!ajena && (apuntados.length > 0 || respaldo.length > 0) && (
+            {!ajena && (nApuntados > 0 || respaldo.length > 0) && (
               <Link href={enlace(`/local/apuntados?tardeo=${id}`)} className="inline-flex min-h-[44px] items-center gap-2 text-[15px] font-bold text-magenta-700">
                 <Users size={16} aria-hidden /> Exportar CSV
               </Link>
@@ -605,7 +610,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
             hasta el final después de cambiar una hora. */}
         {/* En el móvil se pega ENCIMA de la barra de abajo (64 px + zona segura):
             con bottom-0 quedaba debajo de ella y no se veía el botón de guardar. */}
-        <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom)+var(--alto-mini,0px))] z-10 -mx-4 flex flex-col gap-2 border-t border-linea bg-marfil/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
+        <div className="sticky bottom-[calc(var(--alto-barra-inferior,4rem)+var(--alto-mini,0px))] z-10 -mx-4 flex flex-col gap-2 border-t border-linea bg-marfil/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
           <div aria-live="polite">
             {error && <p role="alert" className="rounded-xl border border-error/20 bg-error-fondo p-3 text-[15px] font-semibold text-error">{error}</p>}
             {guardado && !error && (
@@ -679,9 +684,9 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
           «{tardeo.titulo}» del {formatFecha(tardeo.fecha).toLowerCase()} desaparecerá de la web y de tu panel.
           <b> No se puede deshacer.</b>
         </p>
-        {apuntados.length > 0 && (
+        {nApuntados > 0 && (
           <p className="mt-2 rounded-xl bg-aviso-fondo p-3 text-[15px] text-aviso">
-            Hay {apuntados.length} {apuntados.length === 1 ? "persona apuntada" : "personas apuntadas"}. Si al final no se hace, mejor despublícalo y avísales.
+            Hay {nApuntados} {nApuntados === 1 ? "persona apuntada" : "personas apuntadas"}. Si al final no se hace, mejor despublícalo y avísales.
           </p>
         )}
       </Hoja>
@@ -705,7 +710,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
             salir como disponible y nadie más se podrá apuntar. No se borra; puedes reabrirlo como borrador.
           </p>
         )}
-        {apuntados.length === 0 ? (
+        {nApuntados === 0 ? (
           hoja === "cancelar" && <p className="mt-2 text-[15px] text-tinta-suave">No hay nadie apuntado, así que no hay a quién avisar.</p>
         ) : !canales ? (
           <p className="mt-3 flex items-center gap-2 text-[15px] text-tinta-suave"><Loader2 size={16} className="animate-spin" aria-hidden /> Comprobando cómo avisar…</p>
@@ -727,7 +732,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
             ) : !canales.email && !canales.push ? (
               <p className="rounded-xl bg-aviso-fondo p-3 text-[15px] text-tinta">
                 <b>El aviso automático no está configurado</b> (falta el envío de emails y de notificaciones en el servidor).
-                Avisa tú a {apuntados.length === 1 ? "la persona apuntada" : `las ${apuntados.length} personas apuntadas`}: tienes la lista en «Apuntados».
+                Avisa tú a {nApuntados === 1 ? "la persona apuntada" : `las ${nApuntados} personas apuntadas`}: tienes la lista en «Apuntados».
               </p>
             ) : (
               <>
@@ -735,7 +740,7 @@ export default function EditarTardeo({ params }: { params: Promise<{ id: string 
                   <label className="flex cursor-pointer items-start gap-3">
                     <input type="checkbox" checked={avisar} onChange={(e) => setAvisar(e.target.checked)} className="mt-1 h-5 w-5 accent-magenta" />
                     <span className="text-[15px]">
-                      <b>Avisar a {apuntados.length === 1 ? "la persona apuntada" : `las ${apuntados.length} personas apuntadas`}</b>
+                      <b>Avisar a {nApuntados === 1 ? "la persona apuntada" : `las ${nApuntados} personas apuntadas`}</b>
                     </span>
                   </label>
                 )}

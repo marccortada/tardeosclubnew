@@ -387,7 +387,7 @@ function NuevaInvitacion({
               <p className="truncate font-bold">{elegida.nombre}</p>
             </div>
             <button type="button" onClick={() => setElegida(null)}
-              className="min-h-[44px] shrink-0 rounded-lg px-3 text-[15px] font-semibold text-magenta-700 hover:bg-white">Cambiar</button>
+              className="min-h-[44px] shrink-0 rounded-lg px-3 text-[15px] font-semibold text-magenta-700 hover:bg-superficie">Cambiar</button>
           </div>
           <Campo etiqueta="Email de la persona (opcional)" htmlFor="inv-email" ayuda="Solo para que recuerdes a quién se lo mandaste. No le enviamos nada.">
             <input id="inv-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nombre@ejemplo.com" className={claseCampo} />

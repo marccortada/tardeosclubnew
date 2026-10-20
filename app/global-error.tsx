@@ -13,7 +13,7 @@ export default function ErrorGlobal({
 }: { error: Error & { digest?: string }; retry?: () => void; reset?: () => void }) {
   return (
     <html lang="es">
-      <body className="min-h-screen bg-marfil font-sans text-tinta antialiased">
+      <body className="min-h-dvh bg-marfil font-sans text-tinta antialiased">
         <title>Algo ha fallado · TardeosClub</title>
         <PantallaError error={error} reintentar={retry ?? reset} />
       </body>
